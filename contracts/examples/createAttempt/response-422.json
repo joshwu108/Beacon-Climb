@@ -1,0 +1,12 @@
+{
+  "status": 422,
+  "headers": {
+    "X-Request-Id": "fixture-request-2"
+  },
+  "body": {
+    "code": "VALIDATION_ERROR",
+    "message": "Request cannot be applied",
+    "request_id": "fixture-request-2",
+    "field_errors": []
+  }
+}

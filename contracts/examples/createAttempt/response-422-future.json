@@ -1,0 +1,18 @@
+{
+  "status": 422,
+  "headers": {
+    "X-Request-Id": "fixture-request-future"
+  },
+  "body": {
+    "code": "OCCURRED_AT_IN_FUTURE",
+    "message": "occurred_at is more than five minutes after receipt",
+    "request_id": "fixture-request-future",
+    "field_errors": [
+      {
+        "field": "occurred_at",
+        "code": "OCCURRED_AT_IN_FUTURE",
+        "message": "Timestamp is too far in the future"
+      }
+    ]
+  }
+}

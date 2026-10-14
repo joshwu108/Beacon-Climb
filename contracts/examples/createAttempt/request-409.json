@@ -1,0 +1,15 @@
+{
+  "method": "POST",
+  "path": "/v1/me/attempts",
+  "headers": {
+    "Idempotency-Key": "demo-attempt-1"
+  },
+  "body": {
+    "route_variant_id": "synthetic-route-001:35",
+    "occurred_at": "2026-10-14T14:00:00Z",
+    "attempts_count": 2,
+    "sent": false
+  },
+  "expected_status": 409,
+  "previous_request_ref": "request.json (same Idempotency-Key, sent=true)"
+}

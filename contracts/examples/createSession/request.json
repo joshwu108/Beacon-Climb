@@ -1,0 +1,8 @@
+{
+  "method": "POST",
+  "path": "/v1/auth/session",
+  "body": {
+    "username": "demo",
+    "password": "demo-password"
+  }
+}

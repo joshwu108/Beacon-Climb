@@ -1,0 +1,27 @@
+{
+  "status": 200,
+  "headers": {
+    "X-Request-Id": "fixture-request-1"
+  },
+  "body": {
+    "decision_id": "018f0000-0000-7000-8000-000000000003",
+    "policy_version": "heuristic-v1",
+    "model_version": "none",
+    "feature_as_of": "2026-10-14T13:59:00Z",
+    "cold_start": true,
+    "recommendations": [
+      {
+        "route_variant_id": "synthetic-route-001:35",
+        "position": 1,
+        "rank_score": 0.72,
+        "reason_codes": [
+          "COMPATIBLE_ANGLE",
+          "GOAL_CHALLENGE_MATCH"
+        ],
+        "predicted_send_probability": null,
+        "uncertainty_label": "INSUFFICIENT_HISTORY"
+      }
+    ],
+    "fallback_used": false
+  }
+}

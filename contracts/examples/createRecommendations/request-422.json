@@ -1,0 +1,13 @@
+{
+  "method": "POST",
+  "path": "/v1/me/sessions/recommendations",
+  "body": {
+    "board_id": "synthetic-demo-1",
+    "angle_deg": 35,
+    "goal": "TECHNIQUE",
+    "max_routes": 0,
+    "session_id": "018f0000-0000-7000-8000-000000000004",
+    "exclude_route_variant_ids": []
+  },
+  "expected_status": 422
+}

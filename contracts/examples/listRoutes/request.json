@@ -1,0 +1,9 @@
+{
+  "method": "GET",
+  "path": "/v1/routes",
+  "query": {
+    "board_id": "synthetic-demo-1",
+    "angle_deg": 35,
+    "limit": 20
+  }
+}

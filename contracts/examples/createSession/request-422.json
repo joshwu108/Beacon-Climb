@@ -1,0 +1,9 @@
+{
+  "method": "POST",
+  "path": "/v1/auth/session",
+  "body": {
+    "username": "demo",
+    "password": ""
+  },
+  "expected_status": 422
+}

@@ -1,0 +1,10 @@
+{
+  "status": 201,
+  "headers": {
+    "X-Request-Id": "fixture-request-1"
+  },
+  "body": {
+    "token": "opaque-demo-token",
+    "expires_at": "2026-10-15T14:00:00Z"
+  }
+}

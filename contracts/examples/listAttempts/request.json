@@ -1,0 +1,7 @@
+{
+  "method": "GET",
+  "path": "/v1/me/attempts",
+  "query": {
+    "limit": 20
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "method": "POST",
+  "path": "/v1/me/consent",
+  "body": {
+    "consent_version": "v1"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "status": 200,
+  "headers": {
+    "X-Request-Id": "fixture-request-1"
+  },
+  "body": {
+    "user_id": "018f0000-0000-7000-8000-000000000001",
+    "username": "demo",
+    "consent": {
+      "version": "v1",
+      "consented_at": "2026-10-14T13:00:00Z",
+      "revoked_at": null
+    },
+    "preferences": {
+      "board_id": "synthetic-demo-1",
+      "angle_deg": 35,
+      "initial_grade_band": "V2-V4",
+      "goals": [
+        "TECHNIQUE"
+      ]
+    }
+  }
+}

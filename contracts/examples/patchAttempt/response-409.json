@@ -1,0 +1,13 @@
+{
+  "status": 409,
+  "headers": {
+    "X-Request-Id": "fixture-request-2"
+  },
+  "body": {
+    "code": "REVISION_CONFLICT",
+    "message": "Request cannot be applied",
+    "request_id": "fixture-request-2",
+    "field_errors": [],
+    "current_revision": 2
+  }
+}

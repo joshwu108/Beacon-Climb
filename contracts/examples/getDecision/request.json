@@ -1,0 +1,7 @@
+{
+  "method": "GET",
+  "path_params": {
+    "decision_id": "018f0000-0000-7000-8000-000000000003"
+  },
+  "path": "/v1/me/decisions/{decision_id}"
+}

@@ -1,0 +1,15 @@
+{
+  "method": "PATCH",
+  "headers": {
+    "If-Match": "\"1\""
+  },
+  "body": {
+    "sent": false
+  },
+  "path_params": {
+    "attempt_id": "018f0000-0000-7000-8000-000000000002"
+  },
+  "path": "/v1/me/attempts/{attempt_id}",
+  "expected_status": 409,
+  "current_revision_at_server": 2
+}

@@ -1,0 +1,4 @@
+{
+  "method": "DELETE",
+  "path": "/v1/me/consent"
+}

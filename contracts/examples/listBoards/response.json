@@ -1,0 +1,17 @@
+{
+  "status": 200,
+  "headers": {
+    "X-Request-Id": "fixture-request-1"
+  },
+  "body": {
+    "items": [
+      {
+        "board_id": "synthetic-demo-1",
+        "provider": "synthetic",
+        "layout_id": "1",
+        "size_id": "12x12",
+        "synthetic": true
+      }
+    ]
+  }
+}

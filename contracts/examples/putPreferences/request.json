@@ -1,0 +1,12 @@
+{
+  "method": "PUT",
+  "path": "/v1/me/preferences",
+  "body": {
+    "board_id": "synthetic-demo-1",
+    "angle_deg": 35,
+    "initial_grade_band": "V2-V4",
+    "goals": [
+      "TECHNIQUE"
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "beacon-contract-tests",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node validate_examples.cjs && node events.test.cjs"
+  },
+  "devDependencies": {
+    "@apidevtools/json-schema-ref-parser": "13.0.5",
+    "ajv": "^8.20.0",
+    "ajv-formats": "3.0.1",
+    "yaml": "^2.9.1"
+  }
+}

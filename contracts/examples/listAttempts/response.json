@@ -1,0 +1,23 @@
+{
+  "status": 200,
+  "headers": {
+    "X-Request-Id": "fixture-request-1"
+  },
+  "body": {
+    "items": [
+      {
+        "attempt_id": "018f0000-0000-7000-8000-000000000002",
+        "route_variant_id": "synthetic-route-001:35",
+        "occurred_at": "2026-10-14T14:00:00Z",
+        "received_at": "2026-10-14T14:00:01Z",
+        "attempts_count": 2,
+        "sent": true,
+        "completion_fraction": null,
+        "perceived_effort": null,
+        "revision": 1,
+        "status": "ACTIVE"
+      }
+    ],
+    "next_cursor": null
+  }
+}

@@ -1,0 +1,1160 @@
+openapi: 3.1.0
+info:
+  title: Beacon Climb API
+  version: 1.0.0
+  description: 'CONTRACT-v1. Changelog: 1.0.0 — initial synthetic demo and vertical slice.'
+  license:
+    name: License pending review
+    identifier: LicenseRef-PendingReview
+tags:
+- name: API
+  description: Implemented vertical-slice operations
+- name: Planned
+  description: Reserved paths; x-planned indicates no implementation
+paths:
+  /health/live:
+    get:
+      operationId: getHealthLive
+      summary: Liveness
+      tags:
+      - API
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: &id001
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security: []
+  /health/ready:
+    get:
+      operationId: getHealthReady
+      summary: Readiness
+      tags:
+      - API
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: *id001
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '503':
+          description: Structured error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security: []
+  /v1/auth/session:
+    post:
+      operationId: createSession
+      summary: Create session
+      tags:
+      - API
+      responses:
+        '201':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: *id001
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Structured error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Structured error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      security: []
+  /v1/boards:
+    get:
+      operationId: listBoards
+      summary: List boards
+      tags:
+      - API
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: *id001
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardList'
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security:
+      - bearerAuth: []
+  /v1/routes:
+    get:
+      operationId: listRoutes
+      summary: List routes
+      tags:
+      - API
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: *id001
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteList'
+        '422':
+          description: Structured error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: board_id
+        in: query
+        required: false
+        schema: *id001
+      - name: angle_deg
+        in: query
+        required: false
+        schema: &id003
+          type: integer
+      - name: grade_min
+        in: query
+        required: false
+        schema: &id002
+          type: number
+      - name: grade_max
+        in: query
+        required: false
+        schema: *id002
+      - name: cursor
+        in: query
+        required: false
+        schema: *id001
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+  /v1/routes/{route_variant_id}:
+    get:
+      operationId: getRoute
+      summary: Get route
+      tags:
+      - API
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: *id001
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteVariant'
+        '404':
+          description: Structured error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: route_variant_id
+        in: path
+        required: true
+        schema: *id001
+  /v1/me:
+    get:
+      operationId: getMe
+      summary: Get profile
+      tags:
+      - API
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: *id001
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        '401':
+          description: Structured error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security:
+      - bearerAuth: []
+    delete:
+      operationId: deleteMe
+      summary: Reserved for a later milestone
+      tags:
+      - Planned
+      x-planned: true
+      security:
+      - bearerAuth: []
+      responses:
+        '501':
+          description: Not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '200':
+          description: Reserved future success shape; no implementation in v1
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/me/preferences:
+    put:
+      operationId: putPreferences
+      summary: Set preferences
+      tags:
+      - API
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: *id001
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Preferences'
+        '422':
+          description: Structured error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Preferences'
+  /v1/me/consent:
+    post:
+      operationId: createConsent
+      summary: Grant consent
+      tags:
+      - API
+      responses:
+        '204':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: *id001
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentRequest'
+    delete:
+      operationId: deleteConsent
+      summary: Revoke consent
+      tags:
+      - API
+      responses:
+        '204':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: *id001
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security:
+      - bearerAuth: []
+  /v1/me/attempts:
+    get:
+      operationId: listAttempts
+      summary: List attempts
+      tags:
+      - API
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: *id001
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttemptList'
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: cursor
+        in: query
+        required: false
+        schema: *id001
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+    post:
+      operationId: createAttempt
+      summary: Create attempt
+      tags:
+      - API
+      responses:
+        '201':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: *id001
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attempt'
+        '403':
+          description: Structured error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: Structured error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Structured error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '200':
+          description: Idempotent replay
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attempt'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttemptCreate'
+  /v1/me/attempts/{attempt_id}:
+    patch:
+      operationId: patchAttempt
+      summary: Correct attempt
+      tags:
+      - API
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: *id001
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attempt'
+        '404':
+          description: Structured error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: Structured error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Structured error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: attempt_id
+        in: path
+        required: true
+        schema: *id001
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^"[1-9][0-9]*"$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttemptPatch'
+  /v1/me/sessions/recommendations:
+    post:
+      operationId: createRecommendations
+      summary: Recommend routes
+      tags:
+      - API
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: *id001
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationResponse'
+        '403':
+          description: Structured error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Structured error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: Structured error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecommendationRequest'
+  /v1/me/decisions/{decision_id}:
+    get:
+      operationId: getDecision
+      summary: Get decision
+      tags:
+      - API
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: *id001
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Decision'
+        '404':
+          description: Structured error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: decision_id
+        in: path
+        required: true
+        schema: &id005
+          type: string
+          format: uuid
+  /v1/me/decisions/{decision_id}/replay:
+    get:
+      operationId: replayDecision
+      summary: Reserved for a later milestone
+      tags:
+      - Planned
+      x-planned: true
+      security:
+      - bearerAuth: []
+      responses:
+        '501':
+          description: Not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '200':
+          description: Reserved future success shape; no implementation in v1
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: decision_id
+        in: path
+        required: true
+        schema:
+          type: string
+  /v1/me/decisions/{decision_id}/compare:
+    post:
+      operationId: compareDecision
+      summary: Reserved for a later milestone
+      tags:
+      - Planned
+      x-planned: true
+      security:
+      - bearerAuth: []
+      responses:
+        '501':
+          description: Not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '200':
+          description: Reserved future success shape; no implementation in v1
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: decision_id
+        in: path
+        required: true
+        schema:
+          type: string
+  /v1/me/skill-memory:
+    get:
+      operationId: getSkillMemory
+      summary: Reserved for a later milestone
+      tags:
+      - Planned
+      x-planned: true
+      security:
+      - bearerAuth: []
+      responses:
+        '501':
+          description: Not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '200':
+          description: Reserved future success shape; no implementation in v1
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/me/export:
+    get:
+      operationId: getExport
+      summary: Reserved for a later milestone
+      tags:
+      - Planned
+      x-planned: true
+      security:
+      - bearerAuth: []
+      responses:
+        '501':
+          description: Not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '200':
+          description: Reserved future success shape; no implementation in v1
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/admin/experiments:
+    get:
+      operationId: listExperiments
+      summary: Reserved for a later milestone
+      tags:
+      - Planned
+      x-planned: true
+      security:
+      - bearerAuth: []
+      responses:
+        '501':
+          description: Not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '200':
+          description: Reserved future success shape; no implementation in v1
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/admin/experiments/{id}/rollback:
+    post:
+      operationId: rollbackExperiment
+      summary: Reserved for a later milestone
+      tags:
+      - Planned
+      x-planned: true
+      security:
+      - bearerAuth: []
+      responses:
+        '501':
+          description: Not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '200':
+          description: Reserved future success shape; no implementation in v1
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required:
+      - code
+      - message
+      - request_id
+      - field_errors
+      properties:
+        code: *id001
+        message: *id001
+        request_id: *id001
+        field_errors:
+          type: array
+          items:
+            type: object
+            required:
+            - field
+            - code
+            - message
+            properties:
+              field: *id001
+              code: *id001
+              message: *id001
+            additionalProperties: false
+        current_revision: *id003
+      additionalProperties: false
+    Board:
+      type: object
+      required:
+      - board_id
+      - provider
+      - layout_id
+      - size_id
+      - synthetic
+      properties:
+        board_id: *id001
+        provider: *id001
+        layout_id: *id001
+        size_id: *id001
+        synthetic: &id004
+          type: boolean
+      additionalProperties: false
+    RouteVariantSummary:
+      type: object
+      required:
+      - route_variant_id
+      - board_id
+      - angle_deg
+      - name
+      - grade_numeric
+      - grade_label
+      - grade_observation_count
+      properties:
+        route_variant_id: *id001
+        board_id: *id001
+        angle_deg: *id003
+        name: *id001
+        grade_numeric:
+          type:
+          - number
+          - 'null'
+        grade_label:
+          type:
+          - string
+          - 'null'
+        grade_observation_count: *id003
+      additionalProperties: false
+    Placement:
+      type: object
+      required:
+      - hold_id
+      - x
+      - y
+      - role
+      properties:
+        hold_id: *id001
+        x: *id002
+        y: *id002
+        role:
+          type: string
+          enum:
+          - START
+          - HAND
+          - FOOT
+          - FINISH
+      additionalProperties: false
+    RouteVariant:
+      type: object
+      required:
+      - route_variant_id
+      - board_id
+      - angle_deg
+      - name
+      - grade_numeric
+      - grade_label
+      - grade_observation_count
+      - placements
+      - tags
+      - missing_tags
+      properties:
+        route_variant_id: *id001
+        board_id: *id001
+        angle_deg: *id003
+        name: *id001
+        grade_numeric:
+          type:
+          - number
+          - 'null'
+        grade_label:
+          type:
+          - string
+          - 'null'
+        grade_observation_count: *id003
+        placements:
+          type: array
+          items:
+            $ref: '#/components/schemas/Placement'
+        tags:
+          type: array
+          items: *id001
+        missing_tags: *id004
+      additionalProperties: false
+    Preferences:
+      type: object
+      required:
+      - board_id
+      - angle_deg
+      - initial_grade_band
+      - goals
+      properties:
+        board_id: *id001
+        angle_deg: *id003
+        initial_grade_band: *id001
+        goals:
+          type: array
+          items: *id001
+      additionalProperties: false
+    Consent:
+      type: object
+      required:
+      - version
+      - consented_at
+      - revoked_at
+      properties:
+        version: *id001
+        consented_at: &id006
+          type: string
+          format: date-time
+        revoked_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      additionalProperties: false
+    Me:
+      type: object
+      required:
+      - user_id
+      - username
+      - consent
+      - preferences
+      properties:
+        user_id: *id005
+        username: *id001
+        consent:
+          oneOf:
+          - $ref: '#/components/schemas/Consent'
+          - type: 'null'
+        preferences:
+          oneOf:
+          - $ref: '#/components/schemas/Preferences'
+          - type: 'null'
+      additionalProperties: false
+    AttemptCreate:
+      type: object
+      required:
+      - route_variant_id
+      - occurred_at
+      - attempts_count
+      - sent
+      properties:
+        route_variant_id: *id001
+        occurred_at: *id006
+        attempts_count:
+          type: integer
+          minimum: 1
+        sent: *id004
+        completion_fraction:
+          type: number
+          minimum: 0
+          maximum: 1
+        perceived_effort:
+          type: integer
+          minimum: 1
+          maximum: 10
+        notes:
+          type: string
+          maxLength: 500
+      additionalProperties: false
+    AttemptPatch:
+      type: object
+      required: []
+      properties:
+        attempts_count:
+          type: integer
+          minimum: 1
+        sent: *id004
+        completion_fraction:
+          type: number
+          minimum: 0
+          maximum: 1
+        perceived_effort:
+          type: integer
+          minimum: 1
+          maximum: 10
+        notes:
+          type: string
+          maxLength: 500
+        retract:
+          type: boolean
+      additionalProperties: false
+    Attempt:
+      type: object
+      required:
+      - attempt_id
+      - route_variant_id
+      - occurred_at
+      - received_at
+      - attempts_count
+      - sent
+      - revision
+      - status
+      - completion_fraction
+      - perceived_effort
+      properties:
+        attempt_id: *id005
+        route_variant_id: *id001
+        occurred_at: *id006
+        received_at: *id006
+        attempts_count:
+          type: integer
+          minimum: 1
+        sent: *id004
+        completion_fraction:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1
+        perceived_effort:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 10
+        revision:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - RETRACTED
+      additionalProperties: false
+    RecommendationRequest:
+      type: object
+      required:
+      - board_id
+      - angle_deg
+      - goal
+      - max_routes
+      - session_id
+      - exclude_route_variant_ids
+      properties:
+        board_id: *id001
+        angle_deg: *id003
+        goal:
+          type: string
+          enum:
+          - TECHNIQUE
+          - STRENGTH
+          - ENDURANCE
+          - PROJECT
+        max_routes:
+          type: integer
+          minimum: 1
+          maximum: 20
+        session_id: *id005
+        exclude_route_variant_ids:
+          type: array
+          items: *id001
+      additionalProperties: false
+    Recommendation:
+      type: object
+      required:
+      - route_variant_id
+      - position
+      - rank_score
+      - reason_codes
+      - predicted_send_probability
+      - uncertainty_label
+      properties:
+        route_variant_id: *id001
+        position: *id003
+        rank_score: *id002
+        reason_codes:
+          type: array
+          items: *id001
+        predicted_send_probability:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1
+        uncertainty_label: *id001
+      additionalProperties: false
+    RecommendationResponse:
+      type: object
+      required:
+      - decision_id
+      - policy_version
+      - model_version
+      - feature_as_of
+      - cold_start
+      - recommendations
+      - fallback_used
+      properties:
+        decision_id: *id005
+        policy_version: *id001
+        model_version: *id001
+        feature_as_of: *id006
+        cold_start: *id004
+        recommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Recommendation'
+        fallback_used: *id004
+      additionalProperties: false
+    Decision:
+      type: object
+      required:
+      - decision_id
+      - policy_version
+      - model_version
+      - feature_as_of
+      - cold_start
+      - fallback_used
+      - recommendations
+      properties:
+        decision_id: *id005
+        policy_version: *id001
+        model_version: *id001
+        feature_as_of: *id006
+        cold_start: *id004
+        fallback_used: *id004
+        recommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Recommendation'
+      additionalProperties: false
+    BoardList:
+      type: object
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Board'
+      additionalProperties: false
+    RouteList:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouteVariantSummary'
+        next_cursor:
+          type:
+          - string
+          - 'null'
+      additionalProperties: false
+    AttemptList:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attempt'
+        next_cursor:
+          type:
+          - string
+          - 'null'
+      additionalProperties: false
+    AuthRequest:
+      type: object
+      required:
+      - username
+      - password
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+      additionalProperties: false
+    AuthResponse:
+      type: object
+      required:
+      - token
+      - expires_at
+      properties:
+        token: *id001
+        expires_at: *id006
+      additionalProperties: false
+    ConsentRequest:
+      type: object
+      required:
+      - consent_version
+      properties:
+        consent_version: *id001
+      additionalProperties: false
+    Health:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          enum:
+          - UP
+      additionalProperties: false
+security:
+- bearerAuth: []
+servers:
+- url: http://127.0.0.1:8080
+  description: Local Docker Compose only

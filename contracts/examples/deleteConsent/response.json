@@ -1,0 +1,6 @@
+{
+  "status": 204,
+  "headers": {
+    "X-Request-Id": "fixture-request-1"
+  }
+}
