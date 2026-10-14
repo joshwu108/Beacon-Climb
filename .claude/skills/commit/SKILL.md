@@ -19,6 +19,14 @@ Arguments: `$ARGUMENTS` (optional). May be a full message, a scope hint, or a pa
 - Never commit secrets, `*.sqlite*`, anything under `data/`, `planning/` (gitignored anyway) or files larger than 1 MB. If any are staged, unstage them and tell the user.
 - Do not use `--no-verify`. If a pre-commit hook fails, fix the formatting it reports if trivial, otherwise stop and report.
 
+## Committing on behalf of other agents (Codex terminals)
+Codex agents never commit. A ticket is **complete** when `planning/handoffs/BC-####.md` exists (a `.log` alone is not a handoff). For each complete ticket not yet in history (`git log --oneline --grep 'BC-####'` is empty):
+1. Read the handoff; take its "changed paths" list. Verify with `git status --porcelain -- <paths>` that those paths are dirty and that nothing in the list is outside the ticket's allowed paths from `planning/01-backlog.csv`.
+2. Skip the ticket (do not commit) if any listed file was modified in the last 2 minutes (`find <path> -mmin -2`) — the agent may still be writing — or if the handoff says tests failed and the human has not accepted that.
+3. Stage exactly those paths, run the safety scan, and commit as `<type>: BC-#### <short title>` with a body summarizing the handoff (tests run and results, caveats). One ticket, one commit, in ticket order.
+4. Record in `planning/handoffs/COMMITS.md`: ticket, hash, timestamp, anything skipped and why.
+Never commit a ticket whose handoff is missing, even if its files look finished.
+
 ## Steps
 1. Verify identity. Run:
    ```bash
