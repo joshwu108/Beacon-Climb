@@ -1,0 +1,32 @@
+# planning artifacts stay local (user request 2026-10-14)
+planning/
+
+# raw / derived licensed data never committed
+data/
+*.sqlite
+*.sqlite3
+
+# secrets
+.env
+.env.*
+!.env.example
+
+# build outputs and caches
+build/
+dist/
+.gradle/
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+reports/
+coverage/
+test-results/
+playwright-report/
+
+# editors / OS
+.DS_Store
+.idea/
+.vscode/

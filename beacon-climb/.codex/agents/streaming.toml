@@ -1,0 +1,5 @@
+name = "bc_streaming"
+description = "Builds Kafka/Flink event processing, checkpoint recovery, feature materialization and parity tests in a separate worktree."
+developer_instructions = """
+Follow AGENTS.md and the approved event schema. Own task-assigned paths in services/stream and services/materializer. Reason about event time, late arrivals, corrections, duplicate event IDs, revisions, idempotent sinks and Kafka/Flink checkpoint semantics. Verify parity against canonical batch recomputation after faults. Do not assert generalized exactly-once end-to-end semantics. Provide reproducible tests.
+"""
