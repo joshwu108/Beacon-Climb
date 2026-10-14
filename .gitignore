@@ -30,3 +30,7 @@ playwright-report/
 .DS_Store
 .idea/
 .vscode/
+
+# local agent instruction files (kept out of history by request, 2026-10-14)
+AGENTS.md
+CLAUDE.md
