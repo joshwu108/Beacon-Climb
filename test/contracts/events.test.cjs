@@ -1,0 +1,5 @@
+const fs=require('fs'),path=require('path'),Ajv=require('ajv/dist/2020'),addFormats=require('ajv-formats');
+const root=path.resolve(__dirname,'../..'),ajv=new Ajv({strict:false,allErrors:true});addFormats(ajv);
+const validators={};for(const name of ['attempts.v1','climber-features.v1','stream-dlq.v1']){const schema=JSON.parse(fs.readFileSync(path.join(root,'contracts/events',name+'.schema.json')));validators[name]=ajv.compile(schema);}
+let positive=0,negative=0;for(const file of fs.readdirSync(path.join(root,'contracts/events/examples')).filter(x=>x.endsWith('.json'))){const fixture=JSON.parse(fs.readFileSync(path.join(root,'contracts/events/examples',file)));const valid=validators[fixture.schema](fixture.event),expected=file.startsWith('valid-');if(valid!==expected)throw Error(file+': expected '+expected+', got '+valid+' '+ajv.errorsText(validators[fixture.schema].errors));expected?positive++:negative++;}
+console.log(`event schemas compiled; ${positive} valid examples accepted, ${negative} invalid examples rejected`);

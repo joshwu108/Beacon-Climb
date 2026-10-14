@@ -1,0 +1,5 @@
+# Event contract v1
+
+All events use JSON Schema 2020-12. Kafka keys: `user_id` for `attempts.v1` and `climber-features.v1`; `original_key` for `stream-dlq.v1`. Planned configuration (not yet deployed): attempts: six partitions, seven-day retention; features: compacted by user ID; DLQ: 30-day retention. `attempts.v1` dedupe key is `(attempt_id,attempt_revision)`; higher revision supersedes lower. `climber-features.v1` materializer guard uses the feature-topic Kafka partition and offset (consumer metadata), stored per user; same offset with different checksum is an error. The watermark describes freshness, not delivery order. See ADR-0002 and ADR-0004.
+
+Within a major, add optional fields only after consumers tolerate them; never change required fields or meanings. A breaking change gets a new topic suffix. Attributes may contain new fields. Notes are excluded. DLQ redrive preserves original bytes, increments `attempt`, and routes permanently invalid data for manual review. Topic ACLs and encryption are deployment responsibilities; no real user data is allowed in committed examples.

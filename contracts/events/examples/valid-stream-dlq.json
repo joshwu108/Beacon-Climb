@@ -1,0 +1,14 @@
+{
+  "schema": "stream-dlq.v1",
+  "event": {
+    "schema_version": 1,
+    "event_id": "018f0000-0000-7000-8000-000000000005",
+    "original_topic": "attempts.v1",
+    "original_key": "018f0000-0000-7000-8000-000000000001",
+    "original_value_base64": "e30=",
+    "error_code": "INVALID_EVENT",
+    "error_message": "Missing revision",
+    "attempt": 1,
+    "failed_at": "2026-10-14T14:00:00Z"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "climber-features.v1",
+  "event": {
+    "schema_version": 1,
+    "event_id": "018f0000-0000-7000-8000-000000000005",
+    "user_id": "018f0000-0000-7000-8000-000000000001",
+    "feature_schema_version": "climber-features.v1",
+    "feature_as_of": "2026-10-14T14:00:00Z",
+    "source_watermark": "2026-10-14T14:00:00Z",
+    "provenance_checksum": "0000000000000000000000000000000000000000000000000000000000000000",
+    "aggregates": {
+      "attempts_7d": -1,
+      "attempts_30d": 1,
+      "attempts_90d": 1,
+      "sends_7d": 1,
+      "sends_30d": 1,
+      "sends_90d": 1,
+      "send_rate_by_grade_band_90d": {},
+      "recent_variant_ids": [
+        "synthetic-route-001:35"
+      ],
+      "last_session_at": "2026-10-14T14:00:00Z",
+      "max_sent_grade_numeric_90d": 17,
+      "distinct_sessions_30d": 1
+    },
+    "produced_at": "2026-10-14T14:00:00Z",
+    "producer": "stream"
+  }
+}

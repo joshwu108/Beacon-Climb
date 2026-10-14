@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beacon-climb.local/contracts/events/attempts.v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_type",
+    "user_id",
+    "attempt_id",
+    "attempt_revision",
+    "route_variant_id",
+    "occurred_at",
+    "ingested_at",
+    "attributes",
+    "trace_id",
+    "producer"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "ATTEMPT_RECORDED",
+        "ATTEMPT_CORRECTED",
+        "ATTEMPT_RETRACTED"
+      ]
+    },
+    "user_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "attempt_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "attempt_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "route_variant_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ingested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "trace_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "producer": {
+      "const": "api"
+    },
+    "attributes": {
+      "type": "object",
+      "required": [
+        "sent",
+        "attempts_count",
+        "status"
+      ],
+      "properties": {
+        "sent": {
+          "type": "boolean"
+        },
+        "attempts_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "completion_fraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "perceived_effort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ACTIVE",
+            "RETRACTED"
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "not": {
+        "required": [
+          "notes"
+        ]
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "ATTEMPT_RECORDED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attempt_revision": {
+            "const": 1
+          },
+          "attributes": {
+            "properties": {
+              "status": {
+                "const": "ACTIVE"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "ATTEMPT_RETRACTED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attributes": {
+            "properties": {
+              "status": {
+                "const": "RETRACTED"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+ "$schema":"https://json-schema.org/draft/2020-12/schema",
+ "$id":"https://beacon-climb.local/contracts/events/stream-dlq.v1.schema.json",
+ "type":"object","additionalProperties":false,
+ "required":["schema_version","event_id","original_topic","original_key","original_value_base64","error_code","error_message","attempt","failed_at"],
+ "properties":{"schema_version":{"const":1},"event_id":{"type":"string","format":"uuid"},"original_topic":{"type":"string"},"original_key":{"type":"string"},"original_value_base64":{"type":"string","contentEncoding":"base64"},"error_code":{"type":"string"},"error_message":{"type":"string"},"attempt":{"type":"integer","minimum":1},"failed_at":{"type":"string","format":"date-time"}}
+}
