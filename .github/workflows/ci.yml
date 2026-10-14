@@ -1,0 +1,107 @@
+name: CI
+on:
+  pull_request:
+    branches: [integration, main]
+  push:
+    branches: [integration, main]
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: beacon
+          POSTGRES_USER: beacon
+          POSTGRES_PASSWORD: change-me
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U beacon -d beacon"
+          --health-interval 2s --health-timeout 2s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start timer
+        run: echo "started=$(date +%s)" >> "$GITHUB_ENV"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Check and test API
+        run: ./gradlew :api:spotlessCheck :api:test
+        env:
+          POSTGRES_PASSWORD: change-me
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/beacon
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-junit
+          path: services/api/build/test-results/test/*.xml
+          if-no-files-found: ignore
+      - name: Elapsed
+        if: always()
+        run: |
+          echo "API wall-clock: $(($(date +%s) - started))s" >> "$GITHUB_STEP_SUMMARY"
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start timer
+        run: echo "started=$(date +%s)" >> "$GITHUB_ENV"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.3"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @beacon/web lint
+      - run: pnpm --filter @beacon/web test
+      - run: pnpm --filter @beacon/web build
+      - run: pnpm --filter @beacon/web size
+      - name: Elapsed
+        if: always()
+        run: |
+          echo "Web wall-clock: $(($(date +%s) - started))s" >> "$GITHUB_STEP_SUMMARY"
+
+  ml:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start timer
+        run: echo "started=$(date +%s)" >> "$GITHUB_ENV"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.1"
+          enable-cache: true
+      - run: uv python install 3.12.14
+      - run: uv run --directory services/ml --locked ruff check .
+      - run: uv run --directory ml --no-project --with ruff==0.17.0 ruff check .
+      - run: uv run --directory services/ml --locked pytest
+      - run: |
+          uv run --directory ml --no-project --with pytest==9.1.1 pytest || test "$?" -eq 5
+      - name: Elapsed
+        if: always()
+        run: |
+          echo "ML wall-clock: $(($(date +%s) - started))s" >> "$GITHUB_STEP_SUMMARY"
+
+  guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Start timer
+        run: echo "started=$(date +%s)" >> "$GITHUB_ENV"
+      - run: scripts/ci/check-no-licensed-data.sh
+      - run: scripts/ci/check-ownership.sh
+      - name: Elapsed
+        if: always()
+        run: |
+          echo "Guards wall-clock: $(($(date +%s) - started))s" >> "$GITHUB_STEP_SUMMARY"

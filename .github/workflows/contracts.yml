@@ -1,0 +1,52 @@
+name: Contracts
+on:
+  pull_request:
+    branches: [integration, main]
+    paths:
+      - "contracts/**"
+      - "test/contracts/**"
+      - ".github/workflows/contracts.yml"
+  push:
+    branches: [integration, main]
+    paths:
+      - "contracts/**"
+      - "test/contracts/**"
+      - ".github/workflows/contracts.yml"
+concurrency:
+  group: contracts-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start timer
+        run: echo "started=$(date +%s)" >> "$GITHUB_ENV"
+      - name: Detect contract harness
+        id: harness
+        run: |
+          if [ -f test/contracts/package.json ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::test/contracts/package.json does not exist; contract validation skipped"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.harness.outputs.available == 'true'
+        with:
+          node-version: "22.23.3"
+          cache: npm
+          cache-dependency-path: test/contracts/package-lock.json
+      - name: Install contract test dependencies
+        if: steps.harness.outputs.available == 'true'
+        run: npm ci --prefix test/contracts
+      - name: Lint OpenAPI with Redocly
+        if: steps.harness.outputs.available == 'true'
+        run: npx --yes @redocly/cli@2.63.0 lint contracts/openapi.yaml
+      - name: Validate examples with AJV harness
+        if: steps.harness.outputs.available == 'true'
+        run: npm --prefix test/contracts test
+      - name: Elapsed
+        if: always()
+        run: |
+          echo "Contracts wall-clock: $(($(date +%s) - started))s" >> "$GITHUB_STEP_SUMMARY"

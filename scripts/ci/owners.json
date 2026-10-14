@@ -1,0 +1,10 @@
+{
+  "BC-0001": "@codex-platform",
+  "BC-0009": "@codex-platform",
+  "BC-0010": "@codex-platform",
+  "BC-0101": "@codex-backend",
+  "BC-0109": "@codex-backend",
+  "BC-0114": "@claude-web",
+  "BC-0201": "@claude-ml",
+  "BC-0303": "@codex-streaming"
+}
