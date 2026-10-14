@@ -1,0 +1,348 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beacon-climb.local/contracts/decisions/decision-record.v1.schema.json",
+  "title": "Decision record and candidate snapshot v1",
+  "$defs": {
+    "hex64": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route_variant_id",
+        "eligible",
+        "filter_results",
+        "features",
+        "model_outputs"
+      ],
+      "properties": {
+        "route_variant_id": {
+          "type": "string"
+        },
+        "eligible": {
+          "type": "boolean"
+        },
+        "filter_results": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
+        "features": {
+          "type": "object",
+          "required": [
+            "grade_numeric",
+            "hold_count",
+            "novelty",
+            "cooldown_active",
+            "preference_match",
+            "grade_observation_count"
+          ],
+          "properties": {
+            "grade_numeric": {
+              "type": "number"
+            },
+            "hold_count": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "novelty": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "cooldown_active": {
+              "type": "boolean"
+            },
+            "preference_match": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "grade_observation_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "model_outputs": {
+          "type": "object",
+          "required": [
+            "predicted_grade",
+            "embedding_distance",
+            "predicted_send_probability"
+          ],
+          "properties": {
+            "predicted_grade": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "embedding_distance": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "predicted_send_probability": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_type",
+        "schema_version",
+        "user_id",
+        "feature_as_of",
+        "feature_schema_version",
+        "catalog_version",
+        "user_features",
+        "candidates"
+      ],
+      "properties": {
+        "artifact_type": {
+          "const": "candidate_snapshot"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "user_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "feature_as_of": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "feature_schema_version": {
+          "type": "string"
+        },
+        "catalog_version": {
+          "type": "string"
+        },
+        "user_features": {
+          "type": "object"
+        },
+        "candidates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/candidate"
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_type",
+        "schema_version",
+        "decision_id",
+        "user_id",
+        "requested_at",
+        "session_id",
+        "request_constraints",
+        "policy_version",
+        "policy_config",
+        "policy_code_digest",
+        "model_version",
+        "model_artifact_digest",
+        "feature_snapshot_id",
+        "feature_as_of",
+        "feature_schema_version",
+        "candidate_set_digest",
+        "rng_seed",
+        "experiment_id",
+        "assignment_variant",
+        "served_variant",
+        "ranked_results",
+        "environment_digest",
+        "catalog_version",
+        "erased",
+        "candidate_snapshot_uri",
+        "explanation"
+      ],
+      "properties": {
+        "artifact_type": {
+          "const": "decision_record"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "decision_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "user_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "requested_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "session_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "request_constraints": {
+          "type": "object",
+          "required": [
+            "board_id",
+            "angle_deg",
+            "goal",
+            "max_routes",
+            "exclude_route_variant_ids"
+          ],
+          "properties": {
+            "board_id": {
+              "type": "string"
+            },
+            "angle_deg": {
+              "type": "integer"
+            },
+            "goal": {
+              "type": "string"
+            },
+            "max_routes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "exclude_route_variant_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "policy_version": {
+          "type": "string"
+        },
+        "policy_config": {
+          "type": "object"
+        },
+        "policy_code_digest": {
+          "$ref": "#/$defs/hex64"
+        },
+        "model_version": {
+          "type": "string"
+        },
+        "model_artifact_digest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/hex64"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "feature_snapshot_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "feature_as_of": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "feature_schema_version": {
+          "type": "string"
+        },
+        "candidate_set_digest": {
+          "$ref": "#/$defs/hex64"
+        },
+        "rng_seed": {
+          "$ref": "#/$defs/hex64"
+        },
+        "experiment_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "assignment_variant": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "served_variant": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ranked_results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "route_variant_id",
+              "position",
+              "score",
+              "reason_codes"
+            ],
+            "properties": {
+              "route_variant_id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "score": {
+                "type": "number"
+              },
+              "reason_codes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "environment_digest": {
+          "$ref": "#/$defs/hex64"
+        },
+        "catalog_version": {
+          "type": "string"
+        },
+        "erased": {
+          "const": false
+        },
+        "candidate_snapshot_uri": {
+          "type": "string",
+          "pattern": "^data/decisions/[0-9a-f]{2}/[0-9a-f]{64}\\.json$"
+        },
+        "explanation": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ]
+}

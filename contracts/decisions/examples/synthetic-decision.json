@@ -1,0 +1,82 @@
+{
+  "artifact_type": "decision_record",
+  "schema_version": 1,
+  "decision_id": "018f0000-0000-7000-8000-000000000003",
+  "user_id": "018f0000-0000-7000-8000-000000000001",
+  "requested_at": "2026-10-14T14:01:00Z",
+  "session_id": "018f0000-0000-7000-8000-000000000002",
+  "request_constraints": {
+    "board_id": "synthetic-demo-1",
+    "angle_deg": 35,
+    "goal": "TECHNIQUE",
+    "max_routes": 4,
+    "exclude_route_variant_ids": []
+  },
+  "policy_version": "heuristic-v1",
+  "policy_config": {
+    "challenge_weight": 0.4,
+    "grade_window": 10,
+    "novelty_weight": 0.15,
+    "other_weights": 0
+  },
+  "policy_code_digest": "cb20f219203b0398b6c0596b0cecdc126cac7371b3314df6abbef890f5f3750d",
+  "model_version": "none",
+  "model_artifact_digest": null,
+  "feature_snapshot_id": "018f0000-0000-7000-8000-000000000004",
+  "feature_as_of": "2026-10-14T14:00:00Z",
+  "feature_schema_version": "climber-features.v1",
+  "candidate_set_digest": "c8cc702da97428df820f2add15089c39f8ed2966f08a1951d24e06dd7f33d0a7",
+  "rng_seed": "9b9486fcaea63296e2c596436d4e4c284c81a29aeee94a7abf5f5ddbf279f638",
+  "experiment_id": null,
+  "assignment_variant": null,
+  "served_variant": null,
+  "ranked_results": [
+    {
+      "route_variant_id": "synthetic-route-004:35",
+      "position": 1,
+      "score": 0.55,
+      "reason_codes": [
+        "COMPATIBLE_ANGLE",
+        "NOVEL_ROUTE",
+        "COLD_START_HEURISTIC"
+      ]
+    },
+    {
+      "route_variant_id": "synthetic-route-005:35",
+      "position": 2,
+      "score": 0.51,
+      "reason_codes": [
+        "COMPATIBLE_ANGLE",
+        "NOVEL_ROUTE",
+        "COLD_START_HEURISTIC"
+      ]
+    },
+    {
+      "route_variant_id": "synthetic-route-003:35",
+      "position": 3,
+      "score": 0.51,
+      "reason_codes": [
+        "COMPATIBLE_ANGLE",
+        "NOVEL_ROUTE",
+        "COLD_START_HEURISTIC"
+      ]
+    },
+    {
+      "route_variant_id": "synthetic-route-002:35",
+      "position": 4,
+      "score": 0.4700000000000001,
+      "reason_codes": [
+        "COMPATIBLE_ANGLE",
+        "NOVEL_ROUTE",
+        "COLD_START_HEURISTIC"
+      ]
+    }
+  ],
+  "environment_digest": "e0b3fc4e6c7110fdeb94d08437c4f1f6f0fdc1cd9b0d616b5f1ed63349fb8fed",
+  "catalog_version": "synthetic-demo-v1",
+  "erased": false,
+  "candidate_snapshot_uri": "data/decisions/c8/c8cc702da97428df820f2add15089c39f8ed2966f08a1951d24e06dd7f33d0a7.json",
+  "explanation": {
+    "COLD_START_HEURISTIC": "Synthetic fixture uses grade challenge and novelty only"
+  }
+}
