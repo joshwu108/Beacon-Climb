@@ -1,0 +1,34 @@
+{
+  "$comment": "BC-0014 grade conversion table. Entries are EMPTY until difficulty_grades is extracted from the local sqlite (blocked by BC-0002). Filling entries is a versioned-contract change and needs Codex integrator approval (AGENTS.md 'Contracts'). Do not fill from memory.",
+  "version": "1.0.0",
+  "status": "BLOCKED_PENDING_DIFFICULTY_GRADES_EXTRACTION",
+  "source": {
+    "dataset": "https://huggingface.co/datasets/Vilin97/KilterBoard",
+    "hf_revision": "8a5a0f11675494c3615c2c96815af6bde93235f9",
+    "file": "kilter_splits.sqlite",
+    "table": "difficulty_grades",
+    "query": "SELECT difficulty, boulder_name FROM difficulty_grades ORDER BY difficulty",
+    "manifest": null,
+    "extracted_at": null,
+    "verified": false
+  },
+  "field_semantics": {
+    "grade_numeric": "Raw provider float (Kilter difficulty_numeric, a community average). Never rounded in storage or ML labels.",
+    "grade_label": "Display label from the entry selected by ambiguity_policy, or 'ungraded'.",
+    "grade_band": "UI band over grade_label; band boundaries are NOT defined in 1.0.0 (pending entries)."
+  },
+  "ungraded_label": "ungraded",
+  "entry_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["difficulty_numeric", "v_grade", "font_grade"],
+    "properties": {
+      "difficulty_numeric": {"type": "integer"},
+      "v_grade": {"type": "string", "minLength": 1},
+      "font_grade": {"type": "string", "minLength": 1}
+    }
+  },
+  "ambiguity_policy": "Entries are sorted by strictly increasing integer difficulty_numeric. For a raw value x: (1) null, NaN or non-numeric -> 'ungraded'; (2) x < min_entry - 0.5 or x > max_entry + 0.5 -> 'ungraded' (never extrapolate); (3) otherwise select the entry with the smallest |x - difficulty_numeric|; an exact tie (x halfway between two entries) selects the LOWER entry. The selected entry supplies both v_grade and font_grade (both are always shown; neither is converted from the other). This mapping is monotonic non-decreasing in x. grade_numeric keeps the raw x.",
+  "entries": []
+}
