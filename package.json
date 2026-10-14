@@ -1,0 +1,13 @@
+{
+  "name": "beacon-climb",
+  "private": true,
+  "packageManager": "pnpm@10.34.7",
+  "scripts": {
+    "lint": "pnpm --filter @beacon/web lint",
+    "test": "pnpm --filter @beacon/web test",
+    "build": "pnpm --filter @beacon/web build"
+  },
+  "devDependencies": {
+    "prettier": "3.8.1"
+  }
+}

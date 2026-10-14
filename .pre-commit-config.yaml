@@ -1,0 +1,27 @@
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.3
+    hooks:
+      - id: gitleaks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier
+        entry: pnpm exec prettier --check
+        language: system
+        files: ^(apps/web/.*\.(js|jsx|ts|tsx|json|html|css)$|\.github/workflows/.*\.ya?ml$|\.pre-commit-config\.yaml$|package\.json$|pnpm-workspace\.yaml$|scripts/ci/owners\.json$)
+      - id: ruff
+        name: ruff
+        entry: uvx ruff@0.17.0 check
+        language: system
+        files: \.py$
+      - id: spotless
+        name: spotless
+        entry: ./gradlew :api:spotlessCheck
+        language: system
+        pass_filenames: false
+        files: ^(services/api/|.*\.gradle\.kts$)

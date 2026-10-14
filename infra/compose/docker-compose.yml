@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:17
+    profiles: [core]
+    environment:
+      POSTGRES_DB: beacon
+      POSTGRES_USER: beacon
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beacon -d beacon"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+  api:
+    image: eclipse-temurin:21-jre
+    profiles: [core]
+    working_dir: /app
+    volumes:
+      - ../../:/app
+    command: ["java", "-jar", "services/api/build/libs/api-0.1.0.jar"]
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/beacon
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
