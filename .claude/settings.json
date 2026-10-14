@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -F *)",
+      "Bash(git commit -m *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git config user.*)"
+    ],
+    "deny": [
+      "Bash(git commit --amend*)",
+      "Bash(git push*)",
+      "Bash(git tag*)",
+      "Bash(git merge*)",
+      "Bash(git rebase*)",
+      "Bash(git reset*)",
+      "Bash(git checkout --*)",
+      "Bash(git restore*)",
+      "Bash(git stash*)",
+      "Bash(git clean*)",
+      "Bash(git branch -D*)",
+      "Bash(git worktree remove*)"
+    ]
+  },
+  "includeCoAuthoredBy": false,
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-commit-check.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
