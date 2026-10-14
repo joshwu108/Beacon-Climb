@@ -1,0 +1,20 @@
+# Placeholder team names pending GitHub team creation.
+* @codex-integrator
+/services/api/ @codex-backend
+/services/api/src/main/java/**/materializer/ @codex-streaming
+/services/stream/ @codex-streaming
+/infra/ @codex-platform
+/.github/ @codex-platform
+/contracts/ @codex-integrator
+/scripts/ @codex-platform
+/apps/web/ @claude-web
+/ml/ @claude-ml
+/ml/datasets/ @claude-data
+/services/ml/ @claude-ml
+/docs/ux/ @claude-web
+/docs/model-cards/ @claude-ml
+/docs/eval-reports/ @claude-ml
+/docs/reviews/ @claude-review
+/docs/data-source-audit.md @claude-data
+/docs/security-threat-model.md @claude-review
+/docs/privacy-and-retention.md @claude-review
