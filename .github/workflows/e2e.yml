@@ -1,0 +1,71 @@
+name: E2E
+# BC-0121: the vertical slice (test/e2e) against the real compose stack, nightly and on every
+# integration/main push. Same clean-clone recipe as compose-smoke in ci.yml plus Playwright.
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  push:
+    branches: [integration, main]
+  workflow_dispatch:
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  slice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start timer
+        run: echo "started=$(date +%s)" >> "$GITHUB_ENV"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.3"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @beacon/web exec playwright install --with-deps chromium
+      - name: Write throwaway .env
+        run: |
+          {
+            echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)"
+            echo "BEACON_MIGRATE_DB_PASSWORD=$(openssl rand -hex 24)"
+            echo "BEACON_APP_DB_PASSWORD=$(openssl rand -hex 24)"
+            echo "BEACON_ADMIN_PASSWORD=$(openssl rand -hex 24)"
+          } > .env
+      - run: ./gradlew :api:bootJar
+      - name: make dev (jar, web image, core profile, wait for healthchecks)
+        run: make dev
+      - name: make seed-demo
+        run: make seed-demo
+      - name: make test-e2e
+        run: make test-e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-playwright-report
+          path: test/e2e/playwright-report
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-test-results
+          path: test/e2e/test-results
+          if-no-files-found: ignore
+      - name: Compose logs
+        if: failure()
+        run: docker compose --env-file .env -f infra/compose/docker-compose.yml --profile core logs --no-color --tail 200
+      - name: Tear down (drops volumes)
+        if: always()
+        run: make reset-db
+      - name: Elapsed
+        if: always()
+        run: |
+          echo "E2E wall-clock: $(($(date +%s) - started))s" >> "$GITHUB_STEP_SUMMARY"

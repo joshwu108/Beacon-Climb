@@ -166,3 +166,33 @@ lockfile. The build context is the repo root filtered by `apps/web/Dockerfile.do
 `openssl rand -hex 24`, runs `make dev` and `make seed-demo`, then curls
 `/health/ready`, the SPA shell and `/v1/consent/current` through nginx on the published
 ports, dumps compose logs on failure and always ends with `make reset-db`.
+
+## E2E (BC-0121)
+
+`make test-e2e` runs the Playwright vertical slice in `test/e2e/` against the stack above:
+onboard a fresh user through the UI, browse the synthetic routes, build a session (decision
+record resolved through `GET /v1/me/decisions/{id}`), log an attempt with a double-clicked
+Save (one canonical row), correct, retract, log a second attempt, reload the history, confirm
+`cold_start` has ended, and replay an `Idempotency-Key` directly against the API. It runs at
+1280 (`chromium-desktop`) and 375 (`chromium-mobile`) with different users.
+
+```sh
+make dev && make seed-demo      # once; the suite never starts or stops the stack
+make test-e2e                   # refuses with "run make dev && make seed-demo first" if :3000 is down
+```
+
+- Playwright comes from `apps/web`'s install (`pnpm --filter @beacon/web exec playwright test
+  --config ../../test/e2e/playwright.config.ts`); there is no second `node_modules`.
+- Users are `e2e_<timestamp>_<project><random>`, so the suite passes again on the same
+  database without `make reset-db`. The seeded `demo` account is only read (`demo-login.spec.ts`).
+- Artifacts (gitignored): `test/e2e/test-results/<spec>-<project>/` holds `trace.zip` and
+  `video.webm` for every test (trace and video are always on) plus screenshots on failure;
+  `test/e2e/playwright-report/index.html` is the HTML report
+  (`pnpm --filter @beacon/web exec playwright show-report ../../test/e2e/playwright-report`).
+- Runtime on the reference laptop (Apple Silicon, Docker Desktop, warm stack): `make test-e2e`
+  7-8 s wall-clock for both projects (Playwright reports 6.3-6.8 s; the slice journey itself
+  is 3.3-3.5 s per project), measured over 10 consecutive runs; the acceptance budget is
+  10 minutes. In CI
+  (`.github/workflows/e2e.yml`: nightly 03:00 UTC, pushes to `integration`/`main`, manual)
+  the job writes a throwaway `.env`, runs `make dev && make seed-demo && make test-e2e`,
+  uploads both artifact folders and ends with `make reset-db`.

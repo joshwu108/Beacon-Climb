@@ -1,4 +1,4 @@
-.PHONY: dev down reset-db test test-api test-web test-ml lint fmt guards seed-demo import synthetic-board bench-catalog recompute-features
+.PHONY: dev down reset-db test test-api test-web test-ml lint fmt guards seed-demo import synthetic-board bench-catalog recompute-features test-e2e
 
 COMPOSE := docker compose --env-file .env -f infra/compose/docker-compose.yml --profile core
 
@@ -25,6 +25,17 @@ test-api:
 
 test-web:
 	pnpm --filter @beacon/web test
+
+# BC-0121: Playwright vertical slice against the RUNNING compose stack (`make dev && make
+# seed-demo` first; nothing is started here). Runs from apps/web's Playwright install so there
+# is no second node_modules. Artifacts: test/e2e/test-results (trace, video) and
+# test/e2e/playwright-report (HTML), both gitignored. Docs: docs/runbooks/dev-stack.md "E2E".
+test-e2e:
+	@curl -fsS -o /dev/null http://127.0.0.1:3000/health/ready \
+	  || { echo "e2e: the dev stack is not up on 127.0.0.1:3000 - run make dev && make seed-demo first" >&2; exit 1; }
+	@curl -fsS -o /dev/null http://127.0.0.1:3000/v1/consent/current \
+	  || { echo "e2e: the api is not answering through nginx - run make dev && make seed-demo first" >&2; exit 1; }
+	pnpm --filter @beacon/web exec playwright test --config ../../test/e2e/playwright.config.ts
 
 # BC-0106: local latency check of GET /v1/routes and /v1/routes/{id} on the demo board over HTTP
 # against the Testcontainers Postgres. Prints p50/p95/max and the hardware line; record both.
