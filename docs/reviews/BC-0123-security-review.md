@@ -206,3 +206,24 @@
 | I1–I4 | INFO | I1 not verified | Various | NUL in notes, CSP vs localhost, MSW worker in plain build, dev server on 0.0.0.0 |
 
 The two scratch programs are in `/private/tmp/claude-501/-Users-joshuawu-Beacon-Climb/d626ff7b-83d6-4e55-b9ba-0f7d21a68317/scratchpad/` (`pathprobe/` for F2, `argon/` for F1).
+
+## Fix status (top-level session, 2026-10-15 night)
+
+| Finding | Status | Commit |
+|---|---|---|
+| F1 HIGH argon2 memory DoS | fixed: fair hash gate (3 concurrent, 503 + Retry-After), hash before transaction, public burst 5/IP | 842c137 |
+| F2 path confusion | fixed: PathNormalizationFilter (404 on ;, dot segments, structural percent-escapes); filters match the normalised path | 842c137 |
+| F3 XFF behind nginx | fixed: nginx sends $remote_addr; beacon.http.trusted-proxies allowlist; runbook documents the shared-IP lockout | 842c137 |
+| F4 drafts not owner-bound | fixed: owner_user_id on drafts, foreign drafts purged on sign-in, Playwright repro | 8a8871a |
+| F5 global snapshot quota | fixed: per-user daily decision quota (429) in addition to the store cap | 842c137 |
+| F6 app role privileges | partly: V7 makes attempt_revisions append-only; migrate-only service deferred (BEACON_FLYWAY_ENABLED added) | 842c137 |
+| F7 guard coverage | fixed: more extensions + SQLite header sniff | c2d5dfa |
+| F8 dev-only vitest/tinypool advisories | open: upgrade vitest ≥ 4.1.11 deferred (prod audit clean) | — |
+| F9 CI hardening | partly: read-only permissions on all workflows, contracts job fails instead of skipping; SHA pins and dependency scans deferred | c2d5dfa |
+| F10 gitleaks allowlist | fixed: path-scoped | c2d5dfa |
+| F11 parallel login limit | fixed: atomic reservation | 842c137 |
+| F12 corrected notes on replay | fixed: replay carries current notes; privacy doc updated | 842c137 |
+| I1 NUL in notes | fixed: 422 | 842c137 |
+| I2 CSP vs localhost:3000 | open: runbook claim to be corrected (use 127.0.0.1:3000) | — |
+| I3 MSW worker in plain build | fixed: postbuild removal | 8a8871a |
+| I4 dev server on 0.0.0.0 | fixed: 127.0.0.1 | 8a8871a |
