@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Request, type Route } from '@playwright/test';
 import {
   ANGLE_DEG,
   BOARD_ID,
@@ -15,6 +15,7 @@ import {
   sessionIdFromUrl,
   stepHeading,
   uniqueUsername,
+  type ApiResult,
   type Attempt,
   type AttemptCreate,
   type AttemptList,
@@ -34,6 +35,38 @@ import {
 
 const EXPLORE_HEADING = `Routes at ${ANGLE_DEG} degrees`;
 const NOTES = 'Two goes, sent the second.';
+const ATTEMPTS_PATH = '/v1/me/attempts';
+
+const isAttemptPost = (req: Request): boolean =>
+  req.method() === 'POST' && new URL(req.url()).pathname === ATTEMPTS_PATH;
+/** Same reference for page.route and page.unroute, which match by matcher identity. */
+const isAttemptsUrl = (url: URL): boolean => url.pathname === ATTEMPTS_PATH;
+
+/** What the server answered to the browser's forwarded POST and to its concurrent twin. */
+interface ConcurrentSubmission {
+  readonly key: string;
+  readonly rawBody: string;
+  readonly forwarded: { readonly status: number; readonly body: Attempt };
+  readonly parallel: ApiResult<Attempt>;
+}
+
+/** A promise settled from inside a route handler, where a plain `let` would not narrow. */
+const deferred = <T>() => {
+  let settled = false;
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = (value) => {
+      settled = true;
+      res(value);
+    };
+    reject = (reason) => {
+      settled = true;
+      rej(reason);
+    };
+  });
+  return { promise, resolve, reject, isSettled: () => settled };
+};
 
 test('onboard -> browse -> recommend -> log twice -> history -> cold start ends', async ({
   page,
@@ -189,7 +222,7 @@ test('onboard -> browse -> recommend -> log twice -> history -> cold start ends'
     return res.body.items.filter((a) => a.route_variant_id === routeVariantId);
   };
 
-  await test.step('d1. log twice (double Save) -> exactly one attempt, revision 1', async () => {
+  await test.step('d1. log twice (double Save) -> one browser POST; that key submitted twice concurrently and replayed -> exactly one attempt, revision 1', async () => {
     await lineupCards(page)
       .first()
       .getByRole('link', { name: 'Log attempt' })
@@ -210,7 +243,57 @@ test('onboard -> browse -> recommend -> log twice -> history -> cold start ends'
     await page.getByLabel(/notes/i).fill(NOTES);
     const save = page.getByRole('button', { name: 'Save attempt' });
     await expect(save).toBeEnabled();
+
+    // BC-0124 HIGH-1: the form's in-flight guard turns a double click into ONE request, so the
+    // UI alone cannot show that the server collapses a duplicate submission. Every POST the
+    // browser sends is recorded (to document the guard), and the one it does send is
+    // intercepted: it is forwarded with route.fetch() while the test re-sends the identical
+    // Idempotency-Key and raw body through the API client in parallel, so the server sees two
+    // concurrent submissions of one key. The browser is then answered with its own response.
+    const browserPosts: Request[] = [];
+    const recordPost = (req: Request): void => {
+      if (isAttemptPost(req)) browserPosts.push(req);
+    };
+    page.on('request', recordPost);
+    const duplicate = deferred<ConcurrentSubmission>();
+    const interceptOnce = async (route: Route): Promise<void> => {
+      if (!isAttemptPost(route.request()) || duplicate.isSettled()) {
+        await route.fallback();
+        return;
+      }
+      try {
+        const key = route.request().headers()['idempotency-key'] ?? '';
+        const rawBody = route.request().postData() ?? '';
+        const [forwarded, parallel] = await Promise.all([
+          route.fetch(),
+          api.post<Attempt>('/v1/me/attempts', rawBody, {
+            'Idempotency-Key': key,
+            'Content-Type': 'application/json',
+          }),
+        ]);
+        const forwardedBody = (await forwarded.json()) as Attempt;
+        await route.fulfill({ response: forwarded });
+        duplicate.resolve({
+          key,
+          rawBody,
+          forwarded: { status: forwarded.status(), body: forwardedBody },
+          parallel,
+        });
+      } catch (error) {
+        duplicate.reject(error);
+        await route.abort();
+      }
+    };
+    await page.route(isAttemptsUrl, interceptOnce);
+    const browserResponse = page.waitForResponse((res) =>
+      isAttemptPost(res.request()),
+    );
     await save.dblclick();
+    const [response, submission] = await Promise.all([
+      browserResponse,
+      duplicate.promise,
+    ]);
+    await page.unroute(isAttemptsUrl, interceptOnce);
 
     await expect(page).toHaveURL(/\/attempts$/);
     await expect(page.getByText('Saved as revision 1.')).toBeVisible();
@@ -221,10 +304,46 @@ test('onboard -> browse -> recommend -> log twice -> history -> cold start ends'
     await expect(row.getByText(NOTES)).toBeVisible();
     await expect(row.getByText('Revision 1', { exact: true })).toBeVisible();
     await expect(row.getByText('2 attempts')).toBeVisible();
+    page.off('request', recordPost);
+
+    // The UI guard: two clicks, one request, carrying the draft's key and the form's body.
+    expect(browserPosts).toHaveLength(1);
+    expect(submission.key).toMatch(/^[A-Za-z0-9._:-]{1,128}$/);
+    expect(browserPosts[0].headers()['idempotency-key']).toBe(submission.key);
+    const sentBody = JSON.parse(submission.rawBody) as Record<string, unknown>;
+    expect(sentBody).toMatchObject({
+      route_variant_id: first.routeVariantId,
+      attempts_count: 2,
+      sent: true,
+      notes: NOTES,
+    });
+
+    // The server: two concurrent submissions of one key are one 201 and one 200 (either
+    // order) for the same attempt, and the browser was answered with its own forwarded reply.
+    const attemptId = submission.forwarded.body.attempt_id;
+    expect(
+      [submission.forwarded.status, submission.parallel.status].sort(),
+    ).toEqual([200, 201]);
+    expect(submission.parallel.body.attempt_id).toBe(attemptId);
+    expect(submission.parallel.body.revision).toBe(1);
+    expect(submission.forwarded.body.revision).toBe(1);
+    expect(response.status()).toBe(submission.forwarded.status);
+    expect(((await response.json()) as Attempt).attempt_id).toBe(attemptId);
+
+    // A later replay of the same key and body, as a retry would send it, is the 200 replay.
+    const replayed = await api.post<Attempt>(
+      '/v1/me/attempts',
+      submission.rawBody,
+      { 'Idempotency-Key': submission.key, 'Content-Type': 'application/json' },
+    );
+    expect(replayed.status).toBe(200);
+    expect(replayed.body.attempt_id).toBe(attemptId);
+    expect(replayed.body.revision).toBe(1);
 
     const mine = await attemptsFor(first.routeVariantId);
     expect(mine).toHaveLength(1);
     expect(mine[0]).toMatchObject({
+      attempt_id: attemptId,
       revision: 1,
       status: 'ACTIVE',
       attempts_count: 2,
