@@ -11,6 +11,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -39,7 +40,9 @@ public abstract class ImporterTestSupport extends AbstractPostgresIT {
   /**
    * Removes a board with all its routes, variants, placements and holds, and the provenance row
    * {@code sha} once nothing references it, so a test can observe a cold import no matter which
-   * class (the BC-0106 endpoint tests also load the demo board) ran first in this JVM.
+   * class (the BC-0106 endpoint tests also load the demo board) ran first in this JVM. The audit
+   * rows are deleted as the schema owner: since V7 (BC-0123 F6) the app role cannot delete from
+   * {@code attempt_revisions}, exactly as the future erasure job will need its own role.
    */
   protected void deleteBoard(String boardId, String sha) {
     // BC-0109: attempts (and their audit and outbox rows) reference the board's variants.
@@ -49,7 +52,8 @@ public abstract class ImporterTestSupport extends AbstractPostgresIT {
     jdbc.sql("DELETE FROM attempt_event_outbox WHERE aggregate_id IN (" + boardAttempts + ")")
         .param("b", boardId)
         .update();
-    jdbc.sql("DELETE FROM attempt_revisions WHERE attempt_id IN (" + boardAttempts + ")")
+    schemaOwner()
+        .sql("DELETE FROM attempt_revisions WHERE attempt_id IN (" + boardAttempts + ")")
         .param("b", boardId)
         .update();
     jdbc.sql("DELETE FROM attempts WHERE attempt_id IN (" + boardAttempts + ")")
@@ -74,6 +78,11 @@ public abstract class ImporterTestSupport extends AbstractPostgresIT {
                 + " (SELECT 1 FROM routes WHERE provenance_id = p.provenance_id)")
         .param("sha", sha)
         .update();
+  }
+
+  private static JdbcClient schemaOwner() {
+    return JdbcClient.create(
+        new DriverManagerDataSource(POSTGRES.getJdbcUrl(), "beacon_migrate", MIGRATE_PASSWORD));
   }
 
   protected int count(String sql, Object... params) {

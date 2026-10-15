@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -19,6 +20,9 @@ import org.springframework.http.ResponseEntity;
  * failures, and 401 UNAUTHENTICATED for missing, forged, malformed, expired, revoked or
  * inactive-user tokens (threat model TM-04, TM-21, TM-22).
  */
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = "beacon.http.public-burst=1000")
 class AuthSessionIT extends IdentityTestSupport {
 
   /** Argon2id at 64 MiB / 3 iterations costs far more than this on any machine. */

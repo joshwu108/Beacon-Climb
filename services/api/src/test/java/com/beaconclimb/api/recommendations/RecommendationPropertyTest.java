@@ -90,9 +90,11 @@ class RecommendationPropertyTest {
     registry.register();
     FeatureSnapshotRepository snapshots = new FeatureSnapshotRepository(jdbc);
     preferences = new PreferencesService(new PreferencesRepository(jdbc, json), clock);
+    DecisionLedgerRepository ledger = new DecisionLedgerRepository(jdbc, json);
     service =
         new RecommendationService(
             new ConsentGuard(new ConsentRepository(jdbc), new ConsentDocumentService()),
+            new DecisionQuota(ledger, new DecisionsProperties("unused", 100000, 100000)),
             preferences,
             registry,
             snapshots,
@@ -100,7 +102,7 @@ class RecommendationPropertyTest {
             new CandidateRepository(jdbc, json),
             new LocalFsSnapshotStore(Files.createTempDirectory("decisions-property"), 100000),
             new DecisionRecordSchema(),
-            new DecisionLedgerRepository(jdbc, json),
+            ledger,
             tx,
             clock);
     visible =

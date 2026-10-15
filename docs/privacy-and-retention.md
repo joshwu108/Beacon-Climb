@@ -19,6 +19,7 @@ This policy may not weaken PRD §10. Where it differs from an ADR, it is stricte
 - **Excluded from all events.** `attempts.v1` excludes it today only by a single-key denylist (TM-11, verified). This policy requires an attribute allowlist (C-01).
 - **Excluded from public-mode exports** (§9.2) and from benchmarks, eval reports, demo fixtures and screenshots.
 - Included in the owner's own data-subject export (§9.1).
+- A corrected note is not resurrected by a retried submission: an idempotent replay of the original `POST` returns the stored body with `notes` taken from the attempt's current row, never from the stored copy (BC-0123 F12; the stored copy and the revision snapshots are erased with D06/D07).
 
 ### 1.3 Out of scope until separately designed
 - Redis (deferred by ADR-0001). If added: per-user keys have a TTL of 24 h or less (default, pending) and are deleted at soft delete.

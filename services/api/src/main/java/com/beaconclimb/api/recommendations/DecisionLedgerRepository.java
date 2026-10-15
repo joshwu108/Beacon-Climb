@@ -83,6 +83,17 @@ public class DecisionLedgerRepository {
         .update();
   }
 
+  /** Decisions this user created at or after {@code since} (BC-0123 F5 daily quota). */
+  public long countSince(UUID userId, Instant since) {
+    return jdbc.sql(
+            "SELECT count(*) FROM recommendation_decisions"
+                + " WHERE user_id = :user_id AND created_at >= :since")
+        .param("user_id", userId)
+        .param("since", timestamp(since))
+        .query(Long.class)
+        .single();
+  }
+
   public void insertExposures(UUID decisionId, List<Ranked> ranked) {
     for (Ranked item : ranked) {
       jdbc.sql(

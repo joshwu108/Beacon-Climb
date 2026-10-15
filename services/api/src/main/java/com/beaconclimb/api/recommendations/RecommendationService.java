@@ -50,7 +50,8 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * {@code createRecommendations} (BC-0111, planning/06 section 10, ADR-0003). Order of checks: body
- * shape (422 VALIDATION_FAILED / UNKNOWN_FIELD), consent (403 CONSENT_REQUIRED), the board (422
+ * shape (422 VALIDATION_FAILED / UNKNOWN_FIELD), consent (403 CONSENT_REQUIRED), the user's daily
+ * decision quota (429 RATE_LIMITED, {@link DecisionQuota}, BC-0123 F5), the board (422
  * UNKNOWN_BOARD) and its angle (422 UNSUPPORTED_ANGLE), the user's preferences (422
  * VALIDATION_FAILED, field {@code preferences}: the grade band the policy needs comes from there
  * and nothing else), the active policy (503 when none is registered). Then:
@@ -82,6 +83,7 @@ public class RecommendationService {
   private static final Logger log = LoggerFactory.getLogger(RecommendationService.class);
 
   private final ConsentGuard consent;
+  private final DecisionQuota quota;
   private final PreferencesService preferences;
   private final PolicyRegistry policies;
   private final FeatureSnapshotRepository snapshots;
@@ -95,6 +97,7 @@ public class RecommendationService {
 
   public RecommendationService(
       ConsentGuard consent,
+      DecisionQuota quota,
       PreferencesService preferences,
       PolicyRegistry policies,
       FeatureSnapshotRepository snapshots,
@@ -106,6 +109,7 @@ public class RecommendationService {
       TransactionTemplate tx,
       Clock clock) {
     this.consent = consent;
+    this.quota = quota;
     this.preferences = preferences;
     this.policies = policies;
     this.snapshots = snapshots;
@@ -121,6 +125,8 @@ public class RecommendationService {
   public RecommendationResponse recommend(UUID userId, RecommendationRequest body) {
     ValidatedRequest request = RecommendationValidator.validate(body);
     consent.requireActiveConsent(userId);
+    Instant now = clock.instant().truncatedTo(ChronoUnit.MILLIS);
+    quota.require(userId, now);
     BoardInfo board = candidates.board(request.boardId()).orElseThrow(this::unknownBoard);
     if (!board.availableAngles().contains(request.angleDeg())) {
       throw unsupportedAngle(board.availableAngles());
@@ -129,7 +135,6 @@ public class RecommendationService {
     Policy policy = activePolicy();
     StoredPolicy storedPolicy =
         policies.find(policy.policyVersion()).orElseThrow(this::policyUnavailable);
-    Instant now = clock.instant().truncatedTo(ChronoUnit.MILLIS);
     FeatureSnapshot snapshot =
         snapshots
             .find(userId, FeatureAggregates.SCHEMA_VERSION)

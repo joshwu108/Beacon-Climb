@@ -16,6 +16,7 @@ class PasswordHasherTest {
     assertThat(hash).startsWith("$argon2id$v=19$m=65536,t=3,p=1$");
     assertThat(hasher.matches("correct-horse-battery", hash)).isTrue();
     assertThat(hasher.matches("correct-horse-batterx", hash)).isFalse();
+    assertThat(hasher.maxObservedConcurrency()).isEqualTo(1);
   }
 
   @Test

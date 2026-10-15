@@ -9,11 +9,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * One Bucket4j token bucket per key (user id or client address): {@code limit} tokens of capacity,
- * refilled greedily at {@code limit} per minute, so a burst of {@code limit} requests is allowed
- * and the next one waits for the next token. Buckets live in a {@link ConcurrentHashMap}; once the
- * map exceeds {@code maxTracked} entries, buckets idle for a full refill period are evicted, which
- * can never grant extra tokens because an idle bucket is already full. Keys are never logged.
+ * One Bucket4j token bucket per key (user id or client address): {@code capacity} tokens, refilled
+ * greedily at {@code refillPerMinute} per minute, so a burst of {@code capacity} requests is
+ * allowed and the next one waits for the next token. The per-user write limiter uses one value for
+ * both; the public bucket (BC-0123 F1) has a small capacity and a larger refill. Buckets live in a
+ * {@link ConcurrentHashMap}; once the map exceeds {@code maxTracked} entries, buckets idle for as
+ * long as a refill from empty takes are evicted, which can never grant extra tokens because such a
+ * bucket is already full. Keys are never logged.
  */
 public final class RateLimitBuckets {
 
@@ -26,21 +28,34 @@ public final class RateLimitBuckets {
   private record Entry(Bucket bucket, AtomicLong lastUsedNanos) {}
 
   private final Map<String, Entry> buckets = new ConcurrentHashMap<>();
-  private final int limit;
+  private final int capacity;
+  private final int refillPerMinute;
   private final int maxTracked;
   private final TimeMeter timeMeter;
+  private final long idleNanos;
 
   public RateLimitBuckets(int limit, int maxTracked) {
-    this(limit, maxTracked, TimeMeter.SYSTEM_MILLISECONDS);
+    this(limit, limit, maxTracked, TimeMeter.SYSTEM_MILLISECONDS);
+  }
+
+  public RateLimitBuckets(int capacity, int refillPerMinute, int maxTracked) {
+    this(capacity, refillPerMinute, maxTracked, TimeMeter.SYSTEM_MILLISECONDS);
   }
 
   RateLimitBuckets(int limit, int maxTracked, TimeMeter timeMeter) {
-    if (limit < 1) {
-      throw new IllegalArgumentException("limit must be >= 1");
+    this(limit, limit, maxTracked, timeMeter);
+  }
+
+  RateLimitBuckets(int capacity, int refillPerMinute, int maxTracked, TimeMeter timeMeter) {
+    if (capacity < 1 || refillPerMinute < 1) {
+      throw new IllegalArgumentException("capacity and refill must be >= 1");
     }
-    this.limit = limit;
+    this.capacity = capacity;
+    this.refillPerMinute = refillPerMinute;
     this.maxTracked = maxTracked;
     this.timeMeter = timeMeter;
+    long periodsToFill = (capacity + refillPerMinute - 1L) / refillPerMinute;
+    this.idleNanos = REFILL_PERIOD.toNanos() * periodsToFill;
   }
 
   public Decision tryConsume(String key) {
@@ -68,13 +83,14 @@ public final class RateLimitBuckets {
 
   private Bucket newBucket() {
     return Bucket.builder()
-        .addLimit(bandwidth -> bandwidth.capacity(limit).refillGreedy(limit, REFILL_PERIOD))
+        .addLimit(
+            bandwidth -> bandwidth.capacity(capacity).refillGreedy(refillPerMinute, REFILL_PERIOD))
         .withCustomTimePrecision(timeMeter)
         .build();
   }
 
   private void evictIdle(long now) {
-    long cutoff = now - REFILL_PERIOD.toNanos();
+    long cutoff = now - idleNanos;
     buckets.entrySet().removeIf(entry -> entry.getValue().lastUsedNanos().get() <= cutoff);
   }
 

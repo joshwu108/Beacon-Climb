@@ -56,6 +56,36 @@ class RateLimitBucketsTest {
     assertThat(buckets.tryConsume("a").remaining()).isEqualTo(4);
   }
 
+  /** BC-0123 F1: the public bucket holds a small burst and refills at the larger rate. */
+  @Test
+  void smallBurstRefillsAtTheConfiguredRate() {
+    RateLimitBuckets buckets = new RateLimitBuckets(2, 30, 100, clock);
+
+    assertThat(buckets.tryConsume("k")).isEqualTo(new Decision(true, 1, 0));
+    assertThat(buckets.tryConsume("k")).isEqualTo(new Decision(true, 0, 0));
+    Decision refused = buckets.tryConsume("k");
+    assertThat(refused.allowed()).isFalse();
+    assertThat(refused.retryAfterSeconds()).isEqualTo(2);
+
+    nanos.addAndGet(Duration.ofSeconds(2).toNanos());
+
+    assertThat(buckets.tryConsume("k")).isEqualTo(new Decision(true, 0, 0));
+  }
+
+  @Test
+  void aBucketThatNeedsSeveralPeriodsToRefillIsNotEvictedAfterOne() {
+    RateLimitBuckets buckets = new RateLimitBuckets(10, 5, 1, clock);
+    for (int i = 0; i < 10; i++) {
+      buckets.tryConsume("a");
+    }
+
+    nanos.addAndGet(Duration.ofSeconds(61).toNanos());
+    buckets.tryConsume("b");
+
+    assertThat(buckets.size()).isEqualTo(2);
+    assertThat(buckets.tryConsume("a").remaining()).isEqualTo(4);
+  }
+
   @Test
   void retryAfterRoundsUpToWholeSecondsAndIsAtLeastOne() {
     assertThat(RateLimitBuckets.ceilSeconds(0)).isEqualTo(1);

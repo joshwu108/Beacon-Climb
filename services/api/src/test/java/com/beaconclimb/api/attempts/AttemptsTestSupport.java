@@ -35,7 +35,7 @@ import tools.jackson.databind.JsonNode;
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     classes = {ApiApplication.class, AttemptsTestSupport.TestClockConfig.class},
-    properties = "beacon.http.write-limit-per-minute=1000")
+    properties = {"beacon.http.write-limit-per-minute=1000", "beacon.http.public-burst=1000"})
 public abstract class AttemptsTestSupport extends IdentityTestSupport {
 
   /** Replaces the production UTC clock with one a test can pin. */

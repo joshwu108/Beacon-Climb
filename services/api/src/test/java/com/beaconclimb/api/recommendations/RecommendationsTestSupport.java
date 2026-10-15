@@ -32,7 +32,7 @@ import tools.jackson.databind.JsonNode;
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     classes = {ApiApplication.class, AttemptsTestSupport.TestClockConfig.class},
-    properties = "beacon.http.write-limit-per-minute=1000")
+    properties = {"beacon.http.write-limit-per-minute=1000", "beacon.http.public-burst=1000"})
 public abstract class RecommendationsTestSupport extends AttemptsTestSupport {
 
   protected static final String RECOMMENDATIONS = "/v1/me/sessions/recommendations";

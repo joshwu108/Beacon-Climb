@@ -19,7 +19,8 @@ import tools.jackson.databind.JsonNode;
  * returns null for an absent or invalid member. Numbers follow JSON Schema semantics: {@code 2.0}
  * is a valid integer (ADR-0002 JCS: {@code 1}, {@code 1.0} and {@code 1e0} are the same value).
  * {@code completion_fraction} is rounded to the three decimals the column keeps so the stored body
- * equals what a later read returns.
+ * equals what a later read returns. {@code notes} may not contain NUL ({@code U+0000}), which
+ * Postgres {@code text} cannot store (BC-0123 I1): 422 instead of a 500 from the driver.
  */
 final class AttemptFields {
 
@@ -127,6 +128,10 @@ final class AttemptFields {
       return null;
     }
     String value = node.stringValue();
+    if (value.indexOf('\0') >= 0) {
+      errors.add(new FieldError("notes", "pattern", "must not contain NUL characters"));
+      return null;
+    }
     if (value.codePointCount(0, value.length()) > MAX_NOTES_LENGTH) {
       errors.add(
           new FieldError(

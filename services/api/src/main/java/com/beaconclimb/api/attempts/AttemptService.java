@@ -44,6 +44,11 @@ import tools.jackson.databind.json.JsonMapper;
  * the next snapshot and its ATTEMPT_CORRECTED or ATTEMPT_RETRACTED event in the same transaction.
  * Log lines carry ids and outcomes only, never notes or bodies (TM-10, TM-16).
  *
+ * <p>An idempotent replay returns the persisted 201 body (revision 1) with one exception: {@code
+ * notes} is taken from the current {@code attempts} row, never from the stored body (BC-0123 F12),
+ * so a note the owner has since corrected or blanked is not resurrected by a retried submission.
+ * The stored body itself is never rewritten.
+ *
  * <p>After a create or patch transaction has committed, every {@link AttemptWriteListener} (the
  * BC-0113 feature recompute) runs in the same request but outside that transaction; a listener
  * failure is its own to log and can never turn a committed write into an error response.
@@ -215,7 +220,10 @@ public class AttemptService {
     audit.insertEvent(eventId, row.attemptId(), row.revision(), change, payload, at);
   }
 
-  /** Same fingerprint: the persisted 201 body with HTTP 200; otherwise 409 (ADR-0002). */
+  /**
+   * Same fingerprint: the persisted 201 body with HTTP 200 and the row's current notes (F12);
+   * otherwise 409 (ADR-0002).
+   */
   private CreateResult replay(AttemptRow row, String fingerprint) {
     if (!row.requestFingerprint().equals(fingerprint)) {
       log.info(
@@ -227,7 +235,8 @@ public class AttemptService {
           HttpStatus.CONFLICT,
           "Key was used with a different request");
     }
-    AttemptBody stored = json.readValue(row.responseBodyJson(), AttemptBody.class);
+    AttemptBody stored =
+        json.readValue(row.responseBodyJson(), AttemptBody.class).withNotes(row.notes());
     log.info("attempt outcome=REPLAYED user_id={} attempt_id={}", row.userId(), row.attemptId());
     return new CreateResult(AttemptView.of(stored, row.route()), false);
   }

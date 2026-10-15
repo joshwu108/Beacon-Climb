@@ -18,10 +18,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * BC-0101/BC-0107/BC-0109/BC-0113/BC-0110/BC-0111: every Flyway migration applies on an empty
- * Postgres 17 as beacon_migrate, the runtime role beacon_app gets DML and nothing more, the
- * constraints from planning/06 sections 1, 6 and 7 hold, and the golden schema document
- * docs/db/schema-v1.md matches pg_dump of the live database.
+ * BC-0101/BC-0107/BC-0109/BC-0113/BC-0110/BC-0111/BC-0123: every Flyway migration applies on an
+ * empty Postgres 17 as beacon_migrate, the runtime role beacon_app gets DML and nothing more (and
+ * no UPDATE or DELETE on the append-only ledger and audit tables), the constraints from planning/06
+ * sections 1, 6 and 7 hold, and the golden schema document docs/db/schema-v1.md matches pg_dump of
+ * the live database.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 class MigrationIT extends AbstractPostgresIT {
@@ -34,7 +35,8 @@ class MigrationIT extends AbstractPostgresIT {
           Map.entry("3", "V3__attempts_outbox.sql"),
           Map.entry("4", "V4__feature_snapshots.sql"),
           Map.entry("5", "V5__ranking_policies.sql"),
-          Map.entry("6", "V6__decisions.sql"));
+          Map.entry("6", "V6__decisions.sql"),
+          Map.entry("7", "V7__attempt_revisions_append_only.sql"));
 
   private static final List<String> ALL_TABLES =
       List.of(
@@ -71,7 +73,7 @@ class MigrationIT extends AbstractPostgresIT {
   }
 
   @Test
-  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionSix() {
+  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionSeven() {
     List<Map<String, Object>> rows =
         jdbc()
             .queryForList(
@@ -81,7 +83,7 @@ class MigrationIT extends AbstractPostgresIT {
     assertThat(rows)
         .extracting(row -> Map.entry(row.get("version").toString(), row.get("script").toString()))
         .containsExactlyElementsOf(MIGRATIONS);
-    assertThat(rows.getLast().get("version").toString()).isEqualTo("6");
+    assertThat(rows.getLast().get("version").toString()).isEqualTo("7");
   }
 
   @Test
@@ -236,6 +238,14 @@ class MigrationIT extends AbstractPostgresIT {
             "recommendation_exposures:SELECT");
   }
 
+  /** BC-0123 F6 (V7): the audit trail is append-only for the API role; policies stay writable. */
+  @Test
+  void attemptRevisionsDenyUpdateAndDeleteToAppRoleWhileRankingPoliciesStayWritable() {
+    assertThat(privilegesOf("attempt_revisions")).containsExactly("INSERT", "SELECT");
+    assertThat(privilegesOf("ranking_policies"))
+        .containsExactly("DELETE", "INSERT", "SELECT", "UPDATE");
+  }
+
   @Test
   @Transactional
   void attemptsCountCheckRejectsZero() {
@@ -276,6 +286,15 @@ class MigrationIT extends AbstractPostgresIT {
             "%s is out of date; regenerate with %s=1 ./gradlew :api:test --tests '*MigrationIT*'",
             SchemaGolden.DOC_PATH, SchemaGolden.UPDATE_ENV_VAR)
         .isEqualTo(live);
+  }
+
+  private List<String> privilegesOf(String table) {
+    return jdbc()
+        .queryForList(
+            "select privilege_type from information_schema.role_table_grants"
+                + " where grantee = 'beacon_app' and table_name = ? order by privilege_type",
+            String.class,
+            table);
   }
 
   private String indexDefinition(String indexName) {

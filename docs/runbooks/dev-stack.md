@@ -54,10 +54,30 @@ origins on 5173) in `BEACON_HTTP_CORSALLOWEDORIGINS` so a page opened as
 `localhost:3000` keeps working; any other origin gets 403 from the API's CORS filter.
 `X-Request-Id` passes through nginx unchanged (the API echoes it).
 
-`beacon.http.trust-forwarded-headers` stays `false`: port 8080 is also published
-directly, so nginx is not the only path to the API and `X-Forwarded-For` cannot be
-trusted. Consequence: per-IP public write limits see nginx's address for all browser
-traffic. Fine for one laptop; revisit before any shared host.
+`beacon.http.trusted-proxies` is empty by default (BC-0123 F3), so the API keys every
+per-IP limit on the socket peer and ignores `X-Forwarded-For`. nginx sets that header
+from `$remote_addr` (overwrite, never append), so it can be trusted once the proxy is
+listed, but compose sets nothing because Docker bridge addresses vary between hosts.
+Consequences behind nginx on :3000:
+
+- the public POST bucket (`beacon.http.public-burst` 5, refilling at
+  `beacon.http.public-write-limit-per-minute` 30) is shared by every browser user; and
+- the **login lockout is per IP too** (ADR-0005: 10 failed logins per 15 minutes per
+  username *and* per client IP), so 10 failed logins by anyone through :3000 lock every
+  browser user out of sign-in for 15 minutes. Direct calls to :8080 keep their own key.
+
+Fine for one laptop; before any shared host set
+`BEACON_HTTP_TRUSTEDPROXIES=<web container IP or subnet>` on the `api` service (a list of IP
+literals or CIDR ranges, e.g. the compose network's subnet from
+`docker network inspect <project>_default`). Then the first `X-Forwarded-For` entry is the
+client for requests whose peer is in that list, and :8080 callers (whose peer is the Docker
+gateway, not the web container) stay keyed on their own address. Never list a range that a
+client can connect from directly, and never put an appending proxy in front of nginx.
+
+Flyway runs inside the api at startup. A future one-shot migrate service can own that
+step instead: start the api with `BEACON_FLYWAY_ENABLED=false` (`spring.flyway.enabled`)
+and without `BEACON_MIGRATE_DB_PASSWORD`, so the long-running process never holds the
+schema-owner credentials (BC-0123 F6). compose does not do this yet.
 
 nginx also sets `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options: DENY`,
 `Permissions-Policy` and a strict CSP (`script-src 'self'`, no inline scripts; the Vite
@@ -146,8 +166,16 @@ importer jar directly without a rebuild.
 is unset (Homebrew: `/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`).
 Import exit codes are documented on the `import` target in the Makefile.
 
-**`make seed-demo` says `HTTP 429`** — the API rate-limits public POSTs per client IP
-(`beacon.http.public-write-limit-per-minute`, default 30). Wait a minute and re-run.
+**`make seed-demo` says `HTTP 429`** — the API rate-limits public POSTs per client IP: a
+burst of `beacon.http.public-burst` (default 5) refilling at
+`beacon.http.public-write-limit-per-minute` (default 30, one token every two seconds), or
+10 failed logins per 15 minutes per username and per IP. Wait a few seconds (or 15 minutes
+after failed logins) and re-run.
+
+**`HTTP 503` with `Retry-After: 1` on register or sign-in** — more than
+`beacon.auth.max-concurrent-hashes` (default 3) password hashes were in flight for longer
+than `beacon.auth.hash-wait` (2 s); the API refuses instead of running out of heap (BC-0123
+F1). Retry.
 
 **The explore page is empty after seeding** — the user must have preferences for
 `synthetic-demo-1` (the seed sets them) and the board must be imported

@@ -8,7 +8,10 @@ spring:
     username: ${BEACON_APP_DB_USER:beacon_app}
     password: ${BEACON_APP_DB_PASSWORD}
   flyway:
-    enabled: true
+    # BC-0123 F6: a future one-shot migrate service runs Flyway alone; the long-running api then
+    # starts with BEACON_FLYWAY_ENABLED=false and no migrate password (docs/runbooks/dev-stack.md).
+    # The compose stack still migrates from the api on startup.
+    enabled: ${BEACON_FLYWAY_ENABLED:true}
     # Migration role owns the schema (infra/compose/postgres/init.sql).
     user: ${BEACON_MIGRATE_DB_USER:beacon_migrate}
     password: ${BEACON_MIGRATE_DB_PASSWORD}
@@ -24,19 +27,27 @@ beacon:
     login-window: 15m
     # ADR-0005: opaque bearer tokens live 24 h (2 h on a public demo, privacy doc section 7).
     session-ttl: 24h
+    # BC-0123 F1: at most this many Argon2 hashes (64 MiB of heap each) run at once; a request
+    # waits up to hash-wait for a slot and is otherwise 503 SERVICE_UNAVAILABLE with Retry-After.
+    max-concurrent-hashes: 3
+    hash-wait: 2s
   http:
     # BC-0122 (HttpProperties). Bodies above this are 413 PAYLOAD_TOO_LARGE (TM-25).
     max-body-bytes: 65536
     # Writes (POST/PUT/PATCH/DELETE under /v1/) per authenticated user per minute; 429 above.
     write-limit-per-minute: 60
-    # Unauthenticated POSTs (register, session) per client IP per minute, on top of the
-    # login failure limiter (beacon.auth.*).
+    # Unauthenticated POSTs (register, session) per client IP: the bucket holds public-burst
+    # tokens and refills at public-write-limit-per-minute (BC-0123 F1: each of these costs an
+    # Argon2 hash, so no 30-request burst), on top of the login failure limiter (beacon.auth.*).
     public-write-limit-per-minute: 30
+    public-burst: 5
     # Size cap of the in-memory bucket map before idle buckets are evicted.
     max-tracked-clients: 10000
-    # Only true behind a reverse proxy that overwrites X-Forwarded-For (compose publishes the
-    # api on 127.0.0.1; the nginx front, when added, must set the header from $remote_addr).
-    trust-forwarded-headers: false
+    # BC-0123 F3: X-Forwarded-For is believed only when the socket peer is in this list of IP
+    # literals or CIDR ranges, and only behind a proxy that overwrites the header (the compose
+    # nginx sets it from $remote_addr). Empty by default: every peer is its own limiter key, so
+    # behind nginx all browser traffic shares one key (docs/runbooks/dev-stack.md).
+    trusted-proxies: []
     # Exact origins of the web client (apps/web dev server); no credentials.
     cors-allowed-origins: http://localhost:5173,http://127.0.0.1:5173
   decisions:
@@ -47,6 +58,9 @@ beacon:
     # TM-25: hard cap on snapshot files in the store; a request that would exceed it is 503
     # SERVICE_UNAVAILABLE and no decision is written.
     max-files: 100000
+    # BC-0123 F5: new decisions one user may create per UTC day before 429 RATE_LIMITED, so one
+    # account cannot fill max-files for everyone.
+    max-per-user-per-day: 500
 logging:
   structured:
     format:

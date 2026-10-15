@@ -16,8 +16,9 @@ import org.springframework.http.ResponseEntity;
 /**
  * BC-0122 / ADR-0005 acceptance at the shipped defaults: the 61st write within a minute by one user
  * is 429 RATE_LIMITED with Retry-After, the 60th carried X-RateLimit-Remaining: 0, another user is
- * unaffected; unauthenticated public POSTs are limited per client address at 30/min and reads never
- * are.
+ * unaffected; unauthenticated public POSTs are limited per client address by a bucket of {@code
+ * public-burst} (5) tokens refilling at 30/min (BC-0123 F1: the sixth immediate request is 429, no
+ * longer the 31st, because each public POST costs an Argon2 hash), and reads never are.
  */
 class RateLimitIT extends IdentityTestSupport {
 
@@ -63,27 +64,37 @@ class RateLimitIT extends IdentityTestSupport {
     assertThat(read.getHeaders().getFirst(WriteRateLimitFilter.REMAINING_HEADER)).isNull();
   }
 
+  /**
+   * The public bucket starts with {@code public-burst} tokens, so the sixth immediate request is
+   * refused; the 30/min figure is the refill rate (one token every two seconds), which is why
+   * Retry-After is at most 2 here.
+   */
   @Test
-  void publicPostsAreLimitedPerClientAddress() {
+  void publicPostsAreLimitedPerClientAddressWithASmallBurst() {
     assertThat(properties.publicWriteLimitPerMinute()).isEqualTo(30);
+    assertThat(properties.publicBurst()).isEqualTo(5);
 
-    for (int i = 1; i <= 30; i++) {
+    for (int i = 1; i <= 5; i++) {
       ResponseEntity<String> response = post("/v1/auth/session", "{}", null);
       assertThat(response.getStatusCode())
           .as("request %d", i)
           .isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
+      assertThat(response.getHeaders().getFirst(WriteRateLimitFilter.REMAINING_HEADER))
+          .isEqualTo(String.valueOf(5 - i));
     }
     ResponseEntity<String> limited = post("/v1/auth/register", "{}", null);
 
     assertError(limited, HttpStatus.TOO_MANY_REQUESTS, ErrorCode.RATE_LIMITED);
-    assertThat(limited.getHeaders().getFirst(WriteRateLimitFilter.RETRY_AFTER_HEADER)).isNotNull();
+    String retryAfter = limited.getHeaders().getFirst(WriteRateLimitFilter.RETRY_AFTER_HEADER);
+    assertThat(retryAfter).isNotNull();
+    assertThat(Integer.parseInt(retryAfter)).isBetween(1, 2);
     assertThat(get("/v1/consent/current", null).getStatusCode()).isEqualTo(HttpStatus.OK);
   }
 
   @Test
-  void forwardedForIsIgnoredByDefault() {
-    assertThat(properties.trustForwardedHeaders()).isFalse();
-    for (int i = 1; i <= 30; i++) {
+  void forwardedForIsIgnoredWithoutTrustedProxies() {
+    assertThat(properties.trustedProxies()).isEmpty();
+    for (int i = 1; i <= 5; i++) {
       post("/v1/auth/session", "{}", null, Map.of(ClientAddress.FORWARDED_FOR, "10.0.0." + i));
     }
 

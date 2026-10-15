@@ -37,6 +37,22 @@ public record AttemptBody(
         row.status());
   }
 
+  /** The same body with the notes replaced: an idempotent replay carries the current notes. */
+  public AttemptBody withNotes(String currentNotes) {
+    return new AttemptBody(
+        attemptId,
+        routeVariantId,
+        occurredAt,
+        receivedAt,
+        attemptsCount,
+        sent,
+        completionFraction,
+        perceivedEffort,
+        currentNotes,
+        revision,
+        status);
+  }
+
   /** Spring MVC logs response values at DEBUG; notes never reach the log (TM-10, TM-16). */
   @Override
   public String toString() {

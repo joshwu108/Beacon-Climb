@@ -20,11 +20,16 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Registration, login and logout (ADR-0005). Logs carry {@code user_id} and the outcome only: never
  * a username, password, token or request body (TM-16).
+ *
+ * <p>Registration hashes the password before the transaction opens, so no database connection is
+ * held for the duration of an Argon2 hash (BC-0123 F1); the transaction only inserts the user and
+ * its session. Login reserves its failure slot in the {@link LoginAttemptLimiter} before hashing
+ * and releases it on success (F11), so parallel attempts cannot exceed the per-username limit.
  */
 @Service
 public class AuthService {
@@ -39,6 +44,7 @@ public class AuthService {
   private final PasswordHasher hasher;
   private final LoginAttemptLimiter limiter;
   private final AuthProperties properties;
+  private final TransactionTemplate tx;
   private final Clock clock;
 
   public AuthService(
@@ -47,22 +53,28 @@ public class AuthService {
       PasswordHasher hasher,
       LoginAttemptLimiter limiter,
       AuthProperties properties,
+      TransactionTemplate tx,
       Clock clock) {
     this.users = users;
     this.sessions = sessions;
     this.hasher = hasher;
     this.limiter = limiter;
     this.properties = properties;
+    this.tx = tx;
     this.clock = clock;
   }
 
-  @Transactional
   public AuthResponse register(AuthRequest request) {
     requireValid(request);
-    UUID userId = Uuid7.next(clock);
     String hash = hasher.hash(request.password());
+    UUID userId = Uuid7.next(clock);
+    return tx.execute(status -> insertAndOpenSession(userId, request.username(), hash));
+  }
+
+  /** Inside the registration transaction: the user row and its first session, nothing else. */
+  private AuthResponse insertAndOpenSession(UUID userId, String username, String hash) {
     try {
-      users.insert(userId, request.username(), hash);
+      users.insert(userId, username, hash);
     } catch (DuplicateKeyException e) {
       log.info("registration outcome=USERNAME_TAKEN");
       throw new ApiException(
@@ -77,13 +89,14 @@ public class AuthService {
 
   /**
    * Verifies the password against the stored hash, or against a dummy hash when the username is
-   * unknown, so both failures cost one Argon2 verification. The limiter runs first so a blocked
-   * caller cannot burn hashing CPU (TM-22).
+   * unknown, so both failures cost one Argon2 verification. The limiter reserves the failure slot
+   * first so a blocked caller cannot burn hashing memory (TM-22); the slot is released when the
+   * login succeeds or when hashing itself was refused (503), never for a wrong password.
    */
   public AuthResponse login(AuthRequest request, String clientIp) {
     requireValid(request);
     limiter
-        .retryAfter(request.username(), clientIp)
+        .tryReserve(request.username(), clientIp)
         .ifPresent(
             wait -> {
               log.info("login outcome=RATE_LIMITED");
@@ -91,13 +104,19 @@ public class AuthService {
             });
     Optional<Credentials> user = users.findActiveByUsername(request.username());
     String hash = user.map(Credentials::passwordHash).orElse(hasher.dummyHash());
-    boolean matches = hasher.matches(request.password(), hash);
+    boolean matches;
+    try {
+      matches = hasher.matches(request.password(), hash);
+    } catch (RuntimeException e) {
+      limiter.release(request.username(), clientIp);
+      throw e;
+    }
     if (user.isEmpty() || !matches) {
-      limiter.recordFailure(request.username(), clientIp);
       log.info("login outcome=INVALID_CREDENTIALS");
       throw new ApiException(
           ErrorCode.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED, "Invalid username or password");
     }
+    limiter.release(request.username(), clientIp);
     log.info("login outcome=OK user_id={}", user.get().id());
     return openSession(user.get().id());
   }

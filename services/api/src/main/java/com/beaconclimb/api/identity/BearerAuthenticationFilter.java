@@ -4,6 +4,7 @@ import com.beaconclimb.api.platform.logging.LogFields;
 import com.beaconclimb.api.platform.web.ErrorCode;
 import com.beaconclimb.api.platform.web.ErrorResponseWriter;
 import com.beaconclimb.api.platform.web.RequestIdFilter;
+import com.beaconclimb.api.platform.web.RequestPaths;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,7 +28,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * Bearer <token>}: sha256(token) must match an unrevoked, unexpired session of an ACTIVE user.
  * Everything except the public routes below requires it; a missing, malformed, forged, expired or
  * revoked token gets a 401 UNAUTHENTICATED envelope (TM-04, TM-21). The token and header are never
- * logged (TM-16). Runs after {@link RequestIdFilter} so the 401 carries {@code X-Request-Id}. Once
+ * logged (TM-16). Runs after {@link RequestIdFilter} so the 401 carries {@code X-Request-Id}, and
+ * after {@code PathNormalizationFilter}, so the path it matches is the canonical one Spring routes
+ * on ({@link RequestPaths}; BC-0123 F2: no {@code /v1;x/} or {@code /%761/} disguise). Once
  * resolved, the pseudonymous user id goes into the MDC ({@code user_id}) for every log line of the
  * request and into a request attribute for the access log and the rate limiter (BC-0122).
  */
@@ -59,7 +62,7 @@ public class BearerAuthenticationFilter extends OncePerRequestFilter {
    */
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
-    String path = request.getRequestURI();
+    String path = RequestPaths.of(request);
     String method = request.getMethod();
     if (!path.startsWith(API_PREFIX)) {
       return true;

@@ -23,7 +23,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * by client address. A refused request is 429 RATE_LIMITED with {@code Retry-After} in whole
  * seconds rounded up; an allowed one carries {@code X-RateLimit-Remaining}. Reads and CORS
  * preflights are never limited. Runs after authentication so an unauthenticated write to a
- * protected path is a 401 that costs no token.
+ * protected path is a 401 that costs no token, and after {@code PathNormalizationFilter} so the
+ * path it matches is the canonical one ({@link RequestPaths}, BC-0123 F2).
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 20)
@@ -37,18 +38,18 @@ public class WriteRateLimitFilter extends OncePerRequestFilter {
 
   private final WriteRateLimiter limiter;
   private final ErrorResponseWriter errors;
-  private final boolean trustForwardedHeaders;
+  private final TrustedProxies trustedProxies;
 
   public WriteRateLimitFilter(
-      WriteRateLimiter limiter, ErrorResponseWriter errors, HttpProperties properties) {
+      WriteRateLimiter limiter, ErrorResponseWriter errors, TrustedProxies trustedProxies) {
     this.limiter = limiter;
     this.errors = errors;
-    this.trustForwardedHeaders = properties.trustForwardedHeaders();
+    this.trustedProxies = trustedProxies;
   }
 
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
-    return !request.getRequestURI().startsWith(API_PREFIX)
+    return !RequestPaths.of(request).startsWith(API_PREFIX)
         || !WRITE_METHODS.contains(request.getMethod());
   }
 
@@ -60,7 +61,7 @@ public class WriteRateLimitFilter extends OncePerRequestFilter {
     Decision decision =
         userId != null
             ? limiter.tryUser(userId.toString())
-            : limiter.tryClient(ClientAddress.of(request, trustForwardedHeaders));
+            : limiter.tryClient(ClientAddress.of(request, trustedProxies));
     if (!decision.allowed()) {
       log.info(
           "rate limited scope={} retry_after_s={}",
