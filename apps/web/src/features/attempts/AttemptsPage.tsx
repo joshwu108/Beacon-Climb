@@ -4,6 +4,7 @@ import { Link, Navigate, useLocation } from 'react-router';
 import { ApiErrorBanner } from '../../components/ui/ApiErrorBanner';
 import { formatDateTime } from '../../lib/format';
 import { tokenStore } from '../auth/token-store';
+import { useMe } from '../auth/useMe';
 import { AttemptRow } from './AttemptRow';
 import {
   isRetryable,
@@ -103,13 +104,16 @@ const DraftItem = ({
 };
 
 /**
- * /attempts (BC-0118): drafts that have not reached the server on top, then the
- * server's history newest first with "Load more" on next_cursor.
+ * /attempts (BC-0118): the signed-in user's drafts that have not reached the server on
+ * top, then the server's history newest first with "Load more" on next_cursor. GET /v1/me
+ * runs here too, so a tab that has not identified its user yet (fresh reload) learns the
+ * owner before any draft is listed or retried (BC-0123 F4).
  */
 export const AttemptsPage = () => {
   const hasToken = tokenStore.get() !== null;
   const location = useLocation();
   const queryClient = useQueryClient();
+  useMe({ enabled: hasToken });
   const attempts = useAttempts(hasToken);
   const drafts = useDrafts();
   const [savedId] = useState<string | null>(

@@ -55,6 +55,10 @@ const openForm = async () => {
   const rendered = renderApp(PATH);
   await screen.findByRole('form', { name: 'Log an attempt' });
   await screen.findByRole('heading', { level: 2, name: /synthetic/i });
+  // Save is enabled once GET /v1/me has identified the user (drafts record the owner).
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Save attempt' })).toBeEnabled(),
+  );
   return rendered;
 };
 
@@ -100,6 +104,7 @@ describe('AttemptFormPage', () => {
       notes: 'Good go.',
     });
     expect(posts[0]!.key).toMatch(/^[0-9a-f-]{36}$/);
+    expect(posts[0]!.body).not.toHaveProperty('owner_user_id');
     const history = screen.getByRole('region', { name: 'History' });
     expect(within(history).getAllByRole('listitem')).toHaveLength(2);
     expect(within(history).getByText('Good go.')).toBeVisible();
@@ -197,6 +202,35 @@ describe('AttemptFormPage', () => {
       within(alert).getByRole('link', { name: 'Turn on logging' }),
     ).toHaveAttribute('href', '/onboarding/consent');
     expect(draftStore.list()).toHaveLength(1);
+  });
+
+  it('stamps the draft with the signed-in user from GET /v1/me', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post('*/v1/me/attempts', () => HttpResponse.error(), { once: true }),
+    );
+    await openForm();
+    await user.click(screen.getByRole('button', { name: 'Save attempt' }));
+    await screen.findByRole('alert');
+    expect(draftStore.list()[0]?.owner_user_id).toBe(meFixture.body.user_id);
+  });
+
+  it('keeps Save disabled and explains while the user cannot be identified', async () => {
+    signIn();
+    server.use(http.get('*/v1/me', () => HttpResponse.error(), { once: true }));
+    renderApp(PATH);
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/your account couldn't be checked/i);
+    expect(screen.getByRole('button', { name: 'Save attempt' })).toBeDisabled();
+    expect(draftStore.list()).toEqual([]);
+    await userEvent
+      .setup()
+      .click(within(alert).getByRole('button', { name: 'Try again' }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Save attempt' }),
+      ).toBeEnabled(),
+    );
   });
 
   it('shows the consent gate when the profile has no active consent', async () => {

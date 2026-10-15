@@ -4,6 +4,12 @@
  * browser offers it, an in-memory map otherwise (jsdom, private mode, open failure), so
  * every caller sees the same promise API. A key is generated once per draft and reused
  * on every retry; it is never reused for a different submission.
+ *
+ * Ownership (BC-0123 F4): every draft records the `user_id` it was made under. IndexedDB
+ * is per origin, not per account, so on a shared browser the next person would otherwise
+ * see, and auto-send under their own token, drafts (with notes) left by the previous one.
+ * `listFor` returns one owner's drafts; `purgeForeign` deletes every other owner's,
+ * including drafts written before this field existed (no owner means foreign).
  */
 import type { components } from '../../api/generated/schema';
 
@@ -26,6 +32,8 @@ export interface DraftError {
 export interface AttemptDraft {
   readonly draft_id: string;
   readonly idempotency_key: string;
+  /** `Me.user_id` of the signed-in user when the draft was made (GET /v1/me). */
+  readonly owner_user_id: string;
   readonly body: AttemptCreate;
   readonly state: DraftState;
   /** Server copy once synced. */
@@ -42,12 +50,19 @@ export interface DraftStore {
   readonly backend: DraftBackend;
   /** Resolves once persisted drafts are loaded; later calls resolve immediately. */
   ready(): Promise<void>;
-  /** Loaded drafts, newest first. Referentially stable until the next change. */
+  /** Every loaded draft, newest first. Referentially stable until the next change. */
   list(): readonly AttemptDraft[];
+  /**
+   * One owner's drafts, newest first; `null` (owner unknown) lists nothing. Stable while
+   * neither the drafts nor the owner change, so it suits useSyncExternalStore.
+   */
+  listFor(ownerUserId: string | null): readonly AttemptDraft[];
   get(draftId: string): AttemptDraft | undefined;
   put(draft: AttemptDraft): Promise<void>;
   remove(draftId: string): Promise<void>;
   clear(): Promise<void>;
+  /** Delete every draft whose owner is not `ownerUserId` (ownerless ones included). */
+  purgeForeign(ownerUserId: string): Promise<void>;
   subscribe(listener: () => void): () => void;
 }
 
@@ -92,6 +107,11 @@ const normalise = (draft: AttemptDraft): AttemptDraft =>
     ? { ...draft, state: 'failed', error: INTERRUPTED }
     : draft;
 
+const NO_DRAFTS: readonly AttemptDraft[] = [];
+
+const isOwnedBy = (draft: AttemptDraft, ownerUserId: string): boolean =>
+  draft.owner_user_id === ownerUserId;
+
 export interface DraftStoreOptions {
   /** `null` forces the memory backend (tests). Defaults to `globalThis.indexedDB`. */
   readonly indexedDB?: IDBFactory | null;
@@ -109,6 +129,11 @@ export const createDraftStore = (
   const cache = new Map<string, AttemptDraft>();
   const listeners = new Set<() => void>();
   let snapshot: readonly AttemptDraft[] = [];
+  let ownerSnapshot: {
+    readonly source: readonly AttemptDraft[];
+    readonly owner: string;
+    readonly drafts: readonly AttemptDraft[];
+  } | null = null;
   let db: IDBDatabase | null = null;
   let backend: DraftBackend = factory === null ? 'memory' : 'indexeddb';
   let loading: Promise<void> | null = null;
@@ -156,6 +181,21 @@ export const createDraftStore = (
     },
     ready: () => (loading ??= load()),
     list: () => snapshot,
+    listFor: (ownerUserId) => {
+      if (ownerUserId === null) return NO_DRAFTS;
+      if (
+        ownerSnapshot === null ||
+        ownerSnapshot.source !== snapshot ||
+        ownerSnapshot.owner !== ownerUserId
+      ) {
+        ownerSnapshot = {
+          source: snapshot,
+          owner: ownerUserId,
+          drafts: snapshot.filter((draft) => isOwnedBy(draft, ownerUserId)),
+        };
+      }
+      return ownerSnapshot.drafts;
+    },
     get: (draftId) => cache.get(draftId),
     put: async (draft) => {
       cache.set(draft.draft_id, draft);
@@ -172,6 +212,18 @@ export const createDraftStore = (
       notify();
       await persist((store) => store.clear());
     },
+    purgeForeign: async (ownerUserId) => {
+      await (loading ??= load());
+      const foreign = [...cache.values()].filter(
+        (draft) => !isOwnedBy(draft, ownerUserId),
+      );
+      if (foreign.length === 0) return;
+      for (const draft of foreign) cache.delete(draft.draft_id);
+      notify();
+      for (const draft of foreign) {
+        await persist((store) => store.delete(draft.draft_id));
+      }
+    },
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -183,3 +235,7 @@ export const draftStore: DraftStore = createDraftStore();
 
 /** Used by sign-out: drafts carry notes, so they never outlive the session on a device. */
 export const clearDrafts = (): Promise<void> => draftStore.clear();
+
+/** Used when GET /v1/me resolves: drafts of any other account leave the device. */
+export const purgeForeignDrafts = (ownerUserId: string): Promise<void> =>
+  draftStore.purgeForeign(ownerUserId);

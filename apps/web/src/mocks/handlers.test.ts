@@ -3,6 +3,7 @@ import registerFixture from '../../../../contracts/examples/registerUser/respons
 import register409 from '../../../../contracts/examples/registerUser/response-409.json';
 import patch409 from '../../../../contracts/examples/patchAttempt/response-409.json';
 import { handlers } from './handlers';
+import { mockUserId } from './state';
 
 const BASE = 'http://api.test';
 const AUTH = {
@@ -194,10 +195,16 @@ describe('mock handlers', () => {
       headers: AUTH,
       body: JSON.stringify({ username: 'fresh', password: 'demo-password' }),
     });
-    await expect(me()).resolves.toMatchObject({
+    const fresh = await me();
+    expect(fresh).toMatchObject({
+      username: 'fresh',
       consent: null,
       preferences: null,
     });
+    // Each registration is its own user (BC-0123 F4 needs two distinguishable accounts).
+    expect(fresh.user_id).not.toBe('018f0000-0000-7000-8000-000000000001');
+    expect(fresh.user_id).toBe(mockUserId('fresh'));
+    expect(mockUserId('other')).not.toBe(mockUserId('fresh'));
     await fetch(`${BASE}/v1/me/consent`, {
       method: 'POST',
       headers: AUTH,
@@ -231,6 +238,8 @@ describe('mock handlers', () => {
       body: JSON.stringify({ username: 'demo', password: 'demo-password' }),
     });
     await expect(me()).resolves.toMatchObject({
+      user_id: '018f0000-0000-7000-8000-000000000001',
+      username: 'demo',
       preferences: { angle_deg: 35 },
     });
   });

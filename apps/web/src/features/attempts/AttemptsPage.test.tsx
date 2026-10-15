@@ -10,11 +10,22 @@ import { draftStore, type AttemptDraft } from './draft-store';
 
 const FUTURE = '2999-01-01T00:00:00Z';
 const FIXTURE_ID = listFixture.body.items[0]!.attempt_id;
+/** `user_id` of the GET /v1/me fixture, the user behind `opaque-demo-token`. */
+const DEMO_USER = '018f0000-0000-7000-8000-000000000001';
+const OTHER_USER = '018f0000-0000-7000-8000-00000000beef';
 const AUTH = {
   Authorization: 'Bearer opaque-demo-token',
   'Content-Type': 'application/json',
 };
+/** A session whose user this tab already knows (GET /v1/me answered earlier). */
 const signIn = (): void =>
+  tokenStore.set({
+    token: 'opaque-demo-token',
+    expiresAt: FUTURE,
+    userId: DEMO_USER,
+  });
+/** A session right after sign-in: the user is unknown until GET /v1/me answers. */
+const signInUnknownUser = (): void =>
   tokenStore.set({ token: 'opaque-demo-token', expiresAt: FUTURE });
 
 interface Captured {
@@ -69,6 +80,7 @@ const bumpElsewhere = async (): Promise<void> => {
 const failedDraft = (): AttemptDraft => ({
   draft_id: 'draft-1',
   idempotency_key: 'key-draft-1',
+  owner_user_id: DEMO_USER,
   body: {
     route_variant_id: 'synthetic-route-003:35',
     occurred_at: '2026-10-14T15:00:00Z',
@@ -255,6 +267,66 @@ describe('AttemptsPage', () => {
     const requests = captureRequests();
     await draftStore.put(failedDraft());
     signIn();
+    renderApp('/attempts');
+    await screen.findByText('2 attempts loaded');
+    expect(requests.filter((r) => r.method === 'POST')).toHaveLength(1);
+  });
+
+  it("lists and retries only the signed-in user's drafts; another account's stay hidden", async () => {
+    const requests = captureRequests();
+    await draftStore.put(failedDraft());
+    await draftStore.put({
+      ...failedDraft(),
+      draft_id: 'draft-foreign',
+      idempotency_key: 'key-draft-foreign',
+      owner_user_id: OTHER_USER,
+      body: { ...failedDraft().body, notes: 'A-private' },
+      created_at: '2026-10-14T16:00:00Z',
+    });
+    // Offline, so nothing syncs and both drafts would be on screen if not filtered.
+    Object.defineProperty(navigator, 'onLine', {
+      configurable: true,
+      get: () => false,
+    });
+    signIn();
+    renderApp('/attempts');
+    const drafts = await screen.findByRole('region', {
+      name: /waiting to save \(1\)/i,
+    });
+    expect(within(drafts).getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.queryByText('A-private')).not.toBeInTheDocument();
+
+    delete (navigator as unknown as Record<string, unknown>).onLine;
+    window.dispatchEvent(new Event('online'));
+    await screen.findByText('2 attempts loaded');
+    const posts = requests.filter((r) => r.method === 'POST');
+    expect(posts.map((r) => r.key)).toEqual(['key-draft-1']);
+    expect(draftStore.get('draft-foreign')?.state).toBe('failed');
+  });
+
+  it("signing in as a different user purges the previous account's drafts without sending them", async () => {
+    const requests = captureRequests();
+    await draftStore.put({
+      ...failedDraft(),
+      owner_user_id: OTHER_USER,
+      body: { ...failedDraft().body, notes: 'A-private' },
+    });
+    // The demo user has just signed in on this device; GET /v1/me identifies them here.
+    signInUnknownUser();
+    renderApp('/attempts');
+    await screen.findByText('1 attempt loaded');
+    await waitFor(() => expect(tokenStore.getUserId()).toBe(DEMO_USER));
+    await waitFor(() => expect(draftStore.list()).toEqual([]));
+    expect(
+      screen.queryByRole('region', { name: /waiting to save/i }),
+    ).not.toBeInTheDocument();
+    expect(requests.filter((r) => r.method === 'POST')).toHaveLength(0);
+  });
+
+  it('a draft left by an earlier visit is retried once GET /v1/me has identified the user', async () => {
+    const requests = captureRequests();
+    await draftStore.put(failedDraft());
+    signInUnknownUser();
     renderApp('/attempts');
     await screen.findByText('2 attempts loaded');
     expect(requests.filter((r) => r.method === 'POST')).toHaveLength(1);

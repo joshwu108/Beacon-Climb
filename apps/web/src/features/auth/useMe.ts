@@ -5,6 +5,7 @@ import {
 } from '@tanstack/react-query';
 import { api, call } from '../../api/client';
 import type { components } from '../../api/generated/schema';
+import { recordSignedInUser } from './signed-in-user';
 
 export type Me = components['schemas']['Me'];
 export type Consent = components['schemas']['Consent'];
@@ -12,11 +13,18 @@ export type Preferences = components['schemas']['Preferences'];
 
 export const meQueryKey = ['me'] as const;
 
-/** GET /v1/me: the signed-in user's consent and preferences. */
+/**
+ * GET /v1/me: the signed-in user's consent and preferences. Every answer also records
+ * the user id for this tab (token store), which is what ties attempt drafts to a person.
+ */
 export const meQueryOptions = () =>
   queryOptions({
     queryKey: meQueryKey,
-    queryFn: () => call<Me>(() => api.GET('/v1/me')),
+    queryFn: async () => {
+      const me = await call<Me>(() => api.GET('/v1/me'));
+      await recordSignedInUser(me.user_id);
+      return me;
+    },
   });
 
 export const useMe = (options: { enabled?: boolean } = {}) =>

@@ -28,6 +28,7 @@ import {
 import { serialize } from '../lib/jcs';
 import {
   mockState,
+  mockUserId,
   nextMockId,
   type Attempt,
   type Decision,
@@ -272,7 +273,12 @@ const publicHandlers: HttpHandler[] = [
       if (mockState.registeredUsernames.has(username))
         return fixture(registerUser409);
       mockState.registeredUsernames.add(username);
-      mockState.me = { consent: null, preferences: null };
+      mockState.me = {
+        user_id: mockUserId(username),
+        username,
+        consent: null,
+        preferences: null,
+      };
       return fixture(registerUser);
     }),
   ),
@@ -359,6 +365,8 @@ const protectedHandlers: HttpHandler[] = [
             ...getMe,
             body: {
               ...getMe.body,
+              user_id: mockState.me.user_id,
+              username: mockState.me.username,
               consent: mockState.me.consent,
               preferences: mockState.me.preferences,
             },

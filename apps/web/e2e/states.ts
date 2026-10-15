@@ -23,6 +23,7 @@ export const SESSION_PATH = `/session?session_id=${FIXED_SESSION_ID}&goal=TECHNI
 /** Fixed "now" for the attempt form so its default `occurred_at` is stable in baselines. */
 export const FIXED_NOW = '2026-10-15T12:00:00Z';
 export const DRAFT_DB_NAME = 'beacon.drafts.v1';
+export const DRAFT_STORE_NAME = 'drafts';
 
 /** A signed-in returning user with consent and preferences (the GET /v1/me fixture). */
 export const seedSession = (page: Page): Promise<void> =>
@@ -129,6 +130,8 @@ export const openDecision = async (page: Page): Promise<void> => {
 const SEEDED_DRAFT = {
   draft_id: '018f0000-0000-7000-8000-00000000d4a1',
   idempotency_key: '018f0000-0000-7000-8000-00000000d4a2',
+  /** The GET /v1/me fixture user: drafts of other owners are never shown (BC-0123 F4). */
+  owner_user_id: '018f0000-0000-7000-8000-000000000001',
   body: {
     route_variant_id: 'synthetic-route-003:35',
     occurred_at: '2026-10-15T09:30:00Z',

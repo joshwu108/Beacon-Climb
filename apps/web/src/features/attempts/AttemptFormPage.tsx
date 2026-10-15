@@ -2,11 +2,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { isApiError } from '../../api/errors';
+import { ApiErrorBanner } from '../../components/ui/ApiErrorBanner';
 import {
   hasFieldErrors,
   type FieldErrorMap,
 } from '../../components/ui/field-errors';
 import { tokenStore } from '../auth/token-store';
+import { useCurrentUserId } from '../auth/useCurrentUserId';
 import { hasActiveConsent, useMe } from '../auth/useMe';
 import { formatGrade } from '../explore/grade';
 import { useRoute } from '../explore/useRoutes';
@@ -64,6 +66,8 @@ const Header = () => (
  * generated when the page opens; the draft is persisted on the first Save and every
  * retry reuses it, so a double click, a lost reply or a reconnect can never create two
  * attempts. A 409 IDEMPOTENCY_CONFLICT is the only path to a new key, and it is explicit.
+ * The draft is stamped with the signed-in user's id, so Save waits until GET /v1/me has
+ * identified the user for this tab (BC-0123 F4).
  */
 export const AttemptFormPage = () => {
   const hasToken = tokenStore.get() !== null;
@@ -72,6 +76,7 @@ export const AttemptFormPage = () => {
   const queryClient = useQueryClient();
   const routeVariantId = searchParams.get('route_variant_id') ?? '';
   const me = useMe({ enabled: hasToken });
+  const ownerUserId = useCurrentUserId();
   const route = useRoute(routeVariantId);
   const [ids, setIds] = useState(newIds);
   const [values, setValues] = useState<AttemptFormValues>(defaultValues);
@@ -109,6 +114,9 @@ export const AttemptFormPage = () => {
   }
 
   const consentOff = me.isSuccess && !hasActiveConsent(me.data);
+  // No owner yet: the profile request failed before it ever answered in this tab.
+  const ownerUnknownError =
+    ownerUserId === null && me.isError ? me.error : null;
   const failure = draft?.state === 'failed' ? draft.error : null;
   const errors: FieldErrorMap = {
     ...serverFieldErrors(failure),
@@ -121,6 +129,8 @@ export const AttemptFormPage = () => {
     if (hasFieldErrors(problems)) return;
     // Synchronous guard: a second click before React re-renders is ignored.
     if (submittingRef.current) return;
+    // The button is disabled until the owner is known; this guards the keyboard path.
+    if (ownerUserId === null) return;
     submittingRef.current = true;
     setSubmitting(true);
     let isDone = false;
@@ -134,6 +144,7 @@ export const AttemptFormPage = () => {
       await draftStore.put({
         draft_id: ids.draftId,
         idempotency_key: ids.idempotencyKey,
+        owner_user_id: ownerUserId,
         body: toAttemptCreate(routeVariantId, values),
         state: 'draft',
         attempt: null,
@@ -203,6 +214,14 @@ export const AttemptFormPage = () => {
             </div>
           ) : null}
 
+          {ownerUnknownError !== null ? (
+            <ApiErrorBanner
+              error={ownerUnknownError}
+              title="Your account couldn't be checked, so nothing can be saved yet."
+              onRetry={() => void me.refetch()}
+            />
+          ) : null}
+
           {failure !== null ? (
             <FailurePanel
               error={failure}
@@ -217,7 +236,7 @@ export const AttemptFormPage = () => {
             values={values}
             errors={errors}
             isBusy={isSubmitting}
-            isSubmitDisabled={consentOff}
+            isSubmitDisabled={consentOff || ownerUserId === null}
             submitLabel={failure !== null ? 'Try again' : 'Save attempt'}
             busyLabel="Saving"
             showOccurredAt

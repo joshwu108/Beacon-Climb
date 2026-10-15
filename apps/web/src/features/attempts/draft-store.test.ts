@@ -1,12 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createDraftStore, type AttemptDraft } from './draft-store';
 
+const OWNER = '018f0000-0000-7000-8000-000000000001';
+const OTHER = '018f0000-0000-7000-8000-000000000002';
+
 const draft = (
   id: string,
   overrides: Partial<AttemptDraft> = {},
 ): AttemptDraft => ({
   draft_id: id,
   idempotency_key: `key-${id}`,
+  owner_user_id: OWNER,
   body: {
     route_variant_id: 'synthetic-route-001:35',
     occurred_at: '2026-10-14T14:00:00Z',
@@ -48,6 +52,40 @@ describe('draft store (memory fallback)', () => {
     await store.clear();
     expect(store.list()).toEqual([]);
     expect(listener).toHaveBeenCalledTimes(5);
+  });
+
+  it("round-trips the owner and lists only one owner's drafts, stably", async () => {
+    const store = createDraftStore({ indexedDB: null });
+    await store.put(draft('mine'));
+    await store.put(draft('theirs', { owner_user_id: OTHER }));
+    expect(store.get('mine')?.owner_user_id).toBe(OWNER);
+    expect(store.list()).toHaveLength(2);
+    const mine = store.listFor(OWNER);
+    expect(mine.map((d) => d.draft_id)).toEqual(['mine']);
+    expect(store.listFor(OWNER)).toBe(mine);
+    expect(store.listFor(OTHER).map((d) => d.draft_id)).toEqual(['theirs']);
+    expect(store.listFor(null)).toEqual([]);
+    expect(store.listFor(null)).toBe(store.listFor(null));
+    await store.put({ ...draft('mine'), state: 'failed' });
+    expect(store.listFor(OWNER)).not.toBe(mine);
+  });
+
+  it("purgeForeign deletes other owners' drafts and ownerless ones, keeps the owner's", async () => {
+    const store = createDraftStore({ indexedDB: null });
+    const listener = vi.fn();
+    store.subscribe(listener);
+    await store.put(draft('mine'));
+    await store.put(draft('theirs', { owner_user_id: OTHER }));
+    // A record written before owners existed (BC-0118) has no owner at all.
+    const legacy = draft('legacy') as { owner_user_id?: string };
+    delete legacy.owner_user_id;
+    await store.put(legacy as AttemptDraft);
+    listener.mockClear();
+    await store.purgeForeign(OWNER);
+    expect(store.list().map((d) => d.draft_id)).toEqual(['mine']);
+    expect(listener).toHaveBeenCalledTimes(1);
+    await store.purgeForeign(OWNER);
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the same key for a draft across updates', async () => {

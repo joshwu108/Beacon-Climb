@@ -4,9 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "VITE_USE_MOCKS=true vite --host 0.0.0.0",
-    "dev:api": "vite --host 0.0.0.0",
+    "dev": "VITE_USE_MOCKS=true vite --host 127.0.0.1",
+    "dev:api": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
+    "postbuild": "rm -f dist/mockServiceWorker.js",
     "preview": "vite preview",
     "generate:api": "openapi-typescript ../../contracts/openapi.yaml -o src/api/generated/schema.d.ts",
     "lint": "eslint . && prettier --check .",

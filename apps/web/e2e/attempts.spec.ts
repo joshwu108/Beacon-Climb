@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { DRAFT_DB_NAME, DRAFT_STORE_NAME } from './states';
 
 /**
  * BC-0118 acceptance at 375 and 1280: a double-clicked Save yields one history row, a
@@ -6,6 +7,8 @@ import { expect, test, type Page } from '@playwright/test';
  * prompt, and an attempt saved while offline syncs once the browser is back online.
  * Mock state lives in the page (MSW worker), so "elsewhere" is a direct fetch from the
  * page and offline is Playwright's emulation, which the mocks honour via navigator.onLine.
+ * The last test is the BC-0123 F4 repro: a draft left by one account on a shared browser
+ * is neither shown to nor sent under the next account.
  */
 
 const SESSION_STORAGE_KEY = 'beacon.session.v1';
@@ -116,4 +119,87 @@ test('an attempt saved while offline syncs once the browser is back online', asy
   await expect(
     page.getByRole('region', { name: /waiting to save/i }),
   ).toHaveCount(0);
+});
+
+test('a draft left by one account is neither shown to nor sent under the next account (BC-0123 F4)', async ({
+  page,
+  context,
+}) => {
+  // User A (the seeded demo session) logs an attempt while offline and never signs out.
+  await page.goto(FORM);
+  await expect(
+    page.getByRole('heading', { level: 2, name: /synthetic/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Save attempt' }),
+  ).toBeEnabled();
+  await context.setOffline(true);
+  await page.getByLabel(/notes/i).fill('A-private');
+  await page.getByRole('button', { name: 'Save attempt' }).click();
+  await expect(page.getByRole('alert')).toContainText(
+    "We didn't get a reply, so we can't tell if it saved.",
+  );
+  const draftsOnDevice = (p: Page): Promise<number> =>
+    p.evaluate(
+      ([dbName, storeName]) =>
+        new Promise<number>((resolve, reject) => {
+          const open = indexedDB.open(dbName, 1);
+          open.onerror = () => reject(open.error);
+          open.onsuccess = () => {
+            const count = open.result
+              .transaction(storeName, 'readonly')
+              .objectStore(storeName)
+              .count();
+            count.onsuccess = () => {
+              open.result.close();
+              resolve(count.result);
+            };
+            count.onerror = () => reject(count.error);
+          };
+        }),
+      [DRAFT_DB_NAME, DRAFT_STORE_NAME] as const,
+    );
+  expect(await draftsOnDevice(page)).toBe(1);
+  await page.close();
+
+  // User B registers in a new page of the same browser (no session, same IndexedDB).
+  const next = await context.newPage();
+  const seen: { method: string; path: string; body: string }[] = [];
+  next.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith('/v1/'))
+      seen.push({
+        method: request.method(),
+        path: url.pathname,
+        body: request.postData() ?? '',
+      });
+  });
+  await context.setOffline(false);
+  await next.goto('/onboarding');
+  await next
+    .getByRole('textbox', { name: 'Username' })
+    .fill(`user_b_${Date.now().toString(36)}`);
+  await next.getByLabel('Password', { exact: true }).fill('a-long-password');
+  await next.getByRole('button', { name: 'Create account' }).click();
+  await expect(
+    next.getByRole('heading', {
+      level: 2,
+      name: /decide what beacon may keep/i,
+    }),
+  ).toBeVisible();
+
+  await next.goto('/attempts');
+  await expect(next.getByText('1 attempt loaded')).toBeVisible();
+  await expect(
+    next.getByRole('region', { name: /waiting to save/i }),
+  ).toHaveCount(0);
+  await expect(next.getByText('A-private')).toHaveCount(0);
+  // A's draft was purged when GET /v1/me identified B, and nothing was sent for it.
+  await expect.poll(() => draftsOnDevice(next)).toBe(0);
+  expect(seen.some((r) => r.path === '/v1/me/attempts')).toBe(true);
+  expect(
+    seen.filter((r) => r.method === 'POST' && r.path === '/v1/me/attempts'),
+  ).toEqual([]);
+  expect(seen.some((r) => r.body.includes('A-private'))).toBe(false);
+  await next.close();
 });

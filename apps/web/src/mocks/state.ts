@@ -15,10 +15,13 @@ export type Decision = components['schemas']['Decision'];
 /**
  * What GET /v1/me answers beyond the fixture. `null` means "serve the fixture as is"
  * (a returning user with consent and preferences). registerUser switches to a fresh
- * profile (consent and preferences null) that createConsent and putPreferences fill in,
- * so the onboarding flow can be walked end to end against the mocks (BC-0115).
+ * profile (its own `user_id` and `username`, consent and preferences null) that
+ * createConsent and putPreferences fill in, so the onboarding flow can be walked end to
+ * end against the mocks (BC-0115) and two registrations are two different users (BC-0123).
  */
 export interface MeOverride {
+  user_id: string;
+  username: string;
   consent: Consent | null;
   preferences: Preferences | null;
 }
@@ -67,6 +70,16 @@ export const resetMockState = (): void => {
   mockState.decisions.clear();
   mockState.nextId = 1;
   mockState.me = null;
+};
+
+/** Deterministic uuid-shaped user id for a registered username (FNV-1a over the name). */
+export const mockUserId = (username: string): string => {
+  let hash = 0x811c9dc5;
+  for (const char of username) {
+    hash ^= char.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return `018f0000-0000-7000-8000-u${hash.toString(16).padStart(8, '0')}00`;
 };
 
 /** Deterministic uuid-shaped ids: the fixture prefix with a counter in the last block. */
