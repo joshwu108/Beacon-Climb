@@ -210,3 +210,21 @@ All runs are the full `:api:test --rerun --continue` (331 tests) against a copy 
    - Either make `FeatureComputer` keep the highest revision per `attempt_id`, or document the precondition and assert it at entry. Covers MEDIUM-5.
 10. **Five-term score bit fixture** (`RankerTest`, ~20 min). Add a table of 10–20 heuristic-v1 inputs with hard-coded expected `doubleToRawLongBits`, chosen among the order-sensitive combinations. One example from the off-line check: grade 10.0, target 11, novelty 0, preference 1, obs 2 gives `0.4800000000000001`, while the reversed sum gives `0.48000000000000004`. Makes M07 detection independent of a single witness.
 11. **`differentSessionIdMayChangeTieOrderOnly` asserts the tie rule** (~10 min). For every position whose id differs between the two sessions, assert the scores are equal and the order follows `TieBreak.key` for each session.
+
+## Fix status (top-level session, 2026-10-15 night)
+
+| Finding | Status | Commit |
+|---|---|---|
+| HIGH-1 E2E double submit only reaches the server once | fixed: parallel duplicate with the same key raced through the API (201+200, same attempt_id) plus sequential replay | 61a1018 |
+| HIGH-2 older-W recompute overwrites the live snapshot | fixed: monotonic upsert on cutoff_w, stored=false reported; FeatureSnapshotMonotonicIT | d8c89fd |
+| HIGH-3 recommendation write order and failure paths untested | fixed: RecommendationPersistenceFaultIT (quota 503 writes nothing, digest mismatch 500 no rows, ledger failure deletes the new file / keeps a pre-existing one) | d8c89fd |
+| MEDIUM-4 ranker duplicates | fixed: dedupe by id keeping first; RankerTest + property with duplicates | d8c89fd |
+| MEDIUM-5 FeatureComputer duplicates / lower revisions | fixed: highest revision per attempt_id kept; FeatureComputerTest | d8c89fd |
+| MEDIUM-6 ON CONFLICT only race-tested | fixed: AttemptRepositoryIT deterministic double insert | d8c89fd |
+| MEDIUM-7 attempt_revisions immutability untested | fixed: AttemptPatchIT permission-denied assertions | d8c89fd |
+| MEDIUM-8 recommendation property only cold users | open (≥ 45 min item) | — |
+| MEDIUM-9 score arithmetic order single witness | partly: pinned five-term bit fixture (12 rows); replay-from-artifacts test deferred to BC-0404 | d8c89fd |
+| LOW-10 two intermediate commits not standalone-green | documented in handoffs (6ce019d, a041aa8); no history rewrite | — |
+| LOW-11 unreproduced live claims | top-level session re-ran the live smokes itself (see NIGHT log); "10/10" stays a subagent claim | — |
+| LOW-12 weak tie-order test | fixed: asserts equal scores and TieBreak order per session | d8c89fd |
+| Unit-test candidates | RecommendationValidatorTest, AttemptPatchValidatorTest, AttemptQueryParserTest added | d8c89fd |
