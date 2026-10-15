@@ -1,0 +1,279 @@
+/* Attempt log (BC-0118): ruled history rows, drafts stamped by state, the log form on
+   a sheet beside the route note. Shares .stepper with the session builder. */
+
+.attempts {
+  gap: var(--space-5);
+}
+
+.attempts__header,
+.attempts__section {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+}
+
+.attempts__section h2 {
+  width: 100%;
+  padding-block-end: var(--space-2);
+  border-block-end: 2px solid var(--color-text);
+}
+
+.attempts__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  width: 100%;
+}
+
+.attempt {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-2);
+  border-block-end: var(--border-width) solid var(--color-border-subtle);
+}
+
+.attempt--skeleton {
+  min-height: 5.5rem;
+}
+
+.attempt--retracted {
+  color: var(--color-text-muted);
+}
+
+.attempt--draft {
+  background: var(--color-surface-raised);
+  border-inline-start: 3px solid var(--color-warning);
+}
+
+.attempt__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.attempt__name {
+  font-size: var(--text-md);
+  overflow-wrap: anywhere;
+}
+
+.attempt__grade {
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+.attempt__facts,
+.attempt__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.attempt__sent {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.attempt--retracted .attempt__sent {
+  color: inherit;
+}
+
+.attempt__notes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.attempt__saved {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.attempt__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.attempt__edit,
+.attempt__confirm {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-input);
+  box-shadow: var(--elevation-sheet);
+}
+
+.attempts__empty {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.attempts__columns {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.attempts__route {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.attempts__route-name {
+  font-size: var(--text-md);
+}
+
+.attempts__route-id {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.attempts__form-sheet {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.attempt-form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.attempt-form__fields {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+  display: grid;
+}
+
+.attempt-form__fields .field {
+  margin-block-end: var(--space-4);
+}
+
+.attempt-form__effort legend {
+  padding: 0;
+  margin-block-end: var(--space-2);
+}
+
+.attempt-form__value {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.attempt-form__notes {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.attempt-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.segmented--scale .segmented__option {
+  min-inline-size: var(--size-hit-min);
+  padding-inline: var(--space-2);
+  font-size: var(--text-base);
+}
+
+/* Switch: a real checkbox with role=switch; the track is drawn, the state is also text. */
+.switch {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-3);
+  align-items: start;
+  cursor: pointer;
+  position: relative;
+}
+
+.switch input {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 0;
+  inline-size: 2.75rem;
+  block-size: 1.5rem;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  /* Above the drawn track (also positioned), so the input itself receives the click. */
+  z-index: 1;
+}
+
+.switch__track {
+  display: inline-block;
+  inline-size: 2.75rem;
+  block-size: 1.5rem;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+  position: relative;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.switch__track::after {
+  content: '';
+  position: absolute;
+  inset-block-start: 2px;
+  inset-inline-start: 2px;
+  inline-size: calc(1.5rem - 4px - 2 * var(--border-width));
+  block-size: calc(1.5rem - 4px - 2 * var(--border-width));
+  border-radius: 50%;
+  background: var(--color-text);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.switch:has(input:checked) .switch__track {
+  background: var(--color-action);
+  border-color: var(--color-action);
+}
+
+.switch:has(input:checked) .switch__track::after {
+  background: var(--color-text-inverse);
+  transform: translateX(1.25rem);
+}
+
+.switch:has(input:focus-visible) .switch__track {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.switch__body {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.range {
+  width: 100%;
+  accent-color: var(--color-action);
+  min-height: var(--size-hit-min);
+}
+
+@media (min-width: 1024px) {
+  .attempts__columns {
+    grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+  }
+
+  .attempts__route {
+    position: sticky;
+    top: var(--space-4);
+    margin-block-start: var(--space-6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch__track,
+  .switch__track::after {
+    transition: none;
+  }
+}
