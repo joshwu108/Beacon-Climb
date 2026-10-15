@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -34,11 +35,12 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * BC-0124 items 3 to 5: the write path of {@link RecommendationService#recommend} under faults. The
- * snapshot store and the ledger are replaced by switchable doubles in one shared context: a real
- * {@link LocalFsSnapshotStore} behind a delegate that can be swapped for a full one or made to
- * return a wrong digest, and a {@link DecisionLedgerRepository} subclass that can fail on {@code
- * insertExposures}. In every fault the user ends with no decision and no exposure rows, and no
- * snapshot file this request created survives.
+ * snapshot store, the ledger and the contract schema are replaced by switchable doubles in one
+ * shared context: a real {@link LocalFsSnapshotStore} behind a delegate that can be swapped for a
+ * full one or made to return a wrong digest, a {@link DecisionLedgerRepository} subclass that can
+ * fail on {@code insertExposures}, and a {@link DecisionRecordSchema} subclass that can reject the
+ * snapshot or the record. In every fault the user ends with no decision and no exposure rows, and
+ * no snapshot file this request created survives.
  */
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -67,6 +69,56 @@ class RecommendationPersistenceFaultIT extends RecommendationsTestSupport {
     @Primary
     FaultyLedger faultyLedger(JdbcClient jdbc, JsonMapper json) {
       return new FaultyLedger(jdbc, json);
+    }
+
+    @Bean
+    @Primary
+    FaultySchema faultySchema() {
+      return new FaultySchema();
+    }
+  }
+
+  /**
+   * The real schema whose {@code requireValidSnapshot} or {@code requireValidRecord} can be made to
+   * throw the {@link IllegalStateException} a contract violation raises. It also notes the digest
+   * the validated snapshot would be stored under, so a test can prove nothing was written there
+   * even when the request never reached the store.
+   */
+  static class FaultySchema extends DecisionRecordSchema {
+    enum Mode {
+      NONE,
+      SNAPSHOT,
+      RECORD
+    }
+
+    private volatile Mode mode = Mode.NONE;
+    volatile String lastSnapshotDigest;
+
+    void mode(Mode mode) {
+      this.mode = mode;
+    }
+
+    void reset() {
+      mode = Mode.NONE;
+      lastSnapshotDigest = null;
+    }
+
+    @Override
+    public void requireValidSnapshot(JsonNode snapshot) {
+      lastSnapshotDigest =
+          Jcs.sha256Hex(Jcs.canonicalize(snapshot).getBytes(StandardCharsets.UTF_8));
+      if (mode == Mode.SNAPSHOT) {
+        throw new IllegalStateException("injected snapshot validation failure");
+      }
+      super.requireValidSnapshot(snapshot);
+    }
+
+    @Override
+    public void requireValidRecord(JsonNode record) {
+      if (mode == Mode.RECORD) {
+        throw new IllegalStateException("injected record validation failure");
+      }
+      super.requireValidRecord(record);
     }
   }
 
@@ -140,6 +192,7 @@ class RecommendationPersistenceFaultIT extends RecommendationsTestSupport {
 
   @Autowired SwitchableStore switchableStore;
   @Autowired FaultyLedger ledger;
+  @Autowired FaultySchema faultySchema;
 
   @BeforeEach
   void pinClock() {
@@ -150,26 +203,71 @@ class RecommendationPersistenceFaultIT extends RecommendationsTestSupport {
   void resetFaults() {
     switchableStore.reset();
     ledger.failExposures(false);
+    faultySchema.reset();
   }
 
   @Test
   void storeQuotaReachedIs503AndWritesNothing() {
     Path quotaDir = tempDir("decisions-quota");
-    LocalFsSnapshotStore full = new LocalFsSnapshotStore(quotaDir, 1);
-    full.put("{}".getBytes(StandardCharsets.UTF_8));
-    assertThat(full.fileCount()).isEqualTo(1);
-    switchableStore.delegate = full;
+    try {
+      LocalFsSnapshotStore full = new LocalFsSnapshotStore(quotaDir, 1);
+      full.put("{}".getBytes(StandardCharsets.UTF_8));
+      assertThat(full.fileCount()).isEqualTo(1);
+      switchableStore.delegate = full;
+      Account account = registerReady("INTERMEDIATE");
+
+      ResponseEntity<String> response =
+          recommend(
+              account.token(), recommendationBody("TECHNIQUE", 3, UUID.randomUUID(), List.of()));
+
+      assertError(response, HttpStatus.SERVICE_UNAVAILABLE, ErrorCode.SERVICE_UNAVAILABLE);
+      assertThat(decisionsOf(account.userId())).isZero();
+      assertThat(exposuresOf(account.userId())).isZero();
+      assertThat(jsonFilesUnder(quotaDir)).isEqualTo(1);
+      assertThat(full.exists(switchableStore.lastPutDigest)).isFalse();
+    } finally {
+      deleteRecursively(quotaDir);
+    }
+  }
+
+  @Test
+  void snapshotValidationFailureIs500AndWritesNothing() {
+    faultySchema.mode(FaultySchema.Mode.SNAPSHOT);
     Account account = registerReady("INTERMEDIATE");
+    long filesBefore = jsonFilesUnder(DECISIONS_DIR);
+
+    ResponseEntity<String> response =
+        recommend(account.token(), recommendationBody("STRENGTH", 3, UUID.randomUUID(), List.of()));
+
+    assertError(response, HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_ERROR);
+    String digest = faultySchema.lastSnapshotDigest;
+    assertThat(digest).matches("^[0-9a-f]{64}$");
+    assertThat(switchableStore.lastPutDigest).as("store never called").isNull();
+    assertThat(store.exists(digest)).isFalse();
+    assertThat(Files.exists(snapshotPath(digest))).isFalse();
+    assertThat(jsonFilesUnder(DECISIONS_DIR)).isEqualTo(filesBefore);
+    assertThat(decisionsOf(account.userId())).isZero();
+    assertThat(exposuresOf(account.userId())).isZero();
+  }
+
+  @Test
+  void recordValidationFailureIs500AndLeavesNoSnapshotFile() {
+    faultySchema.mode(FaultySchema.Mode.RECORD);
+    Account account = registerReady("ADVANCED");
+    long filesBefore = jsonFilesUnder(DECISIONS_DIR);
 
     ResponseEntity<String> response =
         recommend(
-            account.token(), recommendationBody("TECHNIQUE", 3, UUID.randomUUID(), List.of()));
+            account.token(), recommendationBody("ENDURANCE", 3, UUID.randomUUID(), List.of()));
 
-    assertError(response, HttpStatus.SERVICE_UNAVAILABLE, ErrorCode.SERVICE_UNAVAILABLE);
+    assertError(response, HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_ERROR);
+    String digest = faultySchema.lastSnapshotDigest;
+    assertThat(digest).matches("^[0-9a-f]{64}$");
+    assertThat(store.exists(digest)).isFalse();
+    assertThat(Files.exists(snapshotPath(digest))).isFalse();
+    assertThat(jsonFilesUnder(DECISIONS_DIR)).isEqualTo(filesBefore);
     assertThat(decisionsOf(account.userId())).isZero();
     assertThat(exposuresOf(account.userId())).isZero();
-    assertThat(jsonFilesUnder(quotaDir)).isEqualTo(1);
-    assertThat(full.exists(switchableStore.lastPutDigest)).isFalse();
   }
 
   @Test
@@ -247,9 +345,31 @@ class RecommendationPersistenceFaultIT extends RecommendationsTestSupport {
     }
   }
 
+  private static Path snapshotPath(String digest) {
+    return DECISIONS_DIR.resolve(digest.substring(0, 2)).resolve(digest + ".json");
+  }
+
   private static Path tempDir(String prefix) {
     try {
       return Files.createTempDirectory(prefix);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  private static void deleteRecursively(Path root) {
+    try (Stream<Path> paths = Files.walk(root)) {
+      paths
+          .sorted(Comparator.reverseOrder())
+          .forEach(RecommendationPersistenceFaultIT::deleteQuietly);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  private static void deleteQuietly(Path path) {
+    try {
+      Files.deleteIfExists(path);
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
