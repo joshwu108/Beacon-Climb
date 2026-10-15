@@ -18,8 +18,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * BC-0101/BC-0107/BC-0109: every Flyway migration applies on an empty Postgres 17 as
- * beacon_migrate, the runtime role beacon_app gets DML and nothing more, the constraints from
+ * BC-0101/BC-0107/BC-0109/BC-0113/BC-0110: every Flyway migration applies on an empty Postgres 17
+ * as beacon_migrate, the runtime role beacon_app gets DML and nothing more, the constraints from
  * planning/06 sections 1, 6 and 7 hold, and the golden schema document docs/db/schema-v1.md matches
  * pg_dump of the live database.
  */
@@ -31,7 +31,9 @@ class MigrationIT extends AbstractPostgresIT {
       List.of(
           Map.entry("1", "V1__identity_catalog_provenance.sql"),
           Map.entry("2", "V2__sessions.sql"),
-          Map.entry("3", "V3__attempts_outbox.sql"));
+          Map.entry("3", "V3__attempts_outbox.sql"),
+          Map.entry("4", "V4__feature_snapshots.sql"),
+          Map.entry("5", "V5__ranking_policies.sql"));
 
   private static final List<String> ALL_TABLES =
       List.of(
@@ -47,7 +49,9 @@ class MigrationIT extends AbstractPostgresIT {
           "sessions",
           "attempts",
           "attempt_revisions",
-          "attempt_event_outbox");
+          "attempt_event_outbox",
+          "user_feature_snapshots",
+          "ranking_policies");
 
   private static final UUID PROVENANCE_ID = UUID.fromString("00000000-0000-7000-8000-000000000001");
   private static final String BOARD_ID = "migration-it-board";
@@ -64,7 +68,7 @@ class MigrationIT extends AbstractPostgresIT {
   }
 
   @Test
-  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionThree() {
+  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionFive() {
     List<Map<String, Object>> rows =
         jdbc()
             .queryForList(
@@ -74,7 +78,7 @@ class MigrationIT extends AbstractPostgresIT {
     assertThat(rows)
         .extracting(row -> Map.entry(row.get("version").toString(), row.get("script").toString()))
         .containsExactlyElementsOf(MIGRATIONS);
-    assertThat(rows.getLast().get("version").toString()).isEqualTo("3");
+    assertThat(rows.getLast().get("version").toString()).isEqualTo("5");
   }
 
   @Test
@@ -235,7 +239,9 @@ class MigrationIT extends AbstractPostgresIT {
         .contains("CREATE TABLE public.sessions")
         .contains("CREATE TABLE public.attempts")
         .contains("CREATE TABLE public.attempt_revisions")
-        .contains("CREATE TABLE public.attempt_event_outbox");
+        .contains("CREATE TABLE public.attempt_event_outbox")
+        .contains("CREATE TABLE public.user_feature_snapshots")
+        .contains("CREATE TABLE public.ranking_policies");
     if (SchemaGolden.shouldUpdate()) {
       SchemaGolden.writeDoc(live);
       return;

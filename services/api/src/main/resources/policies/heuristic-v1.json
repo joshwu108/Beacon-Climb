@@ -1,0 +1,42 @@
+{
+  "policy_version": "heuristic-v1",
+  "notes": [
+    "BC-0110 heuristic ranking policy (planning/06 section 9, PRD 7.4). Loaded by com.beaconclimb.api.ranking.PolicyLoader; the JCS form of this file is ranking_policies.serialized_config.",
+    "code_digest is NOT stored here: PolicyLoader computes sha256 over the compiled classes of the ranking package at load time and PolicyRegistry writes it to ranking_policies.code_digest.",
+    "band_targets and goal_offsets are planning placeholders mapping a self-assessed band and a session goal to a target grade_numeric; they claim nothing about physical difficulty or ability.",
+    "skill_gap keeps its PRD weight but multiplies a constant 0 in v1 (no skill-gap signal yet).",
+    "preferred_tags use the tag vocabulary of ml/datasets/synthetic/generate.py (crimpy, slopers, dynamic, technical, powerful, balancy).",
+    "score = challenge*challenge_fit + skill_gap*0 + novelty*novelty + preference*preference_match + confidence*confidence_bonus, summed strictly left to right (Scoring.score)."
+  ],
+  "weights": {
+    "challenge": 0.40,
+    "skill_gap": 0.25,
+    "novelty": 0.15,
+    "preference": 0.10,
+    "confidence": 0.10
+  },
+  "grade_window": 10,
+  "min_obs": 10,
+  "cooldown_hours": 48,
+  "band_targets": {
+    "NOVICE": 12,
+    "BEGINNER": 15,
+    "INTERMEDIATE": 19,
+    "ADVANCED": 23,
+    "EXPERT": 27
+  },
+  "goal_offsets": {
+    "TECHNIQUE": -1,
+    "STRENGTH": 1,
+    "ENDURANCE": -2,
+    "PROJECT": 3
+  },
+  "preferred_tags": {
+    "TECHNIQUE": ["technical", "slopers"],
+    "STRENGTH": ["crimpy", "dynamic"],
+    "ENDURANCE": ["technical"],
+    "PROJECT": ["dynamic", "crimpy"]
+  },
+  "low_inventory_min": 3,
+  "code_digest": null
+}
