@@ -39,6 +39,14 @@ beacon:
     trust-forwarded-headers: false
     # Exact origins of the web client (apps/web dev server); no credentials.
     cors-allowed-origins: http://localhost:5173,http://127.0.0.1:5173
+  decisions:
+    # BC-0111 (DecisionsProperties, ADR-0003). Content-addressed candidate snapshots are written
+    # under <dir>/<first two hex>/<sha256>.json; the logical URI in the record is always
+    # data/decisions/... regardless of where the store is rooted.
+    dir: ${BEACON_DECISIONS_DIR:data/decisions}
+    # TM-25: hard cap on snapshot files in the store; a request that would exceed it is 503
+    # SERVICE_UNAVAILABLE and no decision is written.
+    max-files: 100000
 logging:
   structured:
     format:

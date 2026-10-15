@@ -53,6 +53,12 @@ tasks.named<ProcessResources>("processResources") {
         include("attempts.v1.schema.json")
         into("contracts/events")
     }
+    // BC-0111: the decision record and candidate snapshot are validated against the decision
+    // contract before the ledger transaction commits (ADR-0003), so the schema ships inside the jar.
+    from("../../contracts/decisions") {
+        include("decision-record.v1.schema.json")
+        into("contracts/decisions")
+    }
 }
 tasks.withType<Test> {
     useJUnitPlatform()
