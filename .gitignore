@@ -34,3 +34,6 @@ playwright-report/
 # local agent instruction files (kept out of history by request, 2026-10-14)
 AGENTS.md
 CLAUDE.md
+
+# TypeScript incremental build state
+*.tsbuildinfo

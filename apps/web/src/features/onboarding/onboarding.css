@@ -1,0 +1,132 @@
+.onboarding__header {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.onboarding__progress {
+  margin-block-start: var(--space-2);
+}
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
+}
+
+.steps__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.steps__item[aria-current='step'] {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.steps__number {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  border: var(--border-width) solid currentColor;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+}
+
+.steps__item[aria-current='step'] .steps__number {
+  background: var(--color-action);
+  color: var(--color-text-inverse);
+  border-color: var(--color-action);
+}
+
+.onboarding__columns {
+  display: grid;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.onboarding__form {
+  max-width: var(--size-reading-max);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.onboarding__form h2 {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.onboarding__step-count {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-stamp);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.onboarding__actions {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  margin-block-start: var(--space-3);
+}
+
+.consent {
+  display: grid;
+  gap: var(--space-4);
+  background: var(--color-surface-sunken);
+}
+
+.consent__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.consent__text {
+  display: grid;
+  gap: var(--space-3);
+  max-width: var(--measure);
+}
+
+.consent__skeleton {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.consent__meta {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.consent__meta dt {
+  color: var(--color-text-muted);
+}
+
+.consent__meta dd {
+  margin: 0;
+}
+
+@media (min-width: 768px) {
+  .onboarding__columns {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+
+  /* Editorial offset: the consent sheet sits a little lower than the form. */
+  .onboarding__aside {
+    margin-block-start: var(--space-6);
+  }
+}

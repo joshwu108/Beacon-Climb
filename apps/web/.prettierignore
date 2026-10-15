@@ -1,3 +1,5 @@
 dist/
 node_modules/
 coverage/
+public/mockServiceWorker.js
+src/api/generated/
