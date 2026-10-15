@@ -16,7 +16,7 @@ class FeatureRecomputeHookTest {
     FeatureRecomputeService failing =
         new FeatureRecomputeService(null, null, null, null) {
           @Override
-          public FeatureSnapshot recompute(UUID userId, Instant cutoffW) {
+          public Outcome recompute(UUID userId, Instant cutoffW) {
             throw new IllegalStateException("database unavailable");
           }
         };

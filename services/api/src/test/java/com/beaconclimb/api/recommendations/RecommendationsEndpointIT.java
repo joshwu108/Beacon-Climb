@@ -6,6 +6,7 @@ import com.beaconclimb.api.identity.ContractSchemas;
 import com.beaconclimb.api.platform.web.ErrorCode;
 import com.beaconclimb.api.platform.web.ErrorEnvelope;
 import com.beaconclimb.api.platform.web.FieldError;
+import com.beaconclimb.api.ranking.TieBreak;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -103,18 +104,44 @@ class RecommendationsEndpointIT extends RecommendationsTestSupport {
   }
 
   @Test
-  void differentSessionIdMayChangeTieOrderOnly() {
+  void differentSessionIdMovesIdsOnlyAmongEqualScoresAndTiesFollowEachSessionsKey() {
     Account account = registerReady("ADVANCED");
-    Map<String, Object> a = recommendationBody("STRENGTH", 8, UUID.randomUUID(), List.of());
-    Map<String, Object> b = recommendationBody("STRENGTH", 8, UUID.randomUUID(), List.of());
+    UUID sessionA = UUID.randomUUID();
+    UUID sessionB = UUID.randomUUID();
 
-    JsonNode first = recommendOk(account.token(), a);
-    JsonNode second = recommendOk(account.token(), b);
+    JsonNode first =
+        recommendOk(account.token(), recommendationBody("STRENGTH", 8, sessionA, List.of()));
+    JsonNode second =
+        recommendOk(account.token(), recommendationBody("STRENGTH", 8, sessionB, List.of()));
 
-    // Scores do not depend on the session id, so position by position the scores agree and any
-    // id that moved did so among equal scores (the sha256 tie order of ADR-0003).
-    assertThat(servedScoreBits(second)).isEqualTo(servedScoreBits(first));
-    assertThat(servedIds(second)).hasSameSizeAs(servedIds(first));
+    // Scores do not depend on the session id: position by position the score bits agree, so any
+    // id that differs between the sessions moved among equal scores only, and within each session
+    // every run of equal scores is in ascending sha256 tie order (ADR-0003, TieBreak.key).
+    List<String> idsA = servedIds(first);
+    List<String> idsB = servedIds(second);
+    List<Long> bitsA = servedScoreBits(first);
+    List<Long> bitsB = servedScoreBits(second);
+    assertThat(idsB).hasSameSizeAs(idsA);
+    assertThat(bitsB).isEqualTo(bitsA);
+    for (int i = 0; i < idsA.size(); i++) {
+      if (!idsA.get(i).equals(idsB.get(i))) {
+        assertThat(bitsB.get(i)).as("position %d", i + 1).isEqualTo(bitsA.get(i));
+        assertThat(idsB).contains(idsA.get(i));
+      }
+    }
+    assertTiesFollowTheSessionKey(account.userId(), sessionA, idsA, bitsA);
+    assertTiesFollowTheSessionKey(account.userId(), sessionB, idsB, bitsB);
+  }
+
+  private static void assertTiesFollowTheSessionKey(
+      UUID userId, UUID sessionId, List<String> ids, List<Long> bits) {
+    for (int i = 1; i < ids.size(); i++) {
+      if (bits.get(i).equals(bits.get(i - 1))) {
+        assertThat(TieBreak.key("heuristic-v1", userId, sessionId, ids.get(i - 1)))
+            .as("session %s positions %d and %d", sessionId, i, i + 1)
+            .isLessThan(TieBreak.key("heuristic-v1", userId, sessionId, ids.get(i)));
+      }
+    }
   }
 
   @Test

@@ -11,7 +11,16 @@ import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-/** {@code user_feature_snapshots} access: idempotent upsert on the primary key and a read. */
+/**
+ * {@code user_feature_snapshots} access: a monotonic upsert on the primary key and a read.
+ *
+ * <p>Monotonic rule (BC-0124 HIGH-2): the live row of a {@code (user_id, feature_schema_version)}
+ * only ever moves forward in {@code cutoff_w}. An upsert whose {@code cutoff_w} is older than the
+ * stored one is a no-op ({@code ON CONFLICT ... DO UPDATE ... WHERE stored.cutoff_w <=
+ * EXCLUDED.cutoff_w}), so a recompute at an explicit past cutoff can never replace the snapshot the
+ * attempts hook just wrote at {@code W = now} and silently turn a warm user cold. An equal cutoff
+ * does replace, which is what a repeat recompute after a correction relies on.
+ */
 @Repository
 public class FeatureSnapshotRepository {
 
@@ -21,29 +30,37 @@ public class FeatureSnapshotRepository {
     this.jdbc = jdbc;
   }
 
-  public void upsert(FeatureSnapshot snapshot) {
-    jdbc.sql(
-            "INSERT INTO user_feature_snapshots (user_id, feature_schema_version, cutoff_w,"
-                + " feature_as_of, aggregates_json, provenance_checksum, source, source_partition,"
-                + " source_offset, computed_at) VALUES (:user_id, :version, :cutoff_w, :as_of,"
-                + " CAST(:aggregates AS jsonb), :checksum, :source, :partition, :offset,"
-                + " :computed_at) ON CONFLICT (user_id, feature_schema_version) DO UPDATE SET"
-                + " cutoff_w = EXCLUDED.cutoff_w, feature_as_of = EXCLUDED.feature_as_of,"
-                + " aggregates_json = EXCLUDED.aggregates_json,"
-                + " provenance_checksum = EXCLUDED.provenance_checksum, source = EXCLUDED.source,"
-                + " source_partition = EXCLUDED.source_partition,"
-                + " source_offset = EXCLUDED.source_offset, computed_at = EXCLUDED.computed_at")
-        .param("user_id", snapshot.userId())
-        .param("version", snapshot.featureSchemaVersion())
-        .param("cutoff_w", timestamp(snapshot.cutoffW()))
-        .param("as_of", timestamp(snapshot.featureAsOf()))
-        .param("aggregates", snapshot.aggregates().toJson())
-        .param("checksum", snapshot.provenanceChecksum())
-        .param("source", snapshot.source().name())
-        .param("partition", snapshot.sourcePartition())
-        .param("offset", snapshot.sourceOffset())
-        .param("computed_at", timestamp(snapshot.computedAt()))
-        .update();
+  /**
+   * Inserts or replaces the live row and returns true; returns false (and leaves the row alone)
+   * when the stored {@code cutoff_w} is newer than {@code snapshot.cutoffW()}.
+   */
+  public boolean upsert(FeatureSnapshot snapshot) {
+    int rows =
+        jdbc.sql(
+                "INSERT INTO user_feature_snapshots (user_id, feature_schema_version, cutoff_w,"
+                    + " feature_as_of, aggregates_json, provenance_checksum, source,"
+                    + " source_partition, source_offset, computed_at) VALUES (:user_id, :version,"
+                    + " :cutoff_w, :as_of, CAST(:aggregates AS jsonb), :checksum, :source,"
+                    + " :partition, :offset, :computed_at)"
+                    + " ON CONFLICT (user_id, feature_schema_version) DO UPDATE SET"
+                    + " cutoff_w = EXCLUDED.cutoff_w, feature_as_of = EXCLUDED.feature_as_of,"
+                    + " aggregates_json = EXCLUDED.aggregates_json,"
+                    + " provenance_checksum = EXCLUDED.provenance_checksum,"
+                    + " source = EXCLUDED.source, source_partition = EXCLUDED.source_partition,"
+                    + " source_offset = EXCLUDED.source_offset, computed_at = EXCLUDED.computed_at"
+                    + " WHERE user_feature_snapshots.cutoff_w <= EXCLUDED.cutoff_w")
+            .param("user_id", snapshot.userId())
+            .param("version", snapshot.featureSchemaVersion())
+            .param("cutoff_w", timestamp(snapshot.cutoffW()))
+            .param("as_of", timestamp(snapshot.featureAsOf()))
+            .param("aggregates", snapshot.aggregates().toJson())
+            .param("checksum", snapshot.provenanceChecksum())
+            .param("source", snapshot.source().name())
+            .param("partition", snapshot.sourcePartition())
+            .param("offset", snapshot.sourceOffset())
+            .param("computed_at", timestamp(snapshot.computedAt()))
+            .update();
+    return rows == 1;
   }
 
   public Optional<FeatureSnapshot> find(UUID userId, int featureSchemaVersion) {

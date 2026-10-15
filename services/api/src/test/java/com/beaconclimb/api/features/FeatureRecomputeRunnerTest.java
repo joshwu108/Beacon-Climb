@@ -27,20 +27,24 @@ class FeatureRecomputeRunnerTest {
       super(null, null, null, null);
     }
 
+    boolean stored = true;
+
     @Override
-    public FeatureSnapshot recompute(UUID userId, Instant cutoffW) {
+    public Outcome recompute(UUID userId, Instant cutoffW) {
       calls.add(userId + "@" + cutoffW);
-      return new FeatureSnapshot(
-          userId,
-          1,
-          cutoffW,
-          null,
-          FeatureComputer.compute(List.of(), cutoffW).aggregates(),
-          "0".repeat(64),
-          FeatureSource.SYNC,
-          null,
-          null,
-          cutoffW);
+      return new Outcome(
+          new FeatureSnapshot(
+              userId,
+              1,
+              cutoffW,
+              null,
+              FeatureComputer.compute(List.of(), cutoffW).aggregates(),
+              "0".repeat(64),
+              FeatureSource.SYNC,
+              null,
+              null,
+              cutoffW),
+          stored);
     }
 
     @Override
@@ -80,6 +84,21 @@ class FeatureRecomputeRunnerTest {
                 + USER_A
                 + " cutoff_w=2026-10-14T14:00:00Z feature_as_of=null checksum="
                 + "0".repeat(64));
+  }
+
+  @Test
+  void unstoredRecomputeAppendsTheOlderCutoffSuffixAndStillExitsZero() {
+    RecordingService service = new RecordingService();
+    service.stored = false;
+    FeatureRecomputeRunner runner =
+        new FeatureRecomputeRunner(
+            service, new RecomputeProperties(USER_A.toString(), null), clock());
+
+    runner.run(new DefaultApplicationArguments());
+
+    assertThat(runner.getExitCode()).isZero();
+    assertThat(FeatureRecomputeRunner.line(service.recompute(USER_A, NOW)))
+        .endsWith(" checksum=" + "0".repeat(64) + " stored=false (older cutoff than live row)");
   }
 
   @Test

@@ -189,6 +189,44 @@ class FeatureComputerTest {
     assertThat(parsed.toJson()).isEqualTo(original.toJson());
   }
 
+  /** BC-0124 item 9: an identical duplicate row changes nothing. */
+  @Test
+  void identicalDuplicateRowsCountOnce() {
+    AttemptFeatureRow r = row(W.minusSeconds(60), true, 20.0);
+
+    FeatureComputer.Result duplicated = FeatureComputer.compute(List.of(r, r), W);
+    FeatureComputer.Result single = FeatureComputer.compute(List.of(r), W);
+
+    assertThat(duplicated).isEqualTo(single);
+    assertThat(duplicated.aggregates().attempts7d()).isEqualTo(1);
+    assertThat(duplicated.aggregates().sends7d()).isEqualTo(1);
+    assertThat(duplicated.checksum()).isEqualTo(FeatureComputer.provenanceChecksum(List.of(r)));
+  }
+
+  /** BC-0124 item 9: only the highest revision of an attempt counts, whatever the row order. */
+  @Test
+  void lowerRevisionOfTheSameAttemptIsIgnored() {
+    UUID id = Uuid7.next();
+    AttemptFeatureRow rev1 =
+        new AttemptFeatureRow(id, 1, "route:40", W.minusSeconds(60), true, 20.0);
+    AttemptFeatureRow rev2 =
+        new AttemptFeatureRow(id, 2, "route:40", W.minusSeconds(60), false, 20.0);
+
+    FeatureComputer.Result newestFirst = FeatureComputer.compute(List.of(rev2, rev1), W);
+    FeatureComputer.Result oldestFirst = FeatureComputer.compute(List.of(rev1, rev2), W);
+    FeatureComputer.Result onlyRev2 = FeatureComputer.compute(List.of(rev2), W);
+
+    assertThat(newestFirst).isEqualTo(onlyRev2);
+    assertThat(oldestFirst).isEqualTo(onlyRev2);
+    assertThat(newestFirst.aggregates().attempts7d()).isEqualTo(1);
+    assertThat(newestFirst.aggregates().sends7d()).isZero();
+    assertThat(newestFirst.aggregates().sends90d()).isZero();
+    assertThat(newestFirst.checksum())
+        .isEqualTo(
+            com.beaconclimb.api.platform.json.Jcs.sha256Hex(
+                (id + ":2").getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+  }
+
   private static AttemptFeatureRow row(Instant at, boolean sent, Double grade) {
     return row(at, sent, grade, "route:40");
   }

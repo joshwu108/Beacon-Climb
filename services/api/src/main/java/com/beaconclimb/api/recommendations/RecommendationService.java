@@ -138,7 +138,7 @@ public class RecommendationService {
     FeatureSnapshot snapshot =
         snapshots
             .find(userId, FeatureAggregates.SCHEMA_VERSION)
-            .orElseGet(() -> features.recompute(userId, now));
+            .orElseGet(() -> features.recompute(userId, now).snapshot());
     List<CandidateRow> rows = candidates.candidates(board.boardId(), request.angleDeg(), now);
     Map<String, Instant> lastAttempts =
         candidates.lastAttemptedAt(userId, board.boardId(), request.angleDeg());

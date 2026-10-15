@@ -1,6 +1,7 @@
 package com.beaconclimb.api.attempts;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.beaconclimb.api.identity.ContractSchemas;
 import com.beaconclimb.api.platform.web.ErrorCode;
@@ -12,6 +13,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +26,33 @@ import tools.jackson.databind.JsonNode;
  * decided before anything about the row is revealed (TM-02).
  */
 class AttemptPatchIT extends AttemptsTestSupport {
+
+  /** BC-0124 item 7 (V7, TM-24): the app role can append revisions but never rewrite them. */
+  @Test
+  void appRoleCannotUpdateOrDeleteRevisionRows() {
+    Account account = registerWithConsent();
+    UUID id = UUID.fromString(createAttempt(account, visibleRouteId()));
+    assertThat(revisionRows(id)).hasSize(1);
+
+    assertThatThrownBy(
+            () ->
+                jdbc.sql(
+                        "UPDATE attempt_revisions SET change_type = change_type WHERE attempt_id = :id")
+                    .param("id", id)
+                    .update())
+        .isInstanceOf(DataAccessException.class)
+        .rootCause()
+        .hasMessageContaining("permission denied");
+    assertThatThrownBy(
+            () ->
+                jdbc.sql("DELETE FROM attempt_revisions WHERE attempt_id = :id")
+                    .param("id", id)
+                    .update())
+        .isInstanceOf(DataAccessException.class)
+        .rootCause()
+        .hasMessageContaining("permission denied");
+    assertThat(revisionRows(id)).hasSize(1);
+  }
 
   @Test
   void correctionThenRetractionWriteOneRevisionAndOneEventEach() {

@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -138,34 +139,64 @@ class RankerPropertyTest {
     }
   }
 
+  /**
+   * BC-0124 item 8: with duplicate ids the ranker behaves as if only the first of each were given.
+   */
+  @Property(tries = 1000)
+  void duplicateIdsAreServedAtMostOnceAndOnlyTheFirstOccurrenceCounts(
+      @ForAll("candidatesWithDuplicates") List<Candidate> candidates,
+      @ForAll("contexts") UserContext context,
+      @ForAll @IntRange(min = 0, max = 12) int maxRoutes) {
+    RankResult result = Ranker.rank(candidates, context, POLICY, maxRoutes);
+
+    assertThat(result.ranked()).extracting(Ranked::routeVariantId).doesNotHaveDuplicates();
+    assertThat(result.rejected()).extracting(FilterOutcome::routeVariantId).doesNotHaveDuplicates();
+    List<Candidate> firstOccurrences = new ArrayList<>();
+    Set<String> seen = new HashSet<>();
+    for (Candidate candidate : candidates) {
+      if (seen.add(candidate.routeVariantId())) {
+        firstOccurrences.add(candidate);
+      }
+    }
+    assertThat(result).isEqualTo(Ranker.rank(firstOccurrences, context, POLICY, maxRoutes));
+  }
+
   @Provide
   Arbitrary<List<Candidate>> candidates() {
-    Arbitrary<Candidate> candidate =
-        Combinators.combine(
-                Arbitraries.integers().between(0, 29),
-                Arbitraries.of(RankingFixtures.BOARD, RankingFixtures.BOARD, "other-board"),
-                Arbitraries.of(RankingFixtures.ANGLE, RankingFixtures.ANGLE, 35),
-                Arbitraries.of(10.0, 14.0, 17.5, 18.0, 19.0, 21.0, 24.0, 30.0, 19.0, 18.0)
-                    .injectNull(0.1),
-                Arbitraries.integers().between(0, 20),
-                Arbitraries.of(
-                    Candidate.ACTIVE, Candidate.ACTIVE, Candidate.ACTIVE, "RETIRED", "INVALID"),
-                Arbitraries.subsetOf(TAGS).ofMaxSize(2),
-                Arbitraries.integers().between(0, 100).injectNull(0.5))
-            .as(
-                (id, board, angle, grade, obs, status, tags, hoursAgo) ->
-                    new Candidate(
-                        "v" + id + ":" + angle,
-                        board,
-                        angle,
-                        grade,
-                        obs,
-                        status,
-                        List.copyOf(tags),
-                        hoursAgo == null
-                            ? null
-                            : RankingFixtures.NOW.minus(Duration.ofHours(hoursAgo))));
-    return candidate.list().ofMinSize(0).ofMaxSize(16).uniqueElements(Candidate::routeVariantId);
+    return candidate().list().ofMinSize(0).ofMaxSize(16).uniqueElements(Candidate::routeVariantId);
+  }
+
+  /** The same candidates without the uniqueness constraint: duplicate ids are frequent. */
+  @Provide
+  Arbitrary<List<Candidate>> candidatesWithDuplicates() {
+    return candidate().list().ofMinSize(0).ofMaxSize(16);
+  }
+
+  private static Arbitrary<Candidate> candidate() {
+    return Combinators.combine(
+            Arbitraries.integers().between(0, 29),
+            Arbitraries.of(RankingFixtures.BOARD, RankingFixtures.BOARD, "other-board"),
+            Arbitraries.of(RankingFixtures.ANGLE, RankingFixtures.ANGLE, 35),
+            Arbitraries.of(10.0, 14.0, 17.5, 18.0, 19.0, 21.0, 24.0, 30.0, 19.0, 18.0)
+                .injectNull(0.1),
+            Arbitraries.integers().between(0, 20),
+            Arbitraries.of(
+                Candidate.ACTIVE, Candidate.ACTIVE, Candidate.ACTIVE, "RETIRED", "INVALID"),
+            Arbitraries.subsetOf(TAGS).ofMaxSize(2),
+            Arbitraries.integers().between(0, 100).injectNull(0.5))
+        .as(
+            (id, board, angle, grade, obs, status, tags, hoursAgo) ->
+                new Candidate(
+                    "v" + id + ":" + angle,
+                    board,
+                    angle,
+                    grade,
+                    obs,
+                    status,
+                    List.copyOf(tags),
+                    hoursAgo == null
+                        ? null
+                        : RankingFixtures.NOW.minus(Duration.ofHours(hoursAgo))));
   }
 
   @Provide

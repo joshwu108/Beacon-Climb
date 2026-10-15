@@ -206,6 +206,79 @@ class RankerTest {
         .isEqualTo(Double.doubleToRawLongBits(expected));
   }
 
+  /** BC-0124 item 8: duplicate ids are served once and the first occurrence is the one scored. */
+  @Test
+  void duplicateCandidateIdsAreServedOnceKeepingTheFirstOccurrence() {
+    List<Candidate> candidates =
+        List.of(
+            candidate("a:40", 18.0),
+            candidate("a:40", 30.0),
+            candidate("b:40", 18.0),
+            candidate("c:40", 18.0));
+
+    RankResult result = Ranker.rank(candidates, WARM, POLICY, 10);
+
+    assertThat(ids(result.ranked())).containsExactlyInAnyOrder("a:40", "b:40", "c:40");
+    assertThat(inputs(result.ranked(), "a:40").challengeFit()).isEqualTo(1.0);
+    assertThat(result.rejected()).isEmpty();
+    assertThat(result.lowInventoryWidened()).isFalse();
+  }
+
+  /**
+   * BC-0124 item 10: heuristic-v1 inputs with the IEEE-754 bit pattern of the score pinned as a
+   * literal. The expected values were computed offline (a Python script summing the five products
+   * strictly left to right with the weights below); they are not derived from {@link Scoring#score}
+   * here. Rows flagged order-sensitive have a different bit pattern when the five terms are summed
+   * right to left, so this fixture pins the order of the replay contract.
+   */
+  @Test
+  void heuristicV1ScoreBitsMatchThePinnedLeftToRightFixture() {
+    record Row(
+        double grade,
+        double target,
+        double novelty,
+        double preference,
+        int obs,
+        long bits,
+        boolean orderSensitive) {}
+    List<Row> rows =
+        List.of(
+            new Row(10.0, 11.0, 0.0, 1.0, 2, 4602318531202457274L, true),
+            new Row(18.0, 18.0, 1.0, 1.0, 10, 4604930618986332160L, false),
+            new Row(21.0, 18.0, 1.0, 1.0, 5, 4603399395113026191L, true),
+            new Row(13.0, 20.0, 1.0, 0.0, 3, 4599075939470750516L, false),
+            new Row(17.5, 19.0, 0.0, 0.0, 7, 4601057523306793534L, false),
+            new Row(24.0, 18.0, 1.0, 1.0, 1, 4601237667291888354L, false),
+            new Row(12.0, 15.0, 0.0, 1.0, 9, 4602138387217362453L, true),
+            new Row(30.0, 12.0, 1.0, 0.0, 0, 4594572339843380019L, false),
+            new Row(19.0, 22.0, 1.0, 1.0, 11, 4603849755075763240L, false),
+            new Row(14.0, 15.0, 0.0, 0.0, 4, 4600877379321698714L, false),
+            new Row(23.0, 26.0, 1.0, 0.0, 6, 4602498675187552091L, true),
+            new Row(25.0, 20.0, 0.0, 1.0, 8, 4600517091351509075L, true));
+    Policy.Weights w = POLICY.weights();
+    assertThat(w).isEqualTo(new Policy.Weights(0.40, 0.25, 0.15, 0.10, 0.10));
+    assertThat(POLICY.gradeWindow()).isEqualTo(10.0);
+    assertThat(POLICY.minObs()).isEqualTo(10);
+
+    for (Row row : rows) {
+      double fit = 1.0 - Math.min(1.0, Math.abs(row.grade() - row.target()) / 10.0);
+      double confidence = Math.min(1.0, row.obs() / 10.0);
+      ScoreInputs in =
+          new ScoreInputs(row.target(), fit, row.novelty(), row.preference(), confidence);
+      long actual = Double.doubleToRawLongBits(Scoring.score(in, w));
+      assertThat(actual).as("%s", row).isEqualTo(row.bits());
+      double reversed = w.confidence() * confidence;
+      reversed = reversed + w.preference() * row.preference();
+      reversed = reversed + w.novelty() * row.novelty();
+      reversed = reversed + w.skillGap() * 0.0;
+      reversed = reversed + w.challenge() * fit;
+      assertThat(Double.doubleToRawLongBits(reversed) != row.bits())
+          .as("order sensitivity of %s", row)
+          .isEqualTo(row.orderSensitive());
+    }
+    assertThat(rows).filteredOn(Row::orderSensitive).hasSize(5);
+  }
+
   @Test
   void emptyInputAndZeroMaxRoutesAreTotal() {
     assertThat(Ranker.rank(List.of(), WARM, POLICY, 5).ranked()).isEmpty();

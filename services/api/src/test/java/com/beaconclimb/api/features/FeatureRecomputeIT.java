@@ -48,9 +48,9 @@ class FeatureRecomputeIT extends AttemptsTestSupport {
     String b = attempt(account, routes.get(1), T.minus(Duration.ofDays(2)), false);
     String c = attempt(account, routes.get(2), T.minus(Duration.ofDays(40)), true);
 
-    FeatureSnapshot first = features.recompute(account.userId(), T);
+    FeatureSnapshot first = features.recompute(account.userId(), T).snapshot();
     String firstStored = storedJson(account.userId());
-    FeatureSnapshot second = features.recompute(account.userId(), T);
+    FeatureSnapshot second = features.recompute(account.userId(), T).snapshot();
 
     assertThat(second.aggregates().toJson()).isEqualTo(first.aggregates().toJson());
     assertThat(second.provenanceChecksum()).isEqualTo(first.provenanceChecksum());
@@ -76,12 +76,12 @@ class FeatureRecomputeIT extends AttemptsTestSupport {
     Account account = registerWithConsent();
     String route = visibleRouteId();
     String id = attempt(account, route, T.minus(Duration.ofHours(2)), true);
-    FeatureSnapshot before = features.recompute(account.userId(), T);
+    FeatureSnapshot before = features.recompute(account.userId(), T).snapshot();
 
     assertThat(patchAttempt(account.token(), id, "\"1\"", "{\"sent\":false}").getStatusCode())
         .isEqualTo(HttpStatus.OK);
-    FeatureSnapshot after = features.recompute(account.userId(), T);
-    FeatureSnapshot again = features.recompute(account.userId(), T);
+    FeatureSnapshot after = features.recompute(account.userId(), T).snapshot();
+    FeatureSnapshot again = features.recompute(account.userId(), T).snapshot();
 
     assertThat(before.aggregates().sends7d()).isEqualTo(1);
     assertThat(after.aggregates().sends7d()).isZero();
@@ -100,11 +100,11 @@ class FeatureRecomputeIT extends AttemptsTestSupport {
     List<String> routes = visibleRouteIds(2);
     String kept = attempt(account, routes.get(0), T.minus(Duration.ofHours(1)), true);
     String gone = attempt(account, routes.get(1), T.minus(Duration.ofHours(5)), true);
-    FeatureSnapshot before = features.recompute(account.userId(), T);
+    FeatureSnapshot before = features.recompute(account.userId(), T).snapshot();
 
     assertThat(patchAttempt(account.token(), gone, "\"1\"", "{\"retract\":true}").getStatusCode())
         .isEqualTo(HttpStatus.OK);
-    FeatureSnapshot after = features.recompute(account.userId(), T);
+    FeatureSnapshot after = features.recompute(account.userId(), T).snapshot();
 
     assertThat(before.aggregates().attempts7d()).isEqualTo(2);
     assertThat(before.aggregates().distinctSessions30d()).isEqualTo(2);
@@ -125,7 +125,7 @@ class FeatureRecomputeIT extends AttemptsTestSupport {
     attempt(account, routes.get(1), T.minus(Duration.ofDays(2)), true);
     Instant w = T.minus(Duration.ofDays(10));
 
-    FeatureSnapshot snapshot = features.recompute(account.userId(), w);
+    FeatureSnapshot snapshot = features.recompute(account.userId(), w).snapshot();
 
     assertThat(snapshot.cutoffW()).isEqualTo(w);
     assertThat(snapshot.featureAsOf()).isEqualTo(T.minus(Duration.ofDays(20))).isBefore(w);
@@ -139,7 +139,7 @@ class FeatureRecomputeIT extends AttemptsTestSupport {
   void emptyUserHasZerosNullsAndTheChecksumOfTheEmptyString() {
     Account account = registerWithConsent();
 
-    FeatureSnapshot snapshot = features.recompute(account.userId(), T);
+    FeatureSnapshot snapshot = features.recompute(account.userId(), T).snapshot();
 
     assertThat(snapshot.featureAsOf()).isNull();
     assertThat(snapshot.provenanceChecksum()).isEqualTo(SHA256_OF_EMPTY);
@@ -165,7 +165,7 @@ class FeatureRecomputeIT extends AttemptsTestSupport {
     attempt(account, route, t.plus(Duration.ofHours(2)).plus(Duration.ofMinutes(59)), false);
     attempt(account, route, t.plus(Duration.ofHours(6)), true);
 
-    FeatureAggregates agg = features.recompute(account.userId(), T).aggregates();
+    FeatureAggregates agg = features.recompute(account.userId(), T).snapshot().aggregates();
 
     assertThat(agg.distinctSessions30d()).isEqualTo(2);
     assertThat(agg.attempts30d()).isEqualTo(4);
@@ -182,7 +182,7 @@ class FeatureRecomputeIT extends AttemptsTestSupport {
     attempt(account, graded, T.minus(Duration.ofHours(2)), false);
     attempt(account, ungraded, T.minus(Duration.ofHours(3)), true);
 
-    FeatureAggregates agg = features.recompute(account.userId(), T).aggregates();
+    FeatureAggregates agg = features.recompute(account.userId(), T).snapshot().aggregates();
 
     assertThat(agg.sendRateByGradeBand90d())
         .containsOnlyKeys(GradeBandBuckets.keyFor(grade), GradeBandBuckets.UNGRADED)
@@ -219,8 +219,9 @@ class FeatureRecomputeIT extends AttemptsTestSupport {
     attempt(account, routes.get(0), T.minus(Duration.ofHours(1)), true);
     attempt(account, routes.get(1), T.minus(Duration.ofDays(3)), false);
 
-    String json = features.recompute(account.userId(), T).aggregates().toJson();
-    String empty = features.recompute(registerWithConsent().userId(), T).aggregates().toJson();
+    String json = features.recompute(account.userId(), T).snapshot().aggregates().toJson();
+    String empty =
+        features.recompute(registerWithConsent().userId(), T).snapshot().aggregates().toJson();
 
     assertThat(UserFeaturesSchema.validate(json)).as(json).isEmpty();
     assertThat(UserFeaturesSchema.validate(empty)).as(empty).isEmpty();

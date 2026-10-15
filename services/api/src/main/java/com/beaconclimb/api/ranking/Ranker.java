@@ -4,8 +4,10 @@ import com.beaconclimb.api.ranking.FilterOutcome.FilterReason;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * The deterministic heuristic ranker (BC-0110): pure and total over valid inputs. Hard filters
@@ -15,6 +17,11 @@ import java.util.Optional;
  * sorted by score descending then ascending {@link TieBreak} key, and cut to {@code maxRoutes}. No
  * hash-map iteration decides any order; candidate order only breaks nothing because the sort key is
  * total.
+ *
+ * <p>Duplicate ids (BC-0124 item 8): the ranker does not rely on the caller handing it distinct
+ * {@code routeVariantId}s. Candidates are de-duplicated by id before anything else, keeping the
+ * first occurrence in candidate order, so every id is filtered, scored and served at most once and
+ * the decision record never lists one variant twice.
  */
 public final class Ranker {
 
@@ -23,7 +30,8 @@ public final class Ranker {
   private Ranker() {}
 
   public static RankResult rank(
-      List<Candidate> candidates, UserContext context, Policy policy, int maxRoutes) {
+      List<Candidate> candidateInput, UserContext context, Policy policy, int maxRoutes) {
+    List<Candidate> candidates = distinctById(candidateInput);
     List<FilterOutcome> rejected = new ArrayList<>();
     List<Candidate> survivors = new ArrayList<>();
     List<Candidate> cooled = new ArrayList<>();
@@ -55,6 +63,18 @@ public final class Ranker {
       ranked.add(ranked(scored.get(i), i + 1, widened, coldStart));
     }
     return new RankResult(ranked, rejected, widened, coldStart);
+  }
+
+  /** The first candidate per {@code routeVariantId}, in candidate order. */
+  private static List<Candidate> distinctById(List<Candidate> candidates) {
+    Set<String> seen = new HashSet<>();
+    List<Candidate> distinct = new ArrayList<>(candidates.size());
+    for (Candidate candidate : candidates) {
+      if (seen.add(candidate.routeVariantId())) {
+        distinct.add(candidate);
+      }
+    }
+    return distinct;
   }
 
   /** The widened survivor list in original candidate order. */

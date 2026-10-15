@@ -23,6 +23,11 @@ import org.springframework.transaction.support.TransactionTemplate;
  * occurred_at <= W} joined to the variant's grade; {@link FeatureComputer} folds the rows and the
  * snapshot is upserted as source SYNC. Read and write share one transaction so the provenance
  * checksum describes exactly the rows that produced the aggregates.
+ *
+ * <p>The live row is monotonic in {@code cutoff_w} ({@link FeatureSnapshotRepository}): a recompute
+ * at a cutoff older than the stored row returns the computed snapshot with {@link Outcome#stored()}
+ * false and leaves the row untouched. Parity oracle runs at historical cutoffs (BC-0306) must
+ * therefore target a separate comparison, not the live row that serves recommendations.
  */
 @Service
 public class FeatureRecomputeService {
@@ -49,17 +54,21 @@ public class FeatureRecomputeService {
     this.clock = clock;
   }
 
-  public FeatureSnapshot recompute(UUID userId, Instant cutoffW) {
+  /** The computed snapshot and whether the live row now holds it (false: older cutoff). */
+  public record Outcome(FeatureSnapshot snapshot, boolean stored) {}
+
+  public Outcome recompute(UUID userId, Instant cutoffW) {
     Instant computedAt = clock.instant().truncatedTo(ChronoUnit.MILLIS);
-    FeatureSnapshot snapshot =
-        tx.execute(status -> recomputeInTransaction(userId, cutoffW, computedAt));
+    Outcome outcome = tx.execute(status -> recomputeInTransaction(userId, cutoffW, computedAt));
+    FeatureSnapshot snapshot = outcome.snapshot();
     log.info(
-        "features outcome=RECOMPUTED user_id={} cutoff_w={} feature_as_of={} checksum={}",
+        "features outcome=RECOMPUTED user_id={} cutoff_w={} feature_as_of={} checksum={} stored={}",
         userId,
         cutoffW,
         snapshot.featureAsOf(),
-        snapshot.provenanceChecksum());
-    return snapshot;
+        snapshot.provenanceChecksum(),
+        outcome.stored());
+    return outcome;
   }
 
   /** Every account that is not erased, in id order, for {@code --recompute.user=all}. */
@@ -69,7 +78,7 @@ public class FeatureRecomputeService {
         .list();
   }
 
-  private FeatureSnapshot recomputeInTransaction(UUID userId, Instant cutoffW, Instant computedAt) {
+  private Outcome recomputeInTransaction(UUID userId, Instant cutoffW, Instant computedAt) {
     List<AttemptFeatureRow> rows =
         jdbc.sql(SELECT_INCLUDED)
             .param("user_id", userId)
@@ -89,8 +98,8 @@ public class FeatureRecomputeService {
             null,
             null,
             computedAt);
-    snapshots.upsert(snapshot);
-    return snapshot;
+    boolean stored = snapshots.upsert(snapshot);
+    return new Outcome(snapshot, stored);
   }
 
   private static AttemptFeatureRow row(ResultSet rs, int rowNum) throws SQLException {

@@ -115,7 +115,7 @@ class FeatureRecomputePropertyTest {
       apply(userId, code, attempts, submissions);
     }
 
-    FeatureSnapshot snapshot = features.recompute(userId, W);
+    FeatureSnapshot snapshot = features.recompute(userId, W).snapshot();
     FeatureSnapshot stored =
         new FeatureSnapshotRepository(jdbc)
             .find(userId, FeatureAggregates.SCHEMA_VERSION)

@@ -7,11 +7,14 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.UUID;
 
 /**
  * Pure computation of climber-features.v1 from the canonical attempt rows of one user
@@ -20,6 +23,11 @@ import java.util.TreeMap;
  * re-sorts defensively, so the result depends only on the row set and {@code W}, never on arrival
  * order. A window of N days is {@code (W - N*24h, W]}: the lower edge exclusive, the upper
  * inclusive. Two consecutive attempts more than three hours apart start a new session.
+ *
+ * <p>Revisions (BC-0124 item 9): "one row per attempt at its current revision" is a precondition
+ * the SQL caller satisfies but this class does not rely on. When several rows share an {@code
+ * attempt_id} only the highest {@code revision} counts (equal revisions: the first seen), so an
+ * identical duplicate or a stale lower revision that reaches the computer changes nothing.
  */
 public final class FeatureComputer {
 
@@ -41,7 +49,7 @@ public final class FeatureComputer {
 
   public static Result compute(List<AttemptFeatureRow> rows, Instant cutoffW) {
     List<AttemptFeatureRow> included =
-        rows.stream()
+        latestRevisionPerAttempt(rows).stream()
             .filter(row -> !row.occurredAt().isAfter(cutoffW))
             .sorted(NEWEST_FIRST)
             .toList();
@@ -63,6 +71,16 @@ public final class FeatureComputer {
             maxSentGrade(in90d),
             sessions(in30d));
     return new Result(aggregates, featureAsOf, provenanceChecksum(included));
+  }
+
+  /** One row per attempt_id: the highest revision, the first seen among equal revisions. */
+  static List<AttemptFeatureRow> latestRevisionPerAttempt(List<AttemptFeatureRow> rows) {
+    Map<UUID, AttemptFeatureRow> latest = new LinkedHashMap<>();
+    for (AttemptFeatureRow row : rows) {
+      latest.merge(
+          row.attemptId(), row, (kept, next) -> next.revision() > kept.revision() ? next : kept);
+    }
+    return List.copyOf(latest.values());
   }
 
   /** sha256 of the UTF-8 text {@code sorted("<attempt_id>:<revision>")} joined by commas. */

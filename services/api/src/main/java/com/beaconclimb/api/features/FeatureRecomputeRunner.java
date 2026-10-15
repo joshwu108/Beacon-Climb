@@ -18,9 +18,10 @@ import org.springframework.context.annotation.Profile;
 /**
  * {@code --spring.profiles.active=recompute [--recompute.user=<uuid>|all]
  * [--recompute.w=<instant>]} (BC-0113, {@code make recompute-features}). Prints one line per user:
- * {@code recomputed user_id=<id> cutoff_w=<W> feature_as_of=<instant|null> checksum=<hex>}. Exit 0
- * when every user succeeded, 2 for a bad argument, 1 when any recompute failed (the rest still
- * run).
+ * {@code recomputed user_id=<id> cutoff_w=<W> feature_as_of=<instant|null> checksum=<hex>},
+ * suffixed with {@code stored=false (older cutoff than live row)} when the live snapshot already
+ * had a newer {@code cutoff_w} and was left alone. Exit 0 when every user succeeded, 2 for a bad
+ * argument, 1 when any recompute failed (the rest still run).
  */
 @Configuration
 @Profile("recompute")
@@ -59,8 +60,7 @@ class FeatureRecomputeRunner implements ApplicationRunner, ExitCodeGenerator {
     exitCode = EXIT_OK;
     for (UUID userId : users) {
       try {
-        FeatureSnapshot snapshot = features.recompute(userId, cutoffW);
-        System.out.println(line(snapshot));
+        System.out.println(line(features.recompute(userId, cutoffW)));
       } catch (RuntimeException e) {
         log.error("recompute failed user_id={}", userId, e);
         System.err.println("recompute failed user_id=" + userId + ": " + e.getMessage());
@@ -69,15 +69,20 @@ class FeatureRecomputeRunner implements ApplicationRunner, ExitCodeGenerator {
     }
   }
 
-  static String line(FeatureSnapshot snapshot) {
-    return "recomputed user_id="
-        + snapshot.userId()
-        + " cutoff_w="
-        + snapshot.cutoffW()
-        + " feature_as_of="
-        + snapshot.featureAsOf()
-        + " checksum="
-        + snapshot.provenanceChecksum();
+  static final String NOT_STORED_SUFFIX = " stored=false (older cutoff than live row)";
+
+  static String line(FeatureRecomputeService.Outcome outcome) {
+    FeatureSnapshot snapshot = outcome.snapshot();
+    String line =
+        "recomputed user_id="
+            + snapshot.userId()
+            + " cutoff_w="
+            + snapshot.cutoffW()
+            + " feature_as_of="
+            + snapshot.featureAsOf()
+            + " checksum="
+            + snapshot.provenanceChecksum();
+    return outcome.stored() ? line : line + NOT_STORED_SUFFIX;
   }
 
   private Instant cutoff() {
