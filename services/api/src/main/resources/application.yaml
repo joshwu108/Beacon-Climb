@@ -1,4 +1,7 @@
 spring:
+  application:
+    # service.name in the structured (ECS) log lines.
+    name: beacon-api
   datasource:
     # Runtime role: DML only. No password fallback; an unset variable fails startup.
     url: ${BEACON_DB_URL:jdbc:postgresql://127.0.0.1:5432/beacon}
@@ -21,10 +24,27 @@ beacon:
     login-window: 15m
     # ADR-0005: opaque bearer tokens live 24 h (2 h on a public demo, privacy doc section 7).
     session-ttl: 24h
+  http:
+    # BC-0122 (HttpProperties). Bodies above this are 413 PAYLOAD_TOO_LARGE (TM-25).
+    max-body-bytes: 65536
+    # Writes (POST/PUT/PATCH/DELETE under /v1/) per authenticated user per minute; 429 above.
+    write-limit-per-minute: 60
+    # Unauthenticated POSTs (register, session) per client IP per minute, on top of the
+    # login failure limiter (beacon.auth.*).
+    public-write-limit-per-minute: 30
+    # Size cap of the in-memory bucket map before idle buckets are evicted.
+    max-tracked-clients: 10000
+    # Only true behind a reverse proxy that overwrites X-Forwarded-For (compose publishes the
+    # api on 127.0.0.1; the nginx front, when added, must set the header from $remote_addr).
+    trust-forwarded-headers: false
+    # Exact origins of the web client (apps/web dev server); no credentials.
+    cors-allowed-origins: http://localhost:5173,http://127.0.0.1:5173
 logging:
-  pattern:
-    # RequestIdFilter puts the request id in the MDC so every line can be correlated (TM-16).
-    level: "%5p [request_id=%X{request_id:-}]"
+  structured:
+    format:
+      # BC-0122: one JSON (Elastic Common Schema) line per event. MDC request_id and user_id
+      # (pseudonymous, TM-16/TM-33) and the access-log key-values are top-level members.
+      console: ecs
 management:
   endpoints:
     web:

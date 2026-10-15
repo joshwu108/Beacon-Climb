@@ -1,0 +1,9 @@
+package com.beaconclimb.api.platform.web;
+
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
+
+/** Wiring for the HTTP platform slice: typed {@code beacon.http.*} properties. */
+@Configuration
+@EnableConfigurationProperties(HttpProperties.class)
+class PlatformWebConfig {}

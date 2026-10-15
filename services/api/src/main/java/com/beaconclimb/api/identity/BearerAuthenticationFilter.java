@@ -1,7 +1,8 @@
 package com.beaconclimb.api.identity;
 
+import com.beaconclimb.api.platform.logging.LogFields;
 import com.beaconclimb.api.platform.web.ErrorCode;
-import com.beaconclimb.api.platform.web.ErrorEnvelope;
+import com.beaconclimb.api.platform.web.ErrorResponseWriter;
 import com.beaconclimb.api.platform.web.RequestIdFilter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -9,25 +10,26 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Clock;
-import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Plain servlet filter (no Spring Security) that resolves the caller from {@code Authorization:
  * Bearer <token>}: sha256(token) must match an unrevoked, unexpired session of an ACTIVE user.
  * Everything except the public routes below requires it; a missing, malformed, forged, expired or
  * revoked token gets a 401 UNAUTHENTICATED envelope (TM-04, TM-21). The token and header are never
- * logged (TM-16). Runs after {@link RequestIdFilter} so the 401 carries {@code X-Request-Id}.
+ * logged (TM-16). Runs after {@link RequestIdFilter} so the 401 carries {@code X-Request-Id}. Once
+ * resolved, the pseudonymous user id goes into the MDC ({@code user_id}) for every log line of the
+ * request and into a request attribute for the access log and the rate limiter (BC-0122).
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
@@ -41,12 +43,13 @@ public class BearerAuthenticationFilter extends OncePerRequestFilter {
 
   private final SessionRepository sessions;
   private final Clock clock;
-  private final JsonMapper json;
+  private final ErrorResponseWriter errors;
 
-  public BearerAuthenticationFilter(SessionRepository sessions, Clock clock, JsonMapper json) {
+  public BearerAuthenticationFilter(
+      SessionRepository sessions, Clock clock, ErrorResponseWriter errors) {
     this.sessions = sessions;
     this.clock = clock;
-    this.json = json;
+    this.errors = errors;
   }
 
   /**
@@ -75,7 +78,14 @@ public class BearerAuthenticationFilter extends OncePerRequestFilter {
       return;
     }
     request.setAttribute(AuthenticatedUser.ATTRIBUTE, user.get());
-    chain.doFilter(request, response);
+    String userId = user.get().userId().toString();
+    request.setAttribute(LogFields.USER_ID_ATTRIBUTE, userId);
+    MDC.put(LogFields.USER_ID, userId);
+    try {
+      chain.doFilter(request, response);
+    } finally {
+      MDC.remove(LogFields.USER_ID);
+    }
   }
 
   private Optional<AuthenticatedUser> authenticate(String authorization) {
@@ -91,14 +101,12 @@ public class BearerAuthenticationFilter extends OncePerRequestFilter {
 
   private void reject(HttpServletRequest request, HttpServletResponse response) throws IOException {
     log.debug("Rejected unauthenticated request request_id={}", RequestIdFilter.current(request));
-    ErrorEnvelope body =
-        ErrorEnvelope.of(
-            ErrorCode.UNAUTHENTICATED,
-            "Missing or invalid bearer token",
-            RequestIdFilter.current(request),
-            List.of());
-    response.setStatus(HttpStatus.UNAUTHORIZED.value());
-    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-    response.getWriter().write(json.writeValueAsString(body));
+    errors.write(
+        request,
+        response,
+        HttpStatus.UNAUTHORIZED,
+        ErrorCode.UNAUTHENTICATED,
+        "Missing or invalid bearer token",
+        Map.of());
   }
 }

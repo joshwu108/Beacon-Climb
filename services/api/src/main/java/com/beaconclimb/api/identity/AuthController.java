@@ -2,6 +2,8 @@ package com.beaconclimb.api.identity;
 
 import com.beaconclimb.api.identity.api.AuthRequest;
 import com.beaconclimb.api.identity.api.AuthResponse;
+import com.beaconclimb.api.platform.web.ClientAddress;
+import com.beaconclimb.api.platform.web.HttpProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -16,9 +18,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
   private final AuthService auth;
+  private final boolean trustForwardedHeaders;
 
-  public AuthController(AuthService auth) {
+  public AuthController(AuthService auth, HttpProperties http) {
     this.auth = auth;
+    this.trustForwardedHeaders = http.trustForwardedHeaders();
   }
 
   @PostMapping(
@@ -36,9 +40,9 @@ public class AuthController {
       produces = MediaType.APPLICATION_JSON_VALUE)
   @ResponseStatus(HttpStatus.CREATED)
   public AuthResponse createSession(@RequestBody AuthRequest body, HttpServletRequest request) {
-    // Per-IP limiting uses the socket peer; a reverse proxy must be configured for forwarded
-    // headers at deployment time (BC-0122) before X-Forwarded-For can be trusted.
-    return auth.login(body, request.getRemoteAddr());
+    // Per-IP limiting uses the socket peer unless beacon.http.trust-forwarded-headers is on
+    // (BC-0122, ClientAddress): only safe behind a proxy that overwrites X-Forwarded-For.
+    return auth.login(body, ClientAddress.of(request, trustForwardedHeaders));
   }
 
   @DeleteMapping("/v1/auth/session")

@@ -26,6 +26,8 @@ dependencies {
     // JSON Schema 2020-12 validator (Jackson 3 based, matching Boot 4.1): catalog line validation
     // in the importer (BC-0105) and contract conformance in tests.
     implementation("com.networknt:json-schema-validator:3.0.8")
+    // BC-0122: token-bucket rate limiting (ADR-0005). Core only; no Spring integration needed.
+    implementation("com.bucket4j:bucket4j_jdk17-core:8.21.0")
     runtimeOnly("org.postgresql:postgresql")
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

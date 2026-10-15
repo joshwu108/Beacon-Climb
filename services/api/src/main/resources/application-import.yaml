@@ -8,5 +8,9 @@ logging:
   level:
     root: WARN
     com.beaconclimb.api.catalog.importer: INFO
+  structured:
+    format:
+      # The importer is a CLI read by a person; an empty format restores the plain pattern.
+      console: ""
   pattern:
     console: "%d{HH:mm:ss.SSS} %5p %logger{0} - %m%n"
