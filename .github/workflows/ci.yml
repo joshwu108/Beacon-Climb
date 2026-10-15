@@ -9,19 +9,9 @@ concurrency:
   cancel-in-progress: true
 jobs:
   api:
+    # API tests start their own Postgres 17 via Testcontainers (services/api/src/test/.../AbstractPostgresIT),
+    # initialised with infra/compose/postgres/init.sql, so no service container or password env is needed.
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_DB: beacon
-          POSTGRES_USER: beacon
-          POSTGRES_PASSWORD: change-me
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U beacon -d beacon"
-          --health-interval 2s --health-timeout 2s --health-retries 20
     steps:
       - uses: actions/checkout@v4
       - name: Start timer
@@ -33,9 +23,6 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Check and test API
         run: ./gradlew :api:spotlessCheck :api:test
-        env:
-          POSTGRES_PASSWORD: change-me
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/beacon
       - uses: actions/upload-artifact@v4
         if: always()
         with:

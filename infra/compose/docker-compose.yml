@@ -1,3 +1,9 @@
+# Local development stack. Profiles: core (postgres, api). Run through the Makefile
+# (`make dev`, `make down`), which passes the repo-root .env; every secret must be set
+# there (no fallbacks: `${VAR:?}` aborts compose if a value is missing or empty).
+# Hardening per docs/security-threat-model.md TM-27: host ports bind 127.0.0.1 only,
+# the API runs as a non-root user on a read-only filesystem with only the jar mounted,
+# and Postgres roles are least-privilege (postgres/init.sql).
 services:
   postgres:
     image: postgres:17
@@ -5,26 +11,72 @@ services:
     environment:
       POSTGRES_DB: beacon
       POSTGRES_USER: beacon
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      BEACON_MIGRATE_DB_PASSWORD: ${BEACON_MIGRATE_DB_PASSWORD:?set BEACON_MIGRATE_DB_PASSWORD in .env}
+      BEACON_APP_DB_PASSWORD: ${BEACON_APP_DB_PASSWORD:?set BEACON_APP_DB_PASSWORD in .env}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U beacon -d beacon"]
       interval: 2s
       timeout: 2s
       retries: 20
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
   api:
     image: eclipse-temurin:21-jre
     profiles: [core]
-    working_dir: /app
+    user: "65534:65534"
+    read_only: true
+    tmpfs:
+      - /tmp
     volumes:
-      - ../../:/app
-    command: ["java", "-jar", "services/api/build/libs/api-0.1.0.jar"]
+      - ../../services/api/build/libs/api-0.1.0.jar:/app/api.jar:ro
+    command: ["java", "-XX:MaxRAMPercentage=75", "-jar", "/app/api.jar"]
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/beacon
+      BEACON_DB_URL: jdbc:postgresql://postgres:5432/beacon
+      BEACON_APP_DB_USER: beacon_app
+      BEACON_APP_DB_PASSWORD: ${BEACON_APP_DB_PASSWORD:?set BEACON_APP_DB_PASSWORD in .env}
+      BEACON_MIGRATE_DB_USER: beacon_migrate
+      BEACON_MIGRATE_DB_PASSWORD: ${BEACON_MIGRATE_DB_PASSWORD:?set BEACON_MIGRATE_DB_PASSWORD in .env}
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      # The JRE image has no curl, and /bin/sh is dash, so call bash for /dev/tcp.
+      test:
+        [
+          "CMD",
+          "bash",
+          "-c",
+          "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q ' 200 ' <&3",
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 1g
+    cpus: 2.0
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  pgdata:

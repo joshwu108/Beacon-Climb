@@ -1,11 +1,20 @@
-.PHONY: dev down test test-api test-web test-ml lint fmt guards seed-demo import
+.PHONY: dev down reset-db test test-api test-web test-ml lint fmt guards seed-demo import
 
-dev:
+COMPOSE := docker compose --env-file .env -f infra/compose/docker-compose.yml --profile core
+
+.env:
+	@echo "Missing .env: copy .env.example to .env and set every value (see comments)." >&2; exit 1
+
+dev: .env
 	./gradlew :api:bootJar
-	docker compose -f infra/compose/docker-compose.yml --profile core up -d
+	$(COMPOSE) up -d --wait
 
-down:
-	docker compose -f infra/compose/docker-compose.yml --profile core down
+down: .env
+	$(COMPOSE) down
+
+# Drops the Postgres volume so postgres/init.sql runs again on the next `make dev`.
+reset-db: .env
+	$(COMPOSE) down -v
 
 test: test-api test-web test-ml
 

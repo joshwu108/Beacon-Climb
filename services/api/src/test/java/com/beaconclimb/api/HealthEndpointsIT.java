@@ -2,30 +2,26 @@ package com.beaconclimb.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.client.RestClient;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
- * BC-0009b: the contract paths /health/live and /health/ready must resolve on a booted context
- * backed by a real Postgres 17 (Testcontainers), so a misconfigured actuator fails the build
- * instead of the compose stack.
+ * BC-0009b/BC-0009c: the contract paths /health/live and /health/ready must resolve on a booted
+ * context backed by a real Postgres 17 using the least-privilege runtime role, so a misconfigured
+ * actuator or role setup fails the build instead of the compose stack.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Testcontainers
-class HealthEndpointsIT {
-
-  @Container @ServiceConnection
-  static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17");
+class HealthEndpointsIT extends AbstractPostgresIT {
 
   @LocalServerPort int port;
+  @Autowired DataSource dataSource;
 
   private ResponseEntity<String> get(String path) {
     return RestClient.create("http://127.0.0.1:" + port)
@@ -53,5 +49,17 @@ class HealthEndpointsIT {
   @Test
   void legacyActuatorPathIsNotExposed() {
     assertThat(get("/actuator/health").getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
+  @Test
+  void runtimeConnectionUsesNonSuperuserAppRole() {
+    JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+    assertThat(jdbc.queryForObject("select current_user", String.class)).isEqualTo("beacon_app");
+    assertThat(
+            jdbc.queryForObject(
+                "select rolsuper from pg_roles where rolname = current_user", Boolean.class))
+        .isFalse();
+    assertThat(jdbc.queryForObject("select has_schema_privilege('public','CREATE')", Boolean.class))
+        .isFalse();
   }
 }
