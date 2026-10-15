@@ -36,6 +36,33 @@ public abstract class ImporterTestSupport extends AbstractPostgresIT {
     return importer.importFile(file, ack, reportDir);
   }
 
+  /**
+   * Removes a board with all its routes, variants, placements and holds, and the provenance row
+   * {@code sha} once nothing references it, so a test can observe a cold import no matter which
+   * class (the BC-0106 endpoint tests also load the demo board) ran first in this JVM.
+   */
+  protected void deleteBoard(String boardId, String sha) {
+    jdbc.sql(
+            "DELETE FROM route_placements WHERE variant_id IN (SELECT v.variant_id FROM"
+                + " route_variants v JOIN routes r ON r.route_id = v.route_id WHERE r.board_id = :b)")
+        .param("b", boardId)
+        .update();
+    jdbc.sql(
+            "DELETE FROM route_variants WHERE route_id IN"
+                + " (SELECT route_id FROM routes WHERE board_id = :b)")
+        .param("b", boardId)
+        .update();
+    jdbc.sql("DELETE FROM routes WHERE board_id = :b").param("b", boardId).update();
+    jdbc.sql("DELETE FROM holds WHERE board_id = :b").param("b", boardId).update();
+    jdbc.sql("DELETE FROM boards WHERE board_id = :b").param("b", boardId).update();
+    jdbc.sql(
+            "DELETE FROM provenance_sources p WHERE p.content_sha256 = :sha AND NOT EXISTS"
+                + " (SELECT 1 FROM boards WHERE provenance_id = p.provenance_id) AND NOT EXISTS"
+                + " (SELECT 1 FROM routes WHERE provenance_id = p.provenance_id)")
+        .param("sha", sha)
+        .update();
+  }
+
   protected int count(String sql, Object... params) {
     JdbcClient.StatementSpec spec = jdbc.sql(sql);
     for (Object param : params) {

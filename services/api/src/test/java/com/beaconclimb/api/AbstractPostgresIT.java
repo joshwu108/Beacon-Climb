@@ -15,8 +15,8 @@ import org.testcontainers.utility.MountableFile;
  */
 public abstract class AbstractPostgresIT {
 
-  static final String MIGRATE_PASSWORD = "test-migrate-password";
-  static final String APP_PASSWORD = "test-app-password";
+  public static final String MIGRATE_PASSWORD = "test-migrate-password";
+  public static final String APP_PASSWORD = "test-app-password";
   public static final PostgreSQLContainer POSTGRES;
 
   static {

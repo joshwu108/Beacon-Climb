@@ -28,6 +28,8 @@ class CatalogImporterIT extends ImporterTestSupport {
 
   @Test
   void importsDemoBoardThenReimportInsertsNothing() {
+    deleteBoard("synthetic-demo-1", DEMO_SHA);
+
     ImportResult first = importFile(DEMO_BOARD, false);
 
     assertThat(first.inserted().routes()).isEqualTo(DEMO_ROUTES);

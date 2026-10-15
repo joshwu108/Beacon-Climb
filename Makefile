@@ -1,4 +1,4 @@
-.PHONY: dev down reset-db test test-api test-web test-ml lint fmt guards seed-demo import synthetic-board
+.PHONY: dev down reset-db test test-api test-web test-ml lint fmt guards seed-demo import synthetic-board bench-catalog
 
 COMPOSE := docker compose --env-file .env -f infra/compose/docker-compose.yml --profile core
 
@@ -23,6 +23,11 @@ test-api:
 
 test-web:
 	pnpm --filter @beacon/web test
+
+# BC-0106: local latency check of GET /v1/routes and /v1/routes/{id} on the demo board over HTTP
+# against the Testcontainers Postgres. Prints p50/p95/max and the hardware line; record both.
+bench-catalog:
+	./gradlew :api:test --tests '*CatalogBenchIT*' -Dbench=true --rerun
 
 test-ml:
 	uv run --directory services/ml pytest

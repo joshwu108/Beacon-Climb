@@ -46,4 +46,8 @@ tasks.named<ProcessResources>("processResources") {
         into("contracts/catalog")
     }
 }
-tasks.withType<Test> { useJUnitPlatform() }
+tasks.withType<Test> {
+    useJUnitPlatform()
+    // BC-0106: `make bench-catalog` passes -Dbench=true through to the test JVM (CatalogBenchIT).
+    systemProperty("bench", System.getProperty("bench", "false"))
+}

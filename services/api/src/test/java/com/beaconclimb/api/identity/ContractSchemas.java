@@ -26,7 +26,7 @@ import tools.jackson.databind.json.JsonMapper;
  * json-schema-validator. Format assertions are on, so {@code uuid} and {@code date-time} are
  * checked, and {@code additionalProperties: false} proves no extra members leak.
  */
-final class ContractSchemas {
+public final class ContractSchemas {
 
   static final Path CONTRACT =
       Path.of("..", "..", "contracts", "openapi.yaml").toAbsolutePath().normalize();
@@ -35,13 +35,13 @@ final class ContractSchemas {
 
   private ContractSchemas() {}
 
-  static List<com.networknt.schema.Error> validate(String schemaName, String jsonBody) {
+  public static List<com.networknt.schema.Error> validate(String schemaName, String jsonBody) {
     Schema schema =
         REGISTRY.getSchema(SchemaLocation.of(DOCUMENT_IRI + "#/components/schemas/" + schemaName));
     return schema.validate(jsonBody, InputFormat.JSON);
   }
 
-  static void assertConforms(String schemaName, String jsonBody) {
+  public static void assertConforms(String schemaName, String jsonBody) {
     assertThat(jsonBody).as("body for %s", schemaName).isNotBlank();
     assertThat(validate(schemaName, jsonBody))
         .as("%s must conform to components.schemas.%s", jsonBody, schemaName)
