@@ -7,6 +7,7 @@ import com.beaconclimb.api.identity.api.AuthResponse;
 import com.beaconclimb.api.platform.web.ErrorCode;
 import com.beaconclimb.api.platform.web.ErrorEnvelope;
 import com.beaconclimb.api.platform.web.RequestIdFilter;
+import com.beaconclimb.api.platform.web.WriteRateLimiter;
 import java.security.SecureRandom;
 import java.util.HexFormat;
 import java.util.Map;
@@ -33,15 +34,17 @@ public abstract class IdentityTestSupport extends AbstractPostgresIT {
   protected static final String PASSWORD = "correct-horse-battery";
   private static final SecureRandom RANDOM = new SecureRandom();
 
-  @LocalServerPort int port;
-  @Autowired JsonMapper json;
+  @LocalServerPort protected int port;
+  @Autowired protected JsonMapper json;
   @Autowired LoginAttemptLimiter limiter;
-  @Autowired JdbcClient jdbc;
+  @Autowired WriteRateLimiter rateLimiter;
+  @Autowired protected JdbcClient jdbc;
 
-  /** The limiter is per JVM and the context is shared, so no class inherits another's failures. */
+  /** The limiters are per JVM and the context is shared, so no test inherits another's tokens. */
   @BeforeEach
-  void resetLoginLimiter() {
+  void resetLimiters() {
     limiter.clear();
+    rateLimiter.clear();
   }
 
   protected static String uniqueUsername() {
@@ -65,6 +68,18 @@ public abstract class IdentityTestSupport extends AbstractPostgresIT {
         .uri(path)
         .contentType(MediaType.APPLICATION_JSON)
         .headers(h -> headers.forEach(h::set))
+        .headers(h -> bearer(h::setBearerAuth, token))
+        .body(body)
+        .retrieve()
+        .onStatus(status -> true, (request, response) -> {})
+        .toEntity(String.class);
+  }
+
+  protected ResponseEntity<String> put(String path, String body, String token) {
+    return client()
+        .put()
+        .uri(path)
+        .contentType(MediaType.APPLICATION_JSON)
         .headers(h -> bearer(h::setBearerAuth, token))
         .body(body)
         .retrieve()
