@@ -32,6 +32,14 @@ export const routes: RouteObject[] = [
         },
       },
       {
+        path: 'explore/:routeVariantId',
+        lazy: async () => {
+          const { RouteDetailPage } =
+            await import('../features/explore/RouteDetailPage');
+          return { Component: RouteDetailPage };
+        },
+      },
+      {
         path: 'session',
         lazy: async () => {
           const { SessionPage } =

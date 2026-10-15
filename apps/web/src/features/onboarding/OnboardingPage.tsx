@@ -1,118 +1,165 @@
-import { type FormEvent } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
+import { isApiError } from '../../api/errors';
+import { ApiErrorBanner } from '../../components/ui/ApiErrorBanner';
+import type { FieldErrorMap } from '../../components/ui/field-errors';
+import { tokenStore } from '../auth/token-store';
+import { meQueryKey, useMe } from '../auth/useMe';
 import { ConsentDocumentPanel } from './ConsentDocumentPanel';
+import { OnboardingProgress } from './OnboardingProgress';
+import { AccountStep } from './steps/AccountStep';
+import { BoardStep } from './steps/BoardStep';
+import { ConsentStep } from './steps/ConsentStep';
+import { GoalsStep } from './steps/GoalsStep';
+import {
+  firstIncompleteStep,
+  isStepId,
+  resolveStep,
+  type PreferencesDraft,
+  type StepId,
+} from './steps';
 import './onboarding.css';
 
-export const ONBOARDING_STEPS = [
-  { id: 'account', label: 'Account' },
-  { id: 'consent', label: 'Consent' },
-  { id: 'board', label: 'Board and angle' },
-  { id: 'goals', label: 'Level and goals' },
-] as const;
+export { ONBOARDING_STEPS } from './steps';
 
-const preventSubmit = (event: FormEvent<HTMLFormElement>): void => {
-  // Account creation (registerUser / createSession) is wired in BC-0115.
-  event.preventDefault();
-};
+const SKELETON_WIDTHS = ['45%', '90%', '70%'] as const;
+
+const ProfileSkeleton = () => (
+  <div className="sheet onboarding__form" aria-busy="true">
+    <p className="visually-hidden" role="status">
+      Checking your setup
+    </p>
+    {SKELETON_WIDTHS.map((width) => (
+      <span
+        className="skeleton"
+        style={{ width }}
+        key={width}
+        aria-hidden="true"
+      />
+    ))}
+  </div>
+);
 
 /**
- * Onboarding shell showing step 1 (account). Heading outline, progress nav and the
- * consent document round trip exist; the step logic is BC-0115.
+ * First-run flow (BC-0115): account -> consent -> board and angle -> level and goals.
+ * The step is URL state (/onboarding/:step). On mount, a stored token triggers
+ * GET /v1/me and completed steps are skipped: consent present -> board, preferences
+ * present -> Explore. Answers for the board step live here until the goals step saves.
  */
-export const OnboardingPage = () => (
-  <article className="page onboarding">
-    <div className="onboarding__header">
-      <p className="page__eyebrow">First run</p>
-      <h1>Set up Beacon Climb</h1>
-      <p className="page__lede">
-        A pseudonymous account, a clear choice about logging, and the board you
-        climb on. Nothing about your body is asked.
-      </p>
-    </div>
+export const OnboardingPage = () => {
+  const { step: stepParam } = useParams();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [hasToken, setHasToken] = useState(() => tokenStore.get() !== null);
+  const [draft, setDraft] = useState<PreferencesDraft | null>(null);
+  const [boardErrors, setBoardErrors] = useState<FieldErrorMap>({});
+  const me = useMe({ enabled: hasToken });
 
-    <nav className="onboarding__progress" aria-label="Setup progress">
-      <ol className="steps">
-        {ONBOARDING_STEPS.map((step, index) => (
-          <li
-            key={step.id}
-            className="steps__item"
-            aria-current={index === 0 ? 'step' : undefined}
-          >
-            <span className="steps__number" aria-hidden="true">
-              {index + 1}
-            </span>
-            <span className="steps__label">{step.label}</span>
-          </li>
-        ))}
-      </ol>
-    </nav>
+  const requested = isStepId(stepParam) ? stepParam : undefined;
+  const isCheckingProfile = hasToken && me.isPending;
+  const profileError = hasToken && me.isError ? me.error : null;
+  const first =
+    isCheckingProfile || profileError !== null
+      ? null
+      : firstIncompleteStep(hasToken, me.data);
+  const current: StepId | null =
+    first === null ? null : resolveStep(requested, first, draft !== null);
 
-    <div className="onboarding__columns">
-      <form
-        className="sheet onboarding__form"
-        onSubmit={preventSubmit}
-        aria-labelledby="step-heading"
-        noValidate
-      >
-        <h2 id="step-heading" tabIndex={-1}>
-          <span className="onboarding__step-count">
-            Step 1 of {ONBOARDING_STEPS.length}
-          </span>
-          Choose a username
-        </h2>
-        <p className="field__hint">
-          Lowercase letters, digits and underscores, 3 to 32 characters. It is
-          the only identifier Beacon keeps.
+  // A dead token (401) means starting over at the account step with no stale session.
+  useEffect(() => {
+    if (
+      profileError !== null &&
+      isApiError(profileError) &&
+      profileError.status === 401
+    ) {
+      tokenStore.clear();
+      queryClient.removeQueries({ queryKey: meQueryKey });
+      setHasToken(false);
+    }
+  }, [profileError, queryClient]);
+
+  useEffect(() => {
+    if (isCheckingProfile || profileError !== null) return;
+    if (first === null) {
+      void navigate('/explore', { replace: true });
+      return;
+    }
+    if (current !== null && current !== requested) {
+      void navigate(`/onboarding/${current}`, { replace: true });
+    }
+  }, [current, first, isCheckingProfile, navigate, profileError, requested]);
+
+  const renderStep = (): React.ReactNode => {
+    if (profileError !== null) {
+      return (
+        <div className="sheet onboarding__form">
+          <ApiErrorBanner
+            error={profileError}
+            title="Your setup couldn't be checked."
+            onRetry={() => void me.refetch()}
+          />
+        </div>
+      );
+    }
+    if (current === null) return <ProfileSkeleton />;
+    switch (current) {
+      case 'account':
+        return <AccountStep onAuthenticated={() => setHasToken(true)} />;
+      case 'consent':
+        return (
+          <ConsentStep onRecorded={() => void navigate('/onboarding/board')} />
+        );
+      case 'board':
+        return (
+          <BoardStep
+            draft={draft}
+            serverErrors={boardErrors}
+            onContinue={(next) => {
+              setDraft(next);
+              setBoardErrors({});
+              void navigate('/onboarding/goals');
+            }}
+          />
+        );
+      case 'goals':
+        return draft === null ? (
+          <ProfileSkeleton />
+        ) : (
+          <GoalsStep
+            draft={draft}
+            onSaved={() => void navigate('/explore', { replace: true })}
+            onBoardFieldErrors={(errors) => {
+              setBoardErrors(errors);
+              void navigate('/onboarding/board');
+            }}
+            onBack={() => void navigate('/onboarding/board')}
+          />
+        );
+    }
+  };
+
+  return (
+    <article className="page onboarding">
+      <div className="onboarding__header">
+        <p className="page__eyebrow">First run</p>
+        <h1>Set up Beacon Climb</h1>
+        <p className="page__lede">
+          A pseudonymous account, a clear choice about logging, and the board
+          you climb on. Nothing about your body is asked.
         </p>
+      </div>
 
-        <div className="field">
-          <label className="field__label" htmlFor="username">
-            Username
-          </label>
-          <input
-            className="field__input"
-            id="username"
-            name="username"
-            type="text"
-            autoComplete="username"
-            autoCapitalize="none"
-            spellCheck={false}
-            pattern="[a-z0-9_]{3,32}"
-            inputMode="text"
-          />
-        </div>
+      <OnboardingProgress current={current ?? 'account'} />
 
-        <div className="field">
-          <label className="field__label" htmlFor="password">
-            Password
-          </label>
-          <input
-            className="field__input"
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            minLength={8}
-            maxLength={128}
-            aria-describedby="password-hint"
-          />
-          <p className="field__hint" id="password-hint">
-            8 to 128 characters.
-          </p>
-        </div>
-
-        <div className="onboarding__actions">
-          <button type="submit" className="button">
-            Continue
-          </button>
-          <p className="field__hint">
-            Account creation is connected in the next build.
-          </p>
-        </div>
-      </form>
-
-      <aside className="onboarding__aside" aria-label="Consent document">
-        <ConsentDocumentPanel />
-      </aside>
-    </div>
-  </article>
-);
+      <div className="onboarding__columns">
+        {renderStep()}
+        {current === 'account' ? (
+          <aside className="onboarding__aside" aria-label="Consent document">
+            <ConsentDocumentPanel />
+          </aside>
+        ) : null}
+      </div>
+    </article>
+  );
+};

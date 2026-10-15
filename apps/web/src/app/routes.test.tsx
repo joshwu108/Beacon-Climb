@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { expectNoBlockingViolations } from '../test/axe';
 import { renderApp } from '../test/render';
 
+// /explore and /onboarding are real screens (BC-0115, BC-0116) with their own tests.
 const PLACEHOLDER_ROUTES = [
-  { path: '/explore', h1: 'Explore routes' },
   { path: '/session', h1: 'Build a session' },
   { path: '/attempts', h1: 'Log attempts' },
   {

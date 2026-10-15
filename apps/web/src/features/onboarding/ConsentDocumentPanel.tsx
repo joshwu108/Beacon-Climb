@@ -1,19 +1,7 @@
 import { isApiError } from '../../api/errors';
 import { useConsentDocument } from './useConsentDocument';
 
-/** Split the consent text into blocks; a leading "# " line becomes a heading (no HTML injection). */
-const toBlocks = (
-  text: string,
-): { kind: 'heading' | 'paragraph'; text: string }[] =>
-  text
-    .split(/\n\s*\n/)
-    .map((block) => block.trim())
-    .filter((block) => block.length > 0)
-    .map((block) =>
-      block.startsWith('# ')
-        ? { kind: 'heading', text: block.slice(2) }
-        : { kind: 'paragraph', text: block },
-    );
+import { toConsentBlocks } from './consent-blocks';
 
 const SKELETON_WIDTHS = ['55%', '95%', '88%', '70%'] as const;
 
@@ -21,12 +9,20 @@ const SKELETON_WIDTHS = ['55%', '95%', '88%', '70%'] as const;
  * The current consent document, fetched through the typed client. Shown beside the
  * account step so people read what they are signing up to before the consent step asks.
  */
-export const ConsentDocumentPanel = () => {
+export interface ConsentDocumentPanelProps {
+  /** `section` when it is a standalone region; `div` when embedded inside the consent form. */
+  readonly as?: 'section' | 'div';
+}
+
+export const ConsentDocumentPanel = ({
+  as = 'section',
+}: ConsentDocumentPanelProps = {}) => {
   const query = useConsentDocument();
+  const Wrapper = as;
 
   if (query.isPending) {
     return (
-      <section
+      <Wrapper
         className="sheet consent"
         aria-labelledby="consent-heading"
         aria-busy="true"
@@ -40,7 +36,7 @@ export const ConsentDocumentPanel = () => {
             <span className="skeleton" style={{ width }} key={width} />
           ))}
         </div>
-      </section>
+      </Wrapper>
     );
   }
 
@@ -48,7 +44,7 @@ export const ConsentDocumentPanel = () => {
     const error = query.error;
     const requestId = isApiError(error) ? error.requestId : null;
     return (
-      <section className="sheet consent" aria-labelledby="consent-heading">
+      <Wrapper className="sheet consent" aria-labelledby="consent-heading">
         <h2 id="consent-heading">What you&apos;re agreeing to</h2>
         <div className="banner banner--error" role="alert">
           <p className="banner__title">
@@ -69,21 +65,27 @@ export const ConsentDocumentPanel = () => {
         >
           Try again
         </button>
-      </section>
+      </Wrapper>
     );
   }
 
   const doc = query.data;
   return (
-    <section className="sheet consent" aria-labelledby="consent-heading">
+    <Wrapper className="sheet consent" aria-labelledby="consent-heading">
       <div className="consent__header">
         <h2 id="consent-heading">What you&apos;re agreeing to</h2>
         <span className="stamp">Consent {doc.version}</span>
       </div>
       <div className="consent__text">
-        {toBlocks(doc.text).map((block, index) =>
+        {toConsentBlocks(doc.text).map((block, index) =>
           block.kind === 'heading' ? (
             <h3 key={index}>{block.text}</h3>
+          ) : block.kind === 'list' ? (
+            <ul key={index}>
+              {block.items.map((item, itemIndex) => (
+                <li key={itemIndex}>{item}</li>
+              ))}
+            </ul>
           ) : (
             <p key={index}>{block.text}</p>
           ),
@@ -97,6 +99,6 @@ export const ConsentDocumentPanel = () => {
           <code title={doc.text_sha256}>{doc.text_sha256.slice(0, 12)}…</code>
         </dd>
       </dl>
-    </section>
+    </Wrapper>
   );
 };

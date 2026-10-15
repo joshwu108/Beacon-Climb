@@ -130,3 +130,30 @@
     margin-block-start: var(--space-6);
   }
 }
+
+/* --- BC-0115: onboarding-only step states --- */
+
+.steps__item[data-state='done'] .steps__number {
+  background: var(--color-surface-sunken);
+  border-color: var(--color-border-subtle);
+  color: var(--color-text-muted);
+}
+
+.step-heading:focus {
+  outline: none;
+}
+
+.step-heading:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.onboarding__skeleton {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.onboarding__actions--row {
+  grid-auto-flow: column;
+  justify-content: start;
+}

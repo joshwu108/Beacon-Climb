@@ -7,6 +7,11 @@
  *
  * Paths are matched on any origin ("*" prefix) so the same handlers serve the browser
  * worker (VITE_API_BASE_URL) and the Node server used by tests.
+ *
+ * Non-fixture responses (documented in README "Mocks"): 401 UNAUTHENTICATED, 404
+ * NOT_FOUND, the derived 422s (UNSUPPORTED_ANGLE, UNKNOWN_BOARD, INVALID_CURSOR), the
+ * generated catalog pages served by listRoutes / getRoute (src/mocks/catalog.ts), the
+ * echoed Preferences body from putPreferences and the per-process GET /v1/me profile.
  */
 import {
   http,
@@ -16,7 +21,14 @@ import {
   type PathParams,
 } from 'msw';
 import { serialize } from '../lib/jcs';
-import { mockState } from './state';
+import { mockState, type Preferences } from './state';
+import {
+  DEFAULT_PAGE_LIMIT,
+  FIXTURE_BOARD,
+  MAX_PAGE_LIMIT,
+  findVariant,
+  queryCatalog,
+} from './catalog';
 
 import getHealthLive from '../../../../contracts/examples/getHealthLive/response.json';
 import getHealthReady from '../../../../contracts/examples/getHealthReady/response.json';
@@ -28,9 +40,7 @@ import createSession from '../../../../contracts/examples/createSession/response
 import createSession422 from '../../../../contracts/examples/createSession/response-422.json';
 import deleteSession from '../../../../contracts/examples/deleteSession/response.json';
 import listBoards from '../../../../contracts/examples/listBoards/response.json';
-import listRoutes from '../../../../contracts/examples/listRoutes/response.json';
 import listRoutes422 from '../../../../contracts/examples/listRoutes/response-422.json';
-import getRoute from '../../../../contracts/examples/getRoute/response.json';
 import getMe from '../../../../contracts/examples/getMe/response.json';
 import putPreferences from '../../../../contracts/examples/putPreferences/response.json';
 import putPreferences422 from '../../../../contracts/examples/putPreferences/response-422.json';
@@ -87,6 +97,26 @@ const notFound = (): Response =>
     { status: 404, headers: { 'X-Request-Id': 'mock-not-found' } },
   );
 
+/**
+ * Envelopes the fixtures do not cover (UNSUPPORTED_ANGLE on preferences, INVALID_CURSOR
+ * and UNKNOWN_BOARD on routes). Same shape as the contracts/examples response-422 files,
+ * built from the request so the field error names the offending field.
+ */
+const derived422 = (
+  code: 'UNSUPPORTED_ANGLE' | 'UNKNOWN_BOARD' | 'INVALID_CURSOR',
+  message: string,
+  fieldErrors: { field: string; code: string; message: string }[],
+): Response =>
+  HttpResponse.json(
+    {
+      code,
+      message,
+      request_id: 'mock-derived-422',
+      field_errors: fieldErrors,
+    },
+    { status: 422, headers: { 'X-Request-Id': 'mock-derived-422' } },
+  );
+
 const hasBearer = (request: Request): boolean =>
   /^Bearer\s+\S+/.test(request.headers.get('Authorization') ?? '');
 
@@ -110,8 +140,25 @@ const auth =
     hasBearer(info.request) ? resolver(info) : unauthenticated();
 
 const USERNAME_RE = /^[a-z0-9_]{3,32}$/;
+
+const isSupportedAngle = (angle: number): boolean =>
+  FIXTURE_BOARD.available_angles.includes(angle);
+
+const unsupportedAngle = (): Response =>
+  derived422('UNSUPPORTED_ANGLE', 'Angle is not available on this board', [
+    {
+      field: 'angle_deg',
+      code: 'enum',
+      message: `must be one of ${FIXTURE_BOARD.available_angles.join(', ')}`,
+    },
+  ]);
+
+const optionalNumber = (text: string | null): number | undefined => {
+  if (text === null || text === '') return undefined;
+  const value = Number(text);
+  return Number.isFinite(value) ? value : undefined;
+};
 const FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
-const FIXTURE_ROUTE_VARIANT_ID = getRoute.body.route_variant_id;
 const FIXTURE_ATTEMPT_ID = getAttempt.body.attempt_id;
 const FIXTURE_DECISION_ID = getDecision.body.decision_id;
 
@@ -127,6 +174,7 @@ const publicHandlers: HttpHandler[] = [
     if (mockState.registeredUsernames.has(username))
       return fixture(registerUser409);
     mockState.registeredUsernames.add(username);
+    mockState.me = { consent: null, preferences: null };
     return fixture(registerUser);
   }),
 
@@ -134,6 +182,7 @@ const publicHandlers: HttpHandler[] = [
     const body = await readJson(request);
     const password = typeof body.password === 'string' ? body.password : '';
     if (password.length < 8) return fixture(createSession422);
+    mockState.me = null;
     return fixture(createSession);
   }),
 ];
@@ -151,40 +200,109 @@ const protectedHandlers: HttpHandler[] = [
   http.get(
     '*/v1/routes',
     auth(({ request }) => {
-      const limit = Number(
-        new URL(request.url).searchParams.get('limit') ?? '20',
+      const params = new URL(request.url).searchParams;
+      const limit = Number(params.get('limit') ?? String(DEFAULT_PAGE_LIMIT));
+      if (limit > MAX_PAGE_LIMIT) return fixture(listRoutes422);
+      const boardId = params.get('board_id') ?? undefined;
+      if (boardId !== undefined && boardId !== FIXTURE_BOARD.board_id) {
+        return derived422('UNKNOWN_BOARD', 'Unknown board', [
+          { field: 'board_id', code: 'unknown', message: 'unknown board' },
+        ]);
+      }
+      const angleText = params.get('angle_deg');
+      const angleDeg = angleText === null ? undefined : Number(angleText);
+      if (angleDeg !== undefined && !isSupportedAngle(angleDeg)) {
+        return unsupportedAngle();
+      }
+      const result = queryCatalog({
+        boardId,
+        angleDeg,
+        gradeMin: optionalNumber(params.get('grade_min')),
+        gradeMax: optionalNumber(params.get('grade_max')),
+        cursor: params.get('cursor') ?? undefined,
+        limit:
+          Number.isFinite(limit) && limit >= 1 ? limit : DEFAULT_PAGE_LIMIT,
+      });
+      if (result.kind === 'invalid_cursor') {
+        return derived422('INVALID_CURSOR', 'Cursor is not valid', [
+          { field: 'cursor', code: 'invalid', message: 'cursor is not valid' },
+        ]);
+      }
+      return HttpResponse.json(
+        { items: result.items, next_cursor: result.nextCursor },
+        { status: 200, headers: { 'X-Request-Id': 'mock-catalog' } },
       );
-      return limit > 100 ? fixture(listRoutes422) : fixture(listRoutes);
     }),
   ),
 
   http.get(
     '*/v1/routes/:routeVariantId',
-    auth(({ params }) =>
-      params.routeVariantId === FIXTURE_ROUTE_VARIANT_ID
-        ? fixture(getRoute)
-        : notFound(),
-    ),
+    auth(({ params }) => {
+      const variant = findVariant(String(params.routeVariantId));
+      return variant === null
+        ? notFound()
+        : HttpResponse.json(variant, {
+            status: 200,
+            headers: { 'X-Request-Id': 'mock-catalog' },
+          });
+    }),
   ),
 
   http.get(
     '*/v1/me',
-    auth(() => fixture(getMe)),
+    auth(() =>
+      mockState.me === null
+        ? fixture(getMe)
+        : fixture({
+            ...getMe,
+            body: {
+              ...getMe.body,
+              consent: mockState.me.consent,
+              preferences: mockState.me.preferences,
+            },
+          }),
+    ),
   ),
 
   http.put(
     '*/v1/me/preferences',
     auth(async ({ request }) => {
       const body = await readJson(request);
-      return Array.isArray(body.goals)
-        ? fixture(putPreferences)
-        : fixture(putPreferences422);
+      if (!Array.isArray(body.goals)) return fixture(putPreferences422);
+      if (
+        typeof body.angle_deg !== 'number' ||
+        !isSupportedAngle(body.angle_deg)
+      ) {
+        return unsupportedAngle();
+      }
+      const preferences = body as unknown as Preferences;
+      if (mockState.me !== null) mockState.me.preferences = preferences;
+      return HttpResponse.json(preferences, {
+        status: 200,
+        headers: putPreferences.headers,
+      });
     }),
   ),
 
   http.post(
     '*/v1/me/consent',
-    auth(() => fixture(createConsent)),
+    auth(async ({ request }) => {
+      const body = await readJson(request);
+      if (mockState.me !== null) {
+        const scopes =
+          typeof body.scopes === 'object' && body.scopes !== null
+            ? (body.scopes as Record<string, unknown>)
+            : {};
+        mockState.me.consent = {
+          version: String(body.consent_version ?? ''),
+          consented_at: new Date().toISOString(),
+          revoked_at: null,
+          scopes: { service: true, research: scopes.research === true },
+          text_sha256: String(body.text_sha256 ?? ''),
+        };
+      }
+      return fixture(createConsent);
+    }),
   ),
   http.delete(
     '*/v1/me/consent',
