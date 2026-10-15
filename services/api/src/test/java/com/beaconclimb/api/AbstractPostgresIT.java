@@ -17,7 +17,7 @@ public abstract class AbstractPostgresIT {
 
   static final String MIGRATE_PASSWORD = "test-migrate-password";
   static final String APP_PASSWORD = "test-app-password";
-  static final PostgreSQLContainer POSTGRES;
+  public static final PostgreSQLContainer POSTGRES;
 
   static {
     Path initSql =
