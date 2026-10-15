@@ -5,9 +5,11 @@ COMPOSE := docker compose --env-file .env -f infra/compose/docker-compose.yml --
 .env:
 	@echo "Missing .env: copy .env.example to .env and set every value (see comments)." >&2; exit 1
 
+# BC-0120: build the api jar, (re)build the web image and start the whole core profile
+# (postgres, decisions-init, api, web); --wait returns once every healthcheck passes.
 dev: .env
 	./gradlew :api:bootJar
-	$(COMPOSE) up -d --wait
+	$(COMPOSE) up -d --build --wait
 
 down: .env
 	$(COMPOSE) down
@@ -49,8 +51,11 @@ fmt:
 	uv run --directory services/ml ruff format .
 	uv run --directory ml --no-project --with ruff==0.17.0 ruff format --exclude datasets .
 
-seed-demo:
-	@echo "not implemented until BC-0120" >&2; exit 1
+# BC-0120: idempotent demo seed against a running `make dev` stack: imports the synthetic
+# board, creates demo/demo-password (consented, preferences set) and an ADMIN `admin`
+# whose password is BEACON_ADMIN_PASSWORD from .env. Prints the URLs; safe to re-run.
+seed-demo: .env
+	bash scripts/seed-demo.sh
 
 # BC-0105: `make import FILE=<catalog.jsonl> [ACK=1] [REPORT_DIR=reports/import]` loads a catalog
 # v1 file into the compose Postgres (published on 127.0.0.1:5432). The api container runs on a

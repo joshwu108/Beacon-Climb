@@ -1,9 +1,10 @@
-# Local development stack. Profiles: core (postgres, api). Run through the Makefile
-# (`make dev`, `make down`), which passes the repo-root .env; every secret must be set
-# there (no fallbacks: `${VAR:?}` aborts compose if a value is missing or empty).
+# Local development stack. Profiles: core (postgres, decisions-init, api, web). Run
+# through the Makefile (`make dev`, `make down`, `make seed-demo`), which passes the
+# repo-root .env; every secret must be set there (no fallbacks: `${VAR:?}` aborts compose
+# if a value is missing or empty). Runbook: docs/runbooks/dev-stack.md.
 # Hardening per docs/security-threat-model.md TM-27: host ports bind 127.0.0.1 only,
-# the API runs as a non-root user on a read-only filesystem with only the jar mounted,
-# and Postgres roles are least-privilege (postgres/init.sql).
+# the API and web run as non-root users on read-only filesystems (only the jar and
+# named volumes mounted), and Postgres roles are least-privilege (postgres/init.sql).
 services:
   postgres:
     image: postgres:17
@@ -33,6 +34,31 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+  # One-shot: a named volume is created root-owned, so hand the decision snapshot
+  # directory to the api's uid (65534, nobody) before the api starts. Root only for the
+  # single chown; no other capability, read-only root, no network.
+  decisions-init:
+    image: alpine:3.21
+    profiles: [core]
+    user: "0:0"
+    network_mode: none
+    read_only: true
+    command: ["chown", "65534:65534", "/data/decisions"]
+    volumes:
+      - decisions:/data/decisions
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    mem_limit: 32m
+    cpus: 0.25
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "1"
   api:
     image: eclipse-temurin:21-jre
     profiles: [core]
@@ -42,6 +68,8 @@ services:
       - /tmp
     volumes:
       - ../../services/api/build/libs/api-0.1.0.jar:/app/api.jar:ro
+      # Decision snapshot files (BEACON_DECISIONS_DIR); the only writable mount.
+      - decisions:/data/decisions
     command: ["java", "-XX:MaxRAMPercentage=75", "-jar", "/app/api.jar"]
     environment:
       BEACON_DB_URL: jdbc:postgresql://postgres:5432/beacon
@@ -49,11 +77,19 @@ services:
       BEACON_APP_DB_PASSWORD: ${BEACON_APP_DB_PASSWORD:?set BEACON_APP_DB_PASSWORD in .env}
       BEACON_MIGRATE_DB_USER: beacon_migrate
       BEACON_MIGRATE_DB_PASSWORD: ${BEACON_MIGRATE_DB_PASSWORD:?set BEACON_MIGRATE_DB_PASSWORD in .env}
+      BEACON_DECISIONS_DIR: /data/decisions
+      # beacon.http.cors-allowed-origins (relaxed binding). The compose web front proxies
+      # /v1/ same-origin, so the browser normally sends no cross-origin request; the 3000
+      # entries only cover a page opened as localhost:3000 calling 127.0.0.1:3000, and the
+      # 5173 entries keep `pnpm dev:api` (Vite dev server against this api) working.
+      BEACON_HTTP_CORSALLOWEDORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
+      decisions-init:
+        condition: service_completed_successfully
     healthcheck:
       # The JRE image has no curl, and /bin/sh is dash, so call bash for /dev/tcp.
       test:
@@ -78,5 +114,44 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+  # Web client: Vite build served by nginx (unprivileged, uid 101) with /v1/ and /health/
+  # reverse-proxied to the api, so the browser talks same-origin (apps/web/Dockerfile,
+  # apps/web/nginx/). Built from the repo root so the pnpm workspace lockfile is honoured;
+  # apps/web/Dockerfile.dockerignore keeps .env, data/ and .git out of the context.
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_BASE_URL: http://127.0.0.1:3000
+    image: beacon-web:dev
+    profiles: [core]
+    read_only: true
+    tmpfs:
+      # nginx-unprivileged keeps its pid and client/proxy temp files under /tmp.
+      - /tmp
+    ports:
+      - "127.0.0.1:3000:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/index.html"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 128m
+    cpus: 0.5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 volumes:
   pgdata:
+  decisions:

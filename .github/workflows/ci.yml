@@ -146,3 +146,47 @@ jobs:
         if: always()
         run: |
           echo "Web e2e wall-clock: $(($(date +%s) - started))s" >> "$GITHUB_STEP_SUMMARY"
+
+  compose-smoke:
+    # BC-0120: the documented laptop flow on a clean clone: `make dev && make seed-demo`
+    # (postgres, api, nginx web image, synthetic board, demo + admin users), then the SPA
+    # and the API answer through their published 127.0.0.1 ports. Throwaway secrets only.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start timer
+        run: echo "started=$(date +%s)" >> "$GITHUB_ENV"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Write throwaway .env
+        run: |
+          {
+            echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)"
+            echo "BEACON_MIGRATE_DB_PASSWORD=$(openssl rand -hex 24)"
+            echo "BEACON_APP_DB_PASSWORD=$(openssl rand -hex 24)"
+            echo "BEACON_ADMIN_PASSWORD=$(openssl rand -hex 24)"
+          } > .env
+      - name: make dev (jar, web image, core profile, wait for healthchecks)
+        run: make dev
+      - name: make seed-demo
+        run: make seed-demo
+      - name: Smoke the published ports
+        run: |
+          curl -fsS http://127.0.0.1:8080/health/ready
+          curl -fsS http://127.0.0.1:3000/ | grep -q '<div id="root"></div>'
+          curl -fsS http://127.0.0.1:3000/v1/consent/current | grep -q '"text_sha256"'
+          curl -fsS http://127.0.0.1:3000/health/ready
+      - name: Compose logs
+        if: failure()
+        run: docker compose --env-file .env -f infra/compose/docker-compose.yml --profile core logs --no-color --tail 200
+      - name: Tear down (drops volumes)
+        if: always()
+        run: make reset-db
+      - name: Elapsed
+        if: always()
+        run: |
+          echo "Compose smoke wall-clock: $(($(date +%s) - started))s" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,16 @@
+# Allowlist for the apps/web/Dockerfile build context (repo root). Everything is
+# excluded first so secrets (.env), licensed data (data/), .git and build output never
+# enter the image or the builder cache.
+*
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!contracts
+!apps/web
+apps/web/node_modules
+apps/web/dist
+apps/web/test-results
+apps/web/playwright-report
+apps/web/e2e/__screenshots__
+apps/web/.env*
+apps/web/*.tsbuildinfo
