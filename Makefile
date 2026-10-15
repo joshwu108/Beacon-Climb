@@ -1,4 +1,4 @@
-.PHONY: dev down reset-db test test-api test-web test-ml lint fmt guards seed-demo import
+.PHONY: dev down reset-db test test-api test-web test-ml lint fmt guards seed-demo import synthetic-board
 
 COMPOSE := docker compose --env-file .env -f infra/compose/docker-compose.yml --profile core
 
@@ -49,3 +49,9 @@ seed-demo:
 
 import:
 	@echo "not implemented until BC-0105" >&2; exit 1
+
+# BC-0104: regenerate the SYNTHETIC demo catalog fixture (deterministic for the seed; the
+# committed file must not change). Run as a script with -I because -I implies -P, which keeps
+# the cwd off sys.path and so breaks `python -I -m datasets.synthetic.generate`.
+synthetic-board:
+	uv run --directory ml --no-project python -I datasets/synthetic/generate.py --seed 42 --routes 300 --out datasets/synthetic/fixtures/demo-board-v1.jsonl
