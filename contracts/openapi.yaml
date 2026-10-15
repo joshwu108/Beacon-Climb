@@ -1,8 +1,12 @@
 openapi: 3.1.0
 info:
   title: Beacon Climb API
-  version: 1.0.0
-  description: 'CONTRACT-v1. Changelog: 1.0.0 — initial synthetic demo and vertical slice.'
+  version: 1.1.0
+  description: 'CONTRACT-v1.1. Changelog: 1.1.0 — board geometry, embedded route summaries,
+    closed enums, consent scopes and document, error-code enum with 401/413/429 everywhere,
+    input limits, logout, register, single-attempt read, decision context, reserved erasure
+    and export shapes (see contracts/README.md). 1.0.0 — initial synthetic demo and vertical
+    slice.'
   license:
     name: License pending review
     identifier: LicenseRef-PendingReview
@@ -30,11 +34,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Health'
         '400':
-          description: Malformed request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/BadRequest'
       security: []
   /health/ready:
     get:
@@ -53,17 +53,73 @@ paths:
               schema:
                 $ref: '#/components/schemas/Health'
         '503':
-          description: Structured error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/ServiceUnavailable'
         '400':
-          description: Malformed request
+          $ref: '#/components/responses/BadRequest'
+      security: []
+  /v1/consent/current:
+    get:
+      operationId: getConsentDocument
+      summary: Current consent document
+      description: Public. Returns the consent text the client must show before calling
+        createConsent; the client echoes `version` and `text_sha256` back so the server
+        can prove which text was accepted (A7, C-07).
+      tags:
+      - API
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: *id001
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentDocument'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+      security: []
+  /v1/auth/register:
+    post:
+      operationId: registerUser
+      summary: Register account
+      description: Creates a local pseudonymous account (ADR-0005) and opens a session
+        for it, so the response is the same shape as createSession. Needed for the
+        onboarding journey US-01 (B11).
+      tags:
+      - API
+      responses:
+        '201':
+          description: Account created and session opened
+          headers:
+            X-Request-Id:
+              schema: *id001
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          description: 'Codes: USERNAME_TAKEN.'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          description: 'Codes: VALIDATION_FAILED (field_errors populated), UNKNOWN_FIELD.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
       security: []
   /v1/auth/session:
     post:
@@ -82,17 +138,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
         '401':
-          description: Structured error
+          description: 'Codes: INVALID_CREDENTIALS. The same code is used for an unknown
+            username and a wrong password.'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '422':
-          description: Structured error
+          description: 'Codes: VALIDATION_FAILED (field_errors populated), UNKNOWN_FIELD.'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       requestBody:
         required: true
         content:
@@ -100,10 +161,31 @@ paths:
             schema:
               $ref: '#/components/schemas/AuthRequest'
       security: []
+    delete:
+      operationId: deleteSession
+      summary: Log out
+      description: Revokes the presented bearer token (ADR-0005 revocation on logout,
+        C-04). Idempotent for an already revoked but still well-formed token.
+      tags:
+      - API
+      responses:
+        '204':
+          description: Token revoked
+          headers:
+            X-Request-Id:
+              schema: *id001
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerAuth: []
   /v1/boards:
     get:
       operationId: listBoards
       summary: List boards
+      description: Returns full Board objects including hold geometry and available
+        angles (A1, A5).
       tags:
       - API
       responses:
@@ -117,11 +199,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/BoardList'
         '400':
-          description: Malformed request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       security:
       - bearerAuth: []
   /v1/routes:
@@ -140,12 +222,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RouteList'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '422':
-          description: Structured error
+          description: 'Codes: VALIDATION_FAILED (field_errors populated), INVALID_CURSOR,
+            UNKNOWN_BOARD, UNSUPPORTED_ANGLE.'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       security:
       - bearerAuth: []
       parameters:
@@ -194,19 +281,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RouteVariant'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '404':
-          description: Structured error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       security:
       - bearerAuth: []
       parameters:
       - name: route_variant_id
         in: path
         required: true
-        schema: *id001
+        schema: &id007
+          type: string
+          maxLength: 80
+          pattern: '^[^:\s]{1,64}:-?[0-9]{1,3}$'
+          description: Public route variant id `<provider_route_uuid>:<angle_deg>`;
+            split at the final colon (ADR-0002).
   /v1/me:
     get:
       operationId: getMe
@@ -224,36 +316,50 @@ paths:
               schema:
                 $ref: '#/components/schemas/Me'
         '401':
-          description: Structured error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       security:
       - bearerAuth: []
     delete:
       operationId: deleteMe
       summary: Reserved for a later milestone
+      description: 'Reserved erasure shape (C-06, TM-31): step-up re-authentication
+        with the account password in the body, then 202 with an ErasureStatus; the
+        hard delete runs later and removes attempts, decision snapshots and user-bearing
+        decision fields (ADR-0003). Returns 501 until implemented.'
       tags:
       - Planned
       x-planned: true
       security:
       - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReauthRequest'
       responses:
         '501':
-          description: Not implemented
+          $ref: '#/components/responses/NotImplemented'
+        '202':
+          description: Reserved future success shape; erasure accepted and scheduled.
+            No implementation in v1.1.
+          headers:
+            X-Request-Id:
+              schema: *id001
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '200':
-          description: Reserved future success shape; no implementation in v1
+                $ref: '#/components/schemas/ErasureStatus'
         '400':
-          description: Malformed request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /v1/me/preferences:
     put:
       operationId: putPreferences
@@ -270,12 +376,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Preferences'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '422':
-          description: Structured error
+          description: 'Codes: VALIDATION_FAILED (field_errors populated), UNKNOWN_FIELD,
+            UNKNOWN_BOARD, UNSUPPORTED_ANGLE.'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       security:
       - bearerAuth: []
       requestBody:
@@ -288,6 +401,10 @@ paths:
     post:
       operationId: createConsent
       summary: Grant consent
+      description: Records acceptance of the consent document identified by
+        `consent_version` and `text_sha256` (A7, C-07). `scopes.service` must be true;
+        `scopes.research` defaults to false and is the only way research use is ever
+        enabled.
       tags:
       - API
       responses:
@@ -297,11 +414,20 @@ paths:
             X-Request-Id:
               schema: *id001
         '400':
-          description: Malformed request
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          description: 'Codes: VALIDATION_FAILED (field_errors populated; also used when
+            consent_version or text_sha256 does not match the current document), UNKNOWN_FIELD.'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       security:
       - bearerAuth: []
       requestBody:
@@ -313,26 +439,33 @@ paths:
     delete:
       operationId: deleteConsent
       summary: Revoke consent
+      description: 'Revocation semantics (A7): stored attempts are retained but no new
+        attempt or recommendation writes are accepted (403 CONSENT_REQUIRED) until
+        consent is granted again with createConsent. Revocation is not erasure; erasure
+        is DELETE /v1/me.'
       tags:
       - API
       responses:
         '204':
-          description: Successful response
+          description: Successful response (also when no consent was active)
           headers:
             X-Request-Id:
               schema: *id001
         '400':
-          description: Malformed request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       security:
       - bearerAuth: []
   /v1/me/attempts:
     get:
       operationId: listAttempts
       summary: List attempts
+      description: 'Ordering (A11): newest first by `occurred_at` descending, then
+        `attempt_id` descending; the cursor encodes that keyset. Both ACTIVE and
+        RETRACTED attempts are returned unless `status` is given.'
       tags:
       - API
       responses:
@@ -346,11 +479,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/AttemptList'
         '400':
-          description: Malformed request
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          description: 'Codes: VALIDATION_FAILED (field_errors populated), INVALID_CURSOR.'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       security:
       - bearerAuth: []
       parameters:
@@ -365,6 +504,15 @@ paths:
           type: integer
           minimum: 1
           maximum: 100
+      - name: status
+        in: query
+        required: false
+        description: Filter by attempt status. Omitted means both statuses are returned.
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - RETRACTED
     post:
       operationId: createAttempt
       summary: Create attempt
@@ -380,24 +528,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Attempt'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '403':
-          description: Structured error
+          description: 'Codes: CONSENT_REQUIRED. No active consent (never granted, or
+            revoked with deleteConsent). Call createConsent and retry.'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '409':
-          description: Structured error
+          description: 'Codes: IDEMPOTENCY_CONFLICT. Same Idempotency-Key with a different
+            request fingerprint (ADR-0002).'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '422':
-          description: Structured error
+          description: 'Codes: VALIDATION_FAILED (field_errors populated), UNKNOWN_FIELD,
+            OCCURRED_AT_IN_FUTURE, UNKNOWN_ROUTE_VARIANT.'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '200':
           description: Idempotent replay
           content:
@@ -414,6 +571,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 128
+          pattern: ^[A-Za-z0-9._:-]{1,128}$
       requestBody:
         required: true
         content:
@@ -421,6 +579,36 @@ paths:
             schema:
               $ref: '#/components/schemas/AttemptCreate'
   /v1/me/attempts/{attempt_id}:
+    get:
+      operationId: getAttempt
+      summary: Get attempt
+      description: Single-attempt read (A10); use after a 409 REVISION_CONFLICT to
+        fetch the latest revision before retrying patchAttempt.
+      tags:
+      - API
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: *id001
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attempt'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: attempt_id
+        in: path
+        required: true
+        schema: *id001
     patch:
       operationId: patchAttempt
       summary: Correct attempt
@@ -436,24 +624,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Attempt'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '404':
-          description: Structured error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/NotFound'
         '409':
-          description: Structured error
+          description: 'Codes: REVISION_CONFLICT. The envelope carries `current_revision`;
+            re-read with getAttempt and retry with the new If-Match.'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '422':
-          description: Structured error
+          description: 'Codes: VALIDATION_FAILED (field_errors populated), UNKNOWN_FIELD.'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       security:
       - bearerAuth: []
       parameters:
@@ -477,6 +668,8 @@ paths:
     post:
       operationId: createRecommendations
       summary: Recommend routes
+      description: Requires active consent (A9); a request fingerprint and decision
+        record are written for every call.
       tags:
       - API
       responses:
@@ -489,24 +682,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RecommendationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '403':
-          description: Structured error
+          description: 'Codes: CONSENT_REQUIRED. Recommendations require active consent
+            because the request is recorded as a decision (A9).'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '422':
-          description: Structured error
+          description: 'Codes: VALIDATION_FAILED (field_errors populated), UNKNOWN_FIELD,
+            UNKNOWN_BOARD, UNSUPPORTED_ANGLE.'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '503':
-          description: Structured error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/ServiceUnavailable'
       security:
       - bearerAuth: []
       requestBody:
@@ -531,12 +728,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Decision'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '404':
-          description: Structured error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       security:
       - bearerAuth: []
       parameters:
@@ -557,19 +754,15 @@ paths:
       - bearerAuth: []
       responses:
         '501':
-          description: Not implemented
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/NotImplemented'
         '200':
           description: Reserved future success shape; no implementation in v1
         '400':
-          description: Malformed request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       parameters:
       - name: decision_id
         in: path
@@ -587,19 +780,15 @@ paths:
       - bearerAuth: []
       responses:
         '501':
-          description: Not implemented
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/NotImplemented'
         '200':
           description: Reserved future success shape; no implementation in v1
         '400':
-          description: Malformed request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       parameters:
       - name: decision_id
         in: path
@@ -617,23 +806,22 @@ paths:
       - bearerAuth: []
       responses:
         '501':
-          description: Not implemented
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/NotImplemented'
         '200':
           description: Reserved future success shape; no implementation in v1
         '400':
-          description: Malformed request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /v1/me/export:
     get:
       operationId: getExport
       summary: Reserved for a later milestone
+      description: 'Reserved export shape (C-06, TM-31): the 200 response carries the
+        caller''s own data and must be sent with Cache-Control: no-store. Body schema is
+        defined when implemented. Returns 501 until then.'
       tags:
       - Planned
       x-planned: true
@@ -641,19 +829,24 @@ paths:
       - bearerAuth: []
       responses:
         '501':
-          description: Not implemented
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/NotImplemented'
         '200':
-          description: Reserved future success shape; no implementation in v1
-        '400':
-          description: Malformed request
-          content:
-            application/json:
+          description: 'Reserved future success shape; no implementation in v1.1. Served
+            with Cache-Control: no-store.'
+          headers:
+            X-Request-Id:
+              schema: *id001
+            Cache-Control:
+              required: true
               schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+                type: string
+                const: no-store
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /v1/admin/experiments:
     get:
       operationId: listExperiments
@@ -665,19 +858,15 @@ paths:
       - bearerAuth: []
       responses:
         '501':
-          description: Not implemented
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/NotImplemented'
         '200':
           description: Reserved future success shape; no implementation in v1
         '400':
-          description: Malformed request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /v1/admin/experiments/{id}/rollback:
     post:
       operationId: rollbackExperiment
@@ -689,19 +878,15 @@ paths:
       - bearerAuth: []
       responses:
         '501':
-          description: Not implemented
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/NotImplemented'
         '200':
           description: Reserved future success shape; no implementation in v1
         '400':
-          description: Malformed request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       parameters:
       - name: id
         in: path
@@ -713,16 +898,128 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
+  headers:
+    RetryAfter:
+      description: Seconds to wait before retrying (RFC 9110 delay-seconds form).
+      required: true
+      schema:
+        type: integer
+        minimum: 0
+  responses:
+    BadRequest:
+      description: 'Malformed request (unparseable JSON, bad header syntax). Codes:
+        VALIDATION_FAILED.'
+      headers:
+        X-Request-Id:
+          schema: *id001
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Unauthenticated:
+      description: 'Codes: UNAUTHENTICATED. Missing, malformed, expired or revoked bearer
+        token.'
+      headers:
+        X-Request-Id:
+          schema: *id001
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    NotFound:
+      description: 'Codes: NOT_FOUND. Also returned for a resource owned by another user
+        (ADR-0005: no id enumeration via 403).'
+      headers:
+        X-Request-Id:
+          schema: *id001
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    PayloadTooLarge:
+      description: 'Codes: PAYLOAD_TOO_LARGE. Request body exceeds the deployment limit
+        (TM-25).'
+      headers:
+        X-Request-Id:
+          schema: *id001
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    RateLimited:
+      description: 'Codes: RATE_LIMITED. Per-user, per-username or per-IP limit exceeded
+        (ADR-0005); honour Retry-After.'
+      headers:
+        X-Request-Id:
+          schema: *id001
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    NotImplemented:
+      description: 'Not implemented. Codes: NOT_IMPLEMENTED.'
+      headers:
+        X-Request-Id:
+          schema: *id001
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    ServiceUnavailable:
+      description: 'Codes: SERVICE_UNAVAILABLE. A required dependency is down and no
+        fallback applies.'
+      headers:
+        X-Request-Id:
+          schema: *id001
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
   schemas:
+    ErrorCode:
+      type: string
+      description: 'Closed set of top-level error codes (A8, C-02). Each error response
+        lists the subset it can carry. INTERNAL_ERROR accompanies any undeclared 5xx.
+        REPLAY_UNAVAILABLE_ERASED is reserved for replayDecision (ADR-0003).'
+      enum:
+      - VALIDATION_FAILED
+      - UNKNOWN_FIELD
+      - OCCURRED_AT_IN_FUTURE
+      - INVALID_CURSOR
+      - UNKNOWN_BOARD
+      - UNSUPPORTED_ANGLE
+      - UNKNOWN_ROUTE_VARIANT
+      - USERNAME_TAKEN
+      - INVALID_CREDENTIALS
+      - UNAUTHENTICATED
+      - CONSENT_REQUIRED
+      - FORBIDDEN
+      - NOT_FOUND
+      - IDEMPOTENCY_CONFLICT
+      - REVISION_CONFLICT
+      - PAYLOAD_TOO_LARGE
+      - RATE_LIMITED
+      - SERVICE_UNAVAILABLE
+      - NOT_IMPLEMENTED
+      - INTERNAL_ERROR
+      - REPLAY_UNAVAILABLE_ERASED
     ErrorEnvelope:
       type: object
+      description: 'Structured error. Generic 422 responses (code VALIDATION_FAILED)
+        populate `field_errors` with one entry per offending field; `field` is the JSON
+        path of the offending member or parameter name, and `field_errors[].code` is a
+        free-form validator keyword such as minimum, required, enum, pattern or
+        additionalProperties. `current_revision` is present only with REVISION_CONFLICT.'
       required:
       - code
       - message
       - request_id
       - field_errors
       properties:
-        code: *id001
+        code:
+          $ref: '#/components/schemas/ErrorCode'
         message: *id001
         request_id: *id001
         field_errors:
@@ -740,6 +1037,40 @@ components:
             additionalProperties: false
         current_revision: *id003
       additionalProperties: false
+    BoardHold:
+      type: object
+      required:
+      - hold_id
+      - x
+      - y
+      properties:
+        hold_id: *id001
+        x: *id002
+        y: *id002
+      additionalProperties: false
+    BoardGeometry:
+      type: object
+      description: Coordinate frame for `holds[].x/y` and `Placement.x/y` (A1).
+      required:
+      - units
+      - width
+      - height
+      - y_axis
+      properties:
+        units:
+          type: string
+          enum:
+          - NORMALIZED
+          - MILLIMETRES
+        width: *id002
+        height: *id002
+        y_axis:
+          type: string
+          description: UP means y grows towards the top of the board.
+          enum:
+          - UP
+          - DOWN
+      additionalProperties: false
     Board:
       type: object
       required:
@@ -748,6 +1079,9 @@ components:
       - layout_id
       - size_id
       - synthetic
+      - holds
+      - geometry
+      - available_angles
       properties:
         board_id: *id001
         provider: *id001
@@ -755,6 +1089,18 @@ components:
         size_id: *id001
         synthetic: &id004
           type: boolean
+        holds:
+          type: array
+          items:
+            $ref: '#/components/schemas/BoardHold'
+        geometry:
+          $ref: '#/components/schemas/BoardGeometry'
+        available_angles:
+          type: array
+          description: Angles (degrees) this board can be set to (A5); `angle_deg`
+            values outside it are rejected with UNSUPPORTED_ANGLE.
+          uniqueItems: true
+          items: *id003
       additionalProperties: false
     RouteVariantSummary:
       type: object
@@ -767,7 +1113,7 @@ components:
       - grade_label
       - grade_observation_count
       properties:
-        route_variant_id: *id001
+        route_variant_id: *id007
         board_id: *id001
         angle_deg: *id003
         name: *id001
@@ -814,7 +1160,7 @@ components:
       - tags
       - missing_tags
       properties:
-        route_variant_id: *id001
+        route_variant_id: *id007
         board_id: *id001
         angle_deg: *id003
         name: *id001
@@ -836,6 +1182,49 @@ components:
           items: *id001
         missing_tags: *id004
       additionalProperties: false
+    Goal:
+      type: string
+      description: Session goal (A4). Used by RecommendationRequest.goal and
+        Preferences.goals.
+      enum:
+      - TECHNIQUE
+      - STRENGTH
+      - ENDURANCE
+      - PROJECT
+    GradeBand:
+      type: string
+      description: 'Coarse self-assessed band (A4, A6). The ranking policy maps it to
+        grade_numeric targets; it is not a claim about physical difficulty or ability.
+        The label-to-grade_numeric table (contracts/catalog/grade-scale.v1.json) is still
+        BLOCKED, so clients filter by numeric grade and pick a band here.'
+      enum:
+      - NOVICE
+      - BEGINNER
+      - INTERMEDIATE
+      - ADVANCED
+      - EXPERT
+    ReasonCode:
+      type: string
+      description: Closed set of ranking reason codes (A4; planning/06 §9). The same
+        list is used by contracts/decisions/decision-record.v1.schema.json.
+      enum:
+      - COMPATIBLE_ANGLE
+      - GOAL_CHALLENGE_MATCH
+      - NOVEL_ROUTE
+      - PREFERRED_STYLE
+      - WELL_OBSERVED_GRADE
+      - COOLDOWN_SKIPPED
+      - LOW_INVENTORY_WIDENED
+      - COLD_START_HEURISTIC
+    UncertaintyLabel:
+      type: string
+      description: Qualitative confidence of `predicted_send_probability` (A4).
+        INSUFFICIENT_HISTORY accompanies a null probability.
+      enum:
+      - INSUFFICIENT_HISTORY
+      - LOW
+      - MEDIUM
+      - HIGH
     Preferences:
       type: object
       required:
@@ -846,10 +1235,28 @@ components:
       properties:
         board_id: *id001
         angle_deg: *id003
-        initial_grade_band: *id001
+        initial_grade_band:
+          $ref: '#/components/schemas/GradeBand'
         goals:
           type: array
-          items: *id001
+          maxItems: 4
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Goal'
+      additionalProperties: false
+    ConsentScopes:
+      type: object
+      description: '`service` is the processing needed to run the product and must be
+        true; `research` is opt-in and defaults to false (C-07, TM-30).'
+      required:
+      - service
+      properties:
+        service:
+          type: boolean
+          const: true
+        research:
+          type: boolean
+          default: false
       additionalProperties: false
     Consent:
       type: object
@@ -857,6 +1264,8 @@ components:
       - version
       - consented_at
       - revoked_at
+      - scopes
+      - text_sha256
       properties:
         version: *id001
         consented_at: &id006
@@ -867,6 +1276,34 @@ components:
           - string
           - 'null'
           format: date-time
+        scopes:
+          $ref: '#/components/schemas/ConsentScopes'
+        text_sha256: &id008
+          type: string
+          description: Lowercase SHA-256 hex of the UTF-8 consent text that was shown.
+          pattern: ^[a-f0-9]{64}$
+      additionalProperties: false
+    ConsentDocument:
+      type: object
+      required:
+      - version
+      - text_sha256
+      - text
+      - scopes_available
+      properties:
+        version: *id001
+        text_sha256: *id008
+        text:
+          type: string
+          description: Consent text as Markdown.
+        scopes_available:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+            - service
+            - research
       additionalProperties: false
     Me:
       type: object
@@ -895,7 +1332,7 @@ components:
       - attempts_count
       - sent
       properties:
-        route_variant_id: *id001
+        route_variant_id: *id007
         occurred_at: *id006
         attempts_count:
           type: integer
@@ -940,6 +1377,7 @@ components:
       required:
       - attempt_id
       - route_variant_id
+      - route
       - occurred_at
       - received_at
       - attempts_count
@@ -948,9 +1386,12 @@ components:
       - status
       - completion_fraction
       - perceived_effort
+      - notes
       properties:
         attempt_id: *id005
-        route_variant_id: *id001
+        route_variant_id: *id007
+        route:
+          $ref: '#/components/schemas/RouteVariantSummary'
         occurred_at: *id006
         received_at: *id006
         attempts_count:
@@ -969,6 +1410,14 @@ components:
           - 'null'
           minimum: 1
           maximum: 10
+        notes:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+          description: 'Owner-only (A2, C-05): returned only to the authenticated owner
+            of the attempt, never in events, snapshots, decisions or exports to third
+            parties. Null when no note was written.'
         revision:
           type: integer
           minimum: 1
@@ -991,12 +1440,7 @@ components:
         board_id: *id001
         angle_deg: *id003
         goal:
-          type: string
-          enum:
-          - TECHNIQUE
-          - STRENGTH
-          - ENDURANCE
-          - PROJECT
+          $ref: '#/components/schemas/Goal'
         max_routes:
           type: integer
           minimum: 1
@@ -1004,31 +1448,37 @@ components:
         session_id: *id005
         exclude_route_variant_ids:
           type: array
-          items: *id001
+          maxItems: 100
+          items: *id007
       additionalProperties: false
     Recommendation:
       type: object
       required:
       - route_variant_id
+      - route
       - position
       - rank_score
       - reason_codes
       - predicted_send_probability
       - uncertainty_label
       properties:
-        route_variant_id: *id001
+        route_variant_id: *id007
+        route:
+          $ref: '#/components/schemas/RouteVariantSummary'
         position: *id003
         rank_score: *id002
         reason_codes:
           type: array
-          items: *id001
+          items:
+            $ref: '#/components/schemas/ReasonCode'
         predicted_send_probability:
           type:
           - number
           - 'null'
           minimum: 0
           maximum: 1
-        uncertainty_label: *id001
+        uncertainty_label:
+          $ref: '#/components/schemas/UncertaintyLabel'
       additionalProperties: false
     RecommendationResponse:
       type: object
@@ -1054,8 +1504,12 @@ components:
       additionalProperties: false
     Decision:
       type: object
+      description: Served decision (B1 minimal). Never includes the candidate snapshot
+        URI or user features.
       required:
       - decision_id
+      - created_at
+      - request
       - policy_version
       - model_version
       - feature_as_of
@@ -1064,6 +1518,9 @@ components:
       - recommendations
       properties:
         decision_id: *id005
+        created_at: *id006
+        request:
+          $ref: '#/components/schemas/RecommendationRequest'
         policy_version: *id001
         model_version: *id001
         feature_as_of: *id006
@@ -1122,10 +1579,41 @@ components:
       properties:
         username:
           type: string
-          minLength: 1
+          minLength: 3
+          maxLength: 32
+          pattern: ^[a-z0-9_]{3,32}$
         password:
           type: string
-          minLength: 1
+          minLength: 8
+          maxLength: 128
+      additionalProperties: false
+    ReauthRequest:
+      type: object
+      description: Step-up re-authentication for destructive account operations (C-06).
+      required:
+      - password
+      properties:
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+      additionalProperties: false
+    ErasureStatus:
+      type: object
+      description: Reserved erasure receipt (C-06). Hard delete happens at
+        `scheduled_hard_delete_at`; until then the session is revoked and the account
+        is inaccessible.
+      required:
+      - status
+      - requested_at
+      - scheduled_hard_delete_at
+      properties:
+        status:
+          type: string
+          enum:
+          - PENDING
+        requested_at: *id006
+        scheduled_hard_delete_at: *id006
       additionalProperties: false
     AuthResponse:
       type: object
@@ -1140,8 +1628,13 @@ components:
       type: object
       required:
       - consent_version
+      - scopes
+      - text_sha256
       properties:
         consent_version: *id001
+        scopes:
+          $ref: '#/components/schemas/ConsentScopes'
+        text_sha256: *id008
       additionalProperties: false
     Health:
       type: object

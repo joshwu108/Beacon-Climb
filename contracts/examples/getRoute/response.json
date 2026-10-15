@@ -14,9 +14,21 @@
     "placements": [
       {
         "hold_id": "h1",
-        "x": 1,
-        "y": 2,
+        "x": 0.25,
+        "y": 0.5,
         "role": "START"
+      },
+      {
+        "hold_id": "h2",
+        "x": 0.5,
+        "y": 0.75,
+        "role": "HAND"
+      },
+      {
+        "hold_id": "h3",
+        "x": 0.75,
+        "y": 1,
+        "role": "FINISH"
       }
     ],
     "tags": [],

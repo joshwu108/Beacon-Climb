@@ -1,0 +1,10 @@
+{
+  "method": "POST",
+  "path": "/v1/auth/register",
+  "body": {
+    "username": "demo",
+    "password": "demo-password"
+  },
+  "expected_status": 409,
+  "previous_request_ref": "request.json (username already registered)"
+}

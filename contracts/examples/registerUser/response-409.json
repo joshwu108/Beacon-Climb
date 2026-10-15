@@ -1,0 +1,18 @@
+{
+  "status": 409,
+  "headers": {
+    "X-Request-Id": "fixture-request-2"
+  },
+  "body": {
+    "code": "USERNAME_TAKEN",
+    "message": "Username is already registered",
+    "request_id": "fixture-request-2",
+    "field_errors": [
+      {
+        "field": "username",
+        "code": "unique",
+        "message": "already registered"
+      }
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "schema": "attempts.v1",
+  "event": {
+    "schema_version": 1,
+    "event_id": "018f0000-0000-7000-8000-000000000005",
+    "event_type": "ATTEMPT_RECORDED",
+    "user_id": "018f0000-0000-7000-8000-000000000001",
+    "attempt_id": "018f0000-0000-7000-8000-000000000002",
+    "attempt_revision": 1,
+    "route_variant_id": "synthetic-route-001:35",
+    "occurred_at": "2026-10-14T14:00:00Z",
+    "ingested_at": "2026-10-14T14:00:00Z",
+    "attributes": {
+      "sent": true,
+      "attempts_count": 2,
+      "status": "ACTIVE",
+      "free_text": "private note"
+    },
+    "trace_id": "synthetic-trace-1",
+    "producer": "api"
+  }
+}

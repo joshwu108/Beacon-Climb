@@ -1,0 +1,18 @@
+{
+  "status": 422,
+  "headers": {
+    "X-Request-Id": "fixture-request-2"
+  },
+  "body": {
+    "code": "VALIDATION_FAILED",
+    "message": "Request failed validation",
+    "request_id": "fixture-request-2",
+    "field_errors": [
+      {
+        "field": "username",
+        "code": "pattern",
+        "message": "must match ^[a-z0-9_]{3,32}$"
+      }
+    ]
+  }
+}

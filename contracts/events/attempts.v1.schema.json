@@ -97,12 +97,13 @@
           ]
         }
       },
-      "additionalProperties": true,
+      "additionalProperties": false,
       "not": {
         "required": [
           "notes"
         ]
-      }
+      },
+      "description": "Closed allowlist (C-01, TM-11). Unknown keys are a contract violation routed to the DLQ. A new optional attribute is added here, consumers ship first, then producers may emit it. notes is never an attribute."
     }
   },
   "allOf": [

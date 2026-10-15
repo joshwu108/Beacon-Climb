@@ -2,10 +2,62 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://beacon-climb.local/contracts/decisions/decision-record.v1.schema.json",
   "title": "Decision record and candidate snapshot v1",
+  "description": "A document is exactly one of: a candidate snapshot, a full decision record (erased=false), or an erased stub (erased=true, C-03 / TM-29). The stub is what remains after hard erasure (ADR-0003): no user_id, session_id, rng_seed, request_constraints, ranked_results, candidate_snapshot_uri or candidate_set_digest.",
   "$defs": {
     "hex64": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
+    },
+    "reasonCode": {
+      "type": "string",
+      "description": "Same closed list as OpenAPI components.schemas.ReasonCode (planning/06 §9).",
+      "enum": [
+        "COMPATIBLE_ANGLE",
+        "GOAL_CHALLENGE_MATCH",
+        "NOVEL_ROUTE",
+        "PREFERRED_STYLE",
+        "WELL_OBSERVED_GRADE",
+        "COOLDOWN_SKIPPED",
+        "LOW_INVENTORY_WIDENED",
+        "COLD_START_HEURISTIC"
+      ]
+    },
+    "userFeatures": {
+      "type": "object",
+      "description": "Frozen climber-features aggregate (planning/06 §8, climber-features.v1) plus the policy-derived target grade. All keys optional in v1; unknown keys are rejected.",
+      "additionalProperties": false,
+      "properties": {
+        "attempts_7d": { "type": "integer", "minimum": 0 },
+        "attempts_30d": { "type": "integer", "minimum": 0 },
+        "attempts_90d": { "type": "integer", "minimum": 0 },
+        "sends_7d": { "type": "integer", "minimum": 0 },
+        "sends_30d": { "type": "integer", "minimum": 0 },
+        "sends_90d": { "type": "integer", "minimum": 0 },
+        "send_rate_by_grade_band_90d": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["attempts", "sends"],
+            "properties": {
+              "attempts": { "type": "integer", "minimum": 0 },
+              "sends": { "type": "integer", "minimum": 0 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "recent_variant_ids": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "type": "string" }
+        },
+        "last_session_at": { "type": ["string", "null"], "format": "date-time" },
+        "max_sent_grade_numeric_90d": { "type": ["number", "null"] },
+        "distinct_sessions_30d": { "type": "integer", "minimum": 0 },
+        "target_grade_numeric": {
+          "type": "number",
+          "description": "target_grade(goal, grade band) as resolved by the ranking policy at decision time (planning/06 §9); frozen here so the reference ranker is pure."
+        }
+      }
     },
     "candidate": {
       "type": "object",
@@ -100,10 +152,8 @@
           "additionalProperties": false
         }
       }
-    }
-  },
-  "oneOf": [
-    {
+    },
+    "CandidateSnapshot": {
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -138,7 +188,7 @@
           "type": "string"
         },
         "user_features": {
-          "type": "object"
+          "$ref": "#/$defs/userFeatures"
         },
         "candidates": {
           "type": "array",
@@ -149,7 +199,7 @@
         }
       }
     },
-    {
+    "FullRecord": {
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -316,7 +366,7 @@
               "reason_codes": {
                 "type": "array",
                 "items": {
-                  "type": "string"
+                  "$ref": "#/$defs/reasonCode"
                 }
               }
             },
@@ -343,6 +393,71 @@
           }
         }
       }
+    },
+    "ErasedStub": {
+      "type": "object",
+      "description": "Post-erasure audit stub (ADR-0003 'Erasure and retention'). Replay of this decision returns REPLAY_UNAVAILABLE_ERASED.",
+      "additionalProperties": false,
+      "required": [
+        "artifact_type",
+        "schema_version",
+        "decision_id",
+        "requested_at",
+        "policy_version",
+        "model_version",
+        "experiment_id",
+        "served_variant",
+        "erased"
+      ],
+      "properties": {
+        "artifact_type": {
+          "const": "decision_record"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "decision_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "requested_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Coarsened: truncated to the day (time component 00:00:00Z) so the stub carries no fine-grained activity timestamp."
+        },
+        "policy_version": {
+          "type": "string"
+        },
+        "model_version": {
+          "type": "string"
+        },
+        "experiment_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "served_variant": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "erased": {
+          "const": true
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/CandidateSnapshot"
+    },
+    {
+      "$ref": "#/$defs/FullRecord"
+    },
+    {
+      "$ref": "#/$defs/ErasedStub"
     }
   ]
 }

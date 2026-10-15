@@ -2,6 +2,11 @@
   "method": "POST",
   "path": "/v1/me/consent",
   "body": {
-    "consent_version": "v1"
+    "consent_version": "v1",
+    "scopes": {
+      "service": true,
+      "research": false
+    },
+    "text_sha256": "968f78799dba47ff899423c29d8ee5ae5c7d29515ea4ac3b49c7d5efbd877022"
   }
 }

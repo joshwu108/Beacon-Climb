@@ -9,12 +9,17 @@
     "consent": {
       "version": "v1",
       "consented_at": "2026-10-14T13:00:00Z",
-      "revoked_at": null
+      "revoked_at": null,
+      "scopes": {
+        "service": true,
+        "research": false
+      },
+      "text_sha256": "968f78799dba47ff899423c29d8ee5ae5c7d29515ea4ac3b49c7d5efbd877022"
     },
     "preferences": {
       "board_id": "synthetic-demo-1",
       "angle_deg": 35,
-      "initial_grade_band": "V2-V4",
+      "initial_grade_band": "BEGINNER",
       "goals": [
         "TECHNIQUE"
       ]

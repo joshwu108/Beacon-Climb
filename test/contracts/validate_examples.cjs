@@ -31,13 +31,25 @@ const fs=require('fs'),path=require('path'),yaml=require('yaml'),Ajv=require('aj
   }
   count++;
  }
- const decisionSchema=JSON.parse(fs.readFileSync(path.join(root,'contracts/decisions/decision-record.v1.schema.json')));
- const validateDecision=ajv.compile(decisionSchema);
- for(const file of ['synthetic-snapshot.json','synthetic-decision.json']){const data=JSON.parse(fs.readFileSync(path.join(root,'contracts/decisions/examples',file)));if(!validateDecision(data))throw Error('invalid decision '+file+': '+ajv.errorsText(validateDecision.errors));count++;}
  const crypto=require('node:crypto'),assert=require('node:assert/strict');
  const ex=path.join(root,'contracts/decisions/examples');
+ const decisionSchema=JSON.parse(fs.readFileSync(path.join(root,'contracts/decisions/decision-record.v1.schema.json')));
+ const validateDecision=ajv.compile(decisionSchema);
+ for(const file of ['synthetic-snapshot.json','synthetic-decision.json','synthetic-decision-erased.json']){const data=JSON.parse(fs.readFileSync(path.join(ex,file)));if(!validateDecision(data))throw Error('invalid decision '+file+': '+ajv.errorsText(validateDecision.errors));count++;}
+ // Reason codes in the decision schema must be the same closed list as the OpenAPI ReasonCode enum.
+ assert.deepEqual(decisionSchema.$defs.reasonCode.enum,spec.components.schemas.ReasonCode.enum,'decision reason codes == OpenAPI ReasonCode');
+ // Erased stub (C-03): the full record and the stub are mutually exclusive branches, and the stub cannot carry user-bearing fields.
+ const branch=name=>ajv.compile({$ref:decisionSchema.$id+'#/$defs/'+name});
+ const validFull=branch('FullRecord'),validStub=branch('ErasedStub');
  const snapBytes=fs.readFileSync(path.join(ex,'synthetic-snapshot.json'));
- const snapshot=JSON.parse(snapBytes),record=JSON.parse(fs.readFileSync(path.join(ex,'synthetic-decision.json')));
+ const snapshot=JSON.parse(snapBytes),record=JSON.parse(fs.readFileSync(path.join(ex,'synthetic-decision.json'))),stub=JSON.parse(fs.readFileSync(path.join(ex,'synthetic-decision-erased.json')));
+ assert.ok(validFull(record)&&!validStub(record),'full record validates only as FullRecord');
+ assert.ok(validStub(stub)&&!validFull(stub),'erased stub validates only as ErasedStub');
+ for(const k of ['user_id','session_id','rng_seed','request_constraints','ranked_results','candidate_snapshot_uri','candidate_set_digest'])assert.ok(!validateDecision({...stub,[k]:record[k]}),'erased stub must reject '+k);
+ assert.ok(!validateDecision({...record,erased:true}),'erased=true with user-bearing fields is not representable');
+ assert.equal(stub.decision_id,record.decision_id,'stub keeps decision_id');
+ assert.equal(stub.requested_at,record.requested_at.slice(0,10)+'T00:00:00Z','stub requested_at truncated to the day');
+ count+=3;
  const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
  assert.equal(sha(snapBytes),record.candidate_set_digest,'candidate digest');
  assert.equal(record.candidate_snapshot_uri,`data/decisions/${record.candidate_set_digest.slice(0,2)}/${record.candidate_set_digest}.json`,'candidate URI');

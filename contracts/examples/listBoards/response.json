@@ -10,7 +10,35 @@
         "provider": "synthetic",
         "layout_id": "1",
         "size_id": "12x12",
-        "synthetic": true
+        "synthetic": true,
+        "holds": [
+          {
+            "hold_id": "h1",
+            "x": 0.25,
+            "y": 0.5
+          },
+          {
+            "hold_id": "h2",
+            "x": 0.5,
+            "y": 0.75
+          },
+          {
+            "hold_id": "h3",
+            "x": 0.75,
+            "y": 1
+          }
+        ],
+        "geometry": {
+          "units": "NORMALIZED",
+          "width": 1,
+          "height": 1,
+          "y_axis": "UP"
+        },
+        "available_angles": [
+          20,
+          35,
+          45
+        ]
       }
     ]
   }

@@ -6,12 +6,22 @@
   "body": {
     "attempt_id": "018f0000-0000-7000-8000-000000000002",
     "route_variant_id": "synthetic-route-001:35",
+    "route": {
+      "route_variant_id": "synthetic-route-001:35",
+      "board_id": "synthetic-demo-1",
+      "angle_deg": 35,
+      "name": "Synthetic Traverse 1",
+      "grade_numeric": 17,
+      "grade_label": "V2",
+      "grade_observation_count": 0
+    },
     "occurred_at": "2026-10-14T14:00:00Z",
     "received_at": "2026-10-14T14:00:01Z",
     "attempts_count": 2,
     "sent": false,
     "completion_fraction": null,
     "perceived_effort": null,
+    "notes": null,
     "revision": 2,
     "status": "ACTIVE"
   }

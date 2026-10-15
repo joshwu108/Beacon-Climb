@@ -1,0 +1,15 @@
+{
+  "status": 200,
+  "headers": {
+    "X-Request-Id": "fixture-request-1"
+  },
+  "body": {
+    "version": "v1",
+    "text_sha256": "968f78799dba47ff899423c29d8ee5ae5c7d29515ea4ac3b49c7d5efbd877022",
+    "text": "# Beacon Climb consent v1\n\nSynthetic demo consent text. Attempts you log and recommendation requests are stored to run the service (`service` scope). Research use of your pseudonymous history is optional (`research` scope, off by default). You can revoke consent or erase your account at any time.\n",
+    "scopes_available": [
+      "service",
+      "research"
+    ]
+  }
+}

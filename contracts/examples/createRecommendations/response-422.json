@@ -4,9 +4,15 @@
     "X-Request-Id": "fixture-request-2"
   },
   "body": {
-    "code": "VALIDATION_ERROR",
-    "message": "Request cannot be applied",
+    "code": "VALIDATION_FAILED",
+    "message": "Request failed validation",
     "request_id": "fixture-request-2",
-    "field_errors": []
+    "field_errors": [
+      {
+        "field": "max_routes",
+        "code": "minimum",
+        "message": "must be >= 1"
+      }
+    ]
   }
 }

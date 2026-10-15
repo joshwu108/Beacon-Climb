@@ -1,0 +1,11 @@
+{
+  "artifact_type": "decision_record",
+  "schema_version": 1,
+  "decision_id": "018f0000-0000-7000-8000-000000000003",
+  "requested_at": "2026-10-14T00:00:00Z",
+  "policy_version": "heuristic-v1",
+  "model_version": "none",
+  "experiment_id": null,
+  "served_variant": null,
+  "erased": true
+}

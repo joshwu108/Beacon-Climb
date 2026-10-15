@@ -5,6 +5,15 @@
   },
   "body": {
     "decision_id": "018f0000-0000-7000-8000-000000000003",
+    "created_at": "2026-10-14T14:01:00Z",
+    "request": {
+      "board_id": "synthetic-demo-1",
+      "angle_deg": 35,
+      "goal": "TECHNIQUE",
+      "max_routes": 4,
+      "session_id": "018f0000-0000-7000-8000-000000000004",
+      "exclude_route_variant_ids": []
+    },
     "policy_version": "heuristic-v1",
     "model_version": "none",
     "feature_as_of": "2026-10-14T13:59:00Z",
@@ -12,6 +21,15 @@
     "recommendations": [
       {
         "route_variant_id": "synthetic-route-001:35",
+        "route": {
+          "route_variant_id": "synthetic-route-001:35",
+          "board_id": "synthetic-demo-1",
+          "angle_deg": 35,
+          "name": "Synthetic Traverse 1",
+          "grade_numeric": 17,
+          "grade_label": "V2",
+          "grade_observation_count": 0
+        },
         "position": 1,
         "rank_score": 0.72,
         "reason_codes": [

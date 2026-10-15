@@ -1,0 +1,262 @@
+{
+  "$comment": "RFC 8785 fixtures shared by TypeScript (test/contracts/jcs.test.cjs) and Java (BC-0109). input is raw JSON text; canonical is the JCS text; sha256 is of its UTF-8 bytes. See contracts/jcs/README.md.",
+  "version": "1.0.0",
+  "valid": [
+    {
+      "name": "adr_0002_cross_language",
+      "input": "{\"b\":1.0,\"a\":1}",
+      "canonical": "{\"a\":1,\"b\":1}",
+      "sha256": "4dad51ac41eb73862fce375fae85ba13711fd19f1b26d8e4b1f9fa405c3d5adf"
+    },
+    {
+      "name": "number_forms_equal_one",
+      "input": "[1e0,1.0,1,1.00,10e-1,0.1e1]",
+      "canonical": "[1,1,1,1,1,1]",
+      "sha256": "5df95ea1d422bf97f61d1c604a8217a59dfeae3bf639a6c9125e8859d7412243"
+    },
+    {
+      "name": "exponent_threshold_1e21",
+      "input": "1e21",
+      "canonical": "1e+21",
+      "sha256": "241c4643fa70b1dcde1205b71be4e3bebb17e9f880c8e1a33d0ead6c27271d3c"
+    },
+    {
+      "name": "integer_1e20_no_exponent",
+      "input": "100000000000000000000",
+      "canonical": "100000000000000000000",
+      "sha256": "c344e9487bfbd5c4e03c9fb90d62a5dde5e00b54d55c46e9f4a803aea162b80c"
+    },
+    {
+      "name": "fraction_0_1",
+      "input": "0.1",
+      "canonical": "0.1",
+      "sha256": "14be4b45f18e0d8c67b4f719b5144eee88497e413709d11d85b096d8e2346310"
+    },
+    {
+      "name": "negative_zero",
+      "input": "-0",
+      "canonical": "0",
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "name": "negative_zero_fraction",
+      "input": "-0.0",
+      "canonical": "0",
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "name": "small_exponent_1E_minus_7",
+      "input": "1E-7",
+      "canonical": "1e-7",
+      "sha256": "5b33e02f2c5103a05d32f6ba9cb058294452bfbf393967f68bb30c1bdcbbab22"
+    },
+    {
+      "name": "smallest_plain_fraction_1e_minus_6",
+      "input": "0.000001",
+      "canonical": "0.000001",
+      "sha256": "159fb29a827ad04b260aa6c8ab6d8637f8f2b38af5c4f3cb49d6a21205e040f8"
+    },
+    {
+      "name": "negative_with_positive_exponent",
+      "input": "-1.5E+3",
+      "canonical": "-1500",
+      "sha256": "801736832ad609b28826544181c9f8909bbd541f2baa912e57ed76a0291e289b"
+    },
+    {
+      "name": "max_safe_integer",
+      "input": "9007199254740991",
+      "canonical": "9007199254740991",
+      "sha256": "f40b423c2dd95ff2b2f027e22208f438cf7242862e5e746860e697308c9add26"
+    },
+    {
+      "name": "float_with_many_digits",
+      "input": "0.1000000000000000055511151231257827",
+      "canonical": "0.1",
+      "sha256": "14be4b45f18e0d8c67b4f719b5144eee88497e413709d11d85b096d8e2346310"
+    },
+    {
+      "name": "empty_object",
+      "input": "{}",
+      "canonical": "{}",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "name": "empty_array",
+      "input": "[]",
+      "canonical": "[]",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "name": "whitespace_removed",
+      "input": "{ \"a\" : [ 1 , 2 ] ,\n\t\"b\" : { } }",
+      "canonical": "{\"a\":[1,2],\"b\":{}}",
+      "sha256": "8c547cce7ccb1b89359479c0b71a0a4b62acfc54a2b2780fd34aaeb75f9e44b7"
+    },
+    {
+      "name": "nested_objects_and_arrays",
+      "input": "{\"z\":[1,{\"b\":null,\"a\":[true,false,[]]}],\"a\":{\"y\":{},\"x\":[{}]}}",
+      "canonical": "{\"a\":{\"x\":[{}],\"y\":{}},\"z\":[1,{\"a\":[true,false,[]],\"b\":null}]}",
+      "sha256": "c3b035103d3fe26d6155cc1b59a3c22c1dd1ff5550a8b905d125607693bc2e61"
+    },
+    {
+      "name": "booleans_and_null",
+      "input": "[true,false,null]",
+      "canonical": "[true,false,null]",
+      "sha256": "4d0f18de2133118249c26acc481838d4f6bb6bc1de882d99abbd19ae9397e8df"
+    },
+    {
+      "name": "top_level_string",
+      "input": "\"x\"",
+      "canonical": "\"x\"",
+      "sha256": "ba2df4903a2c14e86dc3bcca58911b44ac1d2514b7227bf6eb08cfb978f55a1b"
+    },
+    {
+      "name": "string_escapes",
+      "input": "\"\\u0041\\n\\t\\r\\b\\f\\\"\\\\\\/\"",
+      "canonical": "\"A\\n\\t\\r\\b\\f\\\"\\\\/\"",
+      "sha256": "a2ac9f0f829d133ee9c16315cfc14792682549abd974b87a8cf15891d6dfd303"
+    },
+    {
+      "name": "control_chars_lowercase_hex",
+      "input": "\"\\u0001\\u001f\\u007f\"",
+      "canonical": "\"\\u0001\\u001f\"",
+      "sha256": "ed9097a4ae751ddfbe4238513512e27a0136cffe70fe966b1bda13450c2bb455"
+    },
+    {
+      "name": "non_ascii_literal",
+      "input": "{\"s\":\"\\u00e9\\u20ac\\ud83d\\ude00\"}",
+      "canonical": "{\"s\":\"é€😀\"}",
+      "sha256": "fa8f72071fcda45ae6bf588b8f622ed60158a7c0b76fef5965c915e0cace1a5e"
+    },
+    {
+      "name": "key_order_utf16_basic",
+      "input": "{\"é\":1,\"z\":2,\"😀\":3}",
+      "canonical": "{\"z\":2,\"é\":1,\"😀\":3}",
+      "sha256": "4177f29d85d48c133fea6e4531c5817e8ad4a86eca582296fe34d6322db0799c"
+    },
+    {
+      "name": "key_order_surrogate_before_U_FF5E",
+      "input": "{\"～\":1,\"😀\":2}",
+      "canonical": "{\"😀\":2,\"～\":1}",
+      "sha256": "c44a324298283d910e4120a2ff3c2d7746b4a5c9f2d9625c67f6abb58748cf31"
+    },
+    {
+      "name": "key_order_rfc8785_3_2_3_example",
+      "input": "{\"\\u20ac\":\"Euro Sign\",\"\\r\":\"Carriage Return\",\"\\ufb33\":\"Hebrew Letter Dalet With Dagesh\",\"1\":\"One\",\"\\ud83d\\ude00\":\"Emoji: Grinning Face\",\"\\u0080\":\"Control\",\"\\u00f6\":\"Latin Small Letter O With Diaeresis\"}",
+      "canonical": "{\"\\r\":\"Carriage Return\",\"1\":\"One\",\"\":\"Control\",\"ö\":\"Latin Small Letter O With Diaeresis\",\"€\":\"Euro Sign\",\"😀\":\"Emoji: Grinning Face\",\"דּ\":\"Hebrew Letter Dalet With Dagesh\"}",
+      "sha256": "5e321556d22018a9656991a9e94f77ec175fa193e52a2429d312f8419ec8b08c"
+    },
+    {
+      "name": "key_order_numeric_strings_lexicographic",
+      "input": "{\"10\":1,\"1\":2,\"2\":3}",
+      "canonical": "{\"1\":2,\"10\":1,\"2\":3}",
+      "sha256": "c95113ae8d374817b7cf8f3373dc109de313ef0839bc2b75cf37f2861127dd62"
+    },
+    {
+      "name": "key_order_empty_key_first",
+      "input": "{\"a\":2,\"\":1}",
+      "canonical": "{\"\":1,\"a\":2}",
+      "sha256": "9cf535828d5dbc2d87d9c4c0b99d9e7308b5fdbd22aac02bac1d60f6ac9aa127"
+    },
+    {
+      "name": "key_order_case_sensitive",
+      "input": "{\"a\":1,\"B\":2,\"A\":3,\"b\":4}",
+      "canonical": "{\"A\":3,\"B\":2,\"a\":1,\"b\":4}",
+      "sha256": "a93d8dc2f979a49987bb73d7ff1a501f0230ac1581123101c6ac8aca4d51fbd6"
+    },
+    {
+      "name": "proto_key_is_ordinary",
+      "input": "{\"__proto__\":1,\"a\":2}",
+      "canonical": "{\"__proto__\":1,\"a\":2}",
+      "sha256": "0c4b7a2b4e04ba308e5674b61f20266799172c87f78917e58b19408cbce2121a"
+    },
+    {
+      "name": "request_fingerprint_attempt_create",
+      "input": "{\"sent\":true,\"route_variant_id\":\"synthetic-route-001:35\",\"occurred_at\":\"2026-10-14T14:00:00Z\",\"attempts_count\":2}",
+      "canonical": "{\"attempts_count\":2,\"occurred_at\":\"2026-10-14T14:00:00Z\",\"route_variant_id\":\"synthetic-route-001:35\",\"sent\":true}",
+      "sha256": "6e99655269aef399023779213843c5c81861ba34ebf7a4adbfe136be3e6d2ff2"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "duplicate_key_top_level",
+      "input": "{\"a\":1,\"a\":2}",
+      "reason": "duplicate object key"
+    },
+    {
+      "name": "duplicate_key_nested",
+      "input": "{\"o\":{\"k\":1,\"k\":1}}",
+      "reason": "duplicate object key in nested object"
+    },
+    {
+      "name": "duplicate_key_after_unescape",
+      "input": "{\"a\":1,\"\\u0061\":2}",
+      "reason": "keys compare after unescaping; \"\\u0061\" is \"a\""
+    },
+    {
+      "name": "nan_literal",
+      "input": "NaN",
+      "reason": "NaN is not JSON and not a finite binary64"
+    },
+    {
+      "name": "infinity_literal",
+      "input": "Infinity",
+      "reason": "Infinity is not JSON"
+    },
+    {
+      "name": "negative_infinity_literal",
+      "input": "-Infinity",
+      "reason": "Infinity is not JSON"
+    },
+    {
+      "name": "nan_in_array",
+      "input": "[1,NaN]",
+      "reason": "NaN is not JSON"
+    },
+    {
+      "name": "overflow_to_infinity",
+      "input": "1e400",
+      "reason": "parses to +Infinity, not a finite binary64"
+    },
+    {
+      "name": "trailing_data",
+      "input": "{\"a\":1} x",
+      "reason": "data after the JSON value"
+    },
+    {
+      "name": "trailing_comma_array",
+      "input": "[1,]",
+      "reason": "trailing comma"
+    },
+    {
+      "name": "leading_zero",
+      "input": "01",
+      "reason": "leading zeros are not JSON numbers"
+    },
+    {
+      "name": "unquoted_key",
+      "input": "{a:1}",
+      "reason": "keys must be strings"
+    },
+    {
+      "name": "single_quoted_string",
+      "input": "'a'",
+      "reason": "single quotes are not JSON"
+    },
+    {
+      "name": "unterminated_string",
+      "input": "\"abc",
+      "reason": "unterminated string"
+    },
+    {
+      "name": "raw_control_char_in_string",
+      "input": "\"a\u0001b\"",
+      "reason": "control characters must be escaped in input"
+    },
+    {
+      "name": "empty_input",
+      "input": "",
+      "reason": "no JSON value"
+    }
+  ]
+}

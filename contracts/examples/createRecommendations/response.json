@@ -12,6 +12,15 @@
     "recommendations": [
       {
         "route_variant_id": "synthetic-route-001:35",
+        "route": {
+          "route_variant_id": "synthetic-route-001:35",
+          "board_id": "synthetic-demo-1",
+          "angle_deg": 35,
+          "name": "Synthetic Traverse 1",
+          "grade_numeric": 17,
+          "grade_label": "V2",
+          "grade_observation_count": 0
+        },
         "position": 1,
         "rank_score": 0.72,
         "reason_codes": [

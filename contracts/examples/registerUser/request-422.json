@@ -1,0 +1,9 @@
+{
+  "method": "POST",
+  "path": "/v1/auth/register",
+  "body": {
+    "username": "Demo!",
+    "password": "demo-password"
+  },
+  "expected_status": 422
+}
