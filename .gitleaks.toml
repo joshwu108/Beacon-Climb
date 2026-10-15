@@ -1,0 +1,17 @@
+# gitleaks configuration (ADR-0007: gitleaks in pre-commit and CI).
+# Extends the default rule set; allowlist only the committed demo fixtures whose
+# placeholder credentials are part of the public contract examples.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Contract fixtures carry placeholder credentials by design"
+paths = [
+  '''contracts/examples/createSession/request\.json''',
+  '''contracts/examples/createSession/response\.json''',
+]
+regexes = [
+  '''opaque-demo-token''',
+  '''demo-password''',
+  '''change-me''',
+]

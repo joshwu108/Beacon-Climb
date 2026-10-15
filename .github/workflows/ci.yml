@@ -99,9 +99,30 @@ jobs:
           fetch-depth: 0
       - name: Start timer
         run: echo "started=$(date +%s)" >> "$GITHUB_ENV"
+      - run: bash test/guards/check-no-licensed-data.test.sh
       - run: scripts/ci/check-no-licensed-data.sh
       - run: scripts/ci/check-ownership.sh
       - name: Elapsed
         if: always()
         run: |
           echo "Guards wall-clock: $(($(date +%s) - started))s" >> "$GITHUB_STEP_SUMMARY"
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Start timer
+        run: echo "started=$(date +%s)" >> "$GITHUB_ENV"
+      - name: Scan full history for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_SUMMARY: "true"
+      - name: Elapsed
+        if: always()
+        run: |
+          echo "Gitleaks wall-clock: $(($(date +%s) - started))s" >> "$GITHUB_STEP_SUMMARY"

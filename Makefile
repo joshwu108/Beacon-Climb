@@ -1,4 +1,4 @@
-.PHONY: dev down test test-api test-web test-ml lint fmt seed-demo import
+.PHONY: dev down test test-api test-web test-ml lint fmt guards seed-demo import
 
 dev:
 	./gradlew :api:bootJar
@@ -19,11 +19,15 @@ test-ml:
 	uv run --directory services/ml pytest
 	uv run --directory ml --no-project --with pytest==9.1.1 pytest; status=$$?; [ $$status -eq 0 ] || [ $$status -eq 5 ]
 
-lint:
+lint: guards
 	./gradlew :api:spotlessCheck
 	pnpm --filter @beacon/web lint
 	uv run --directory services/ml ruff check .
 	uv run --directory ml --no-project --with ruff==0.17.0 ruff check .
+
+guards:
+	bash test/guards/check-no-licensed-data.test.sh
+	bash scripts/ci/check-no-licensed-data.sh
 
 fmt:
 	./gradlew :api:spotlessApply
