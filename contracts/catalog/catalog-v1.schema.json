@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beacon-climb.local/contracts/catalog/catalog-v1.schema.json",
+  "title": "Catalog interchange v1 (JSON Lines record)",
+  "description": "Validates ONE line of a catalog-v1 JSON Lines file. A file is: line 1 a manifest, then every board, then every route. Cross-line rules (record order, referenced board_id and provider_hold_id must exist, uniqueness, content_sha256 over the canonicalised non-manifest lines) are specified in contracts/catalog/README.md and enforced by test/contracts/catalog.test.cjs and the importer (BC-0105).",
+  "oneOf": [
+    { "$ref": "#/$defs/manifest" },
+    { "$ref": "#/$defs/board" },
+    { "$ref": "#/$defs/route" }
+  ],
+  "$defs": {
+    "hex64": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "shortId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "boardId": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]{1,64}$"
+    },
+    "providerHoldId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "providerRouteUuid": {
+      "type": "string",
+      "$comment": "No colon and no whitespace: the public route variant id is <provider_route_uuid>:<angle_deg> (ADR-0002, OpenAPI route_variant_id pattern ^[^:\\s]{1,64}:-?[0-9]{1,3}$).",
+      "pattern": "^[^:\\s]{1,64}$"
+    },
+    "angleDeg": {
+      "type": "integer",
+      "minimum": -10,
+      "maximum": 70
+    },
+    "nullableDateTime": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "licenseReviewStatus": {
+      "type": "string",
+      "enum": ["SYNTHETIC", "LOCAL_RESEARCH_ONLY", "REVIEWED_PERMITTED"]
+    },
+    "manifest": {
+      "type": "object",
+      "$comment": "synthetic=true if and only if license_review_status=SYNTHETIC (encoded by the if/then/else below). The importer refuses synthetic=false unless license_review_status=LOCAL_RESEARCH_ONLY and --acknowledge-audit is passed; the CI guard scripts/ci/check-no-licensed-data.sh refuses any tracked *.jsonl whose first line is not a manifest with synthetic=true.",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "schema_version",
+        "source",
+        "version",
+        "content_sha256",
+        "extracted_at",
+        "synthetic",
+        "license_review_status",
+        "record_counts"
+      ],
+      "properties": {
+        "type": { "const": "manifest" },
+        "schema_version": { "const": 1 },
+        "source": { "$ref": "#/$defs/shortId", "description": "Producer / provenance source, e.g. synthetic-demo or kilter. Stored in provenance_sources.source." },
+        "version": { "$ref": "#/$defs/shortId", "description": "Producer-defined dataset version, e.g. demo-board-v1. Stored in provenance_sources.version." },
+        "content_sha256": {
+          "$ref": "#/$defs/hex64",
+          "description": "SHA-256 (lowercase hex) of the UTF-8 bytes of every line after the manifest, each line serialised as RFC 8785 canonical JSON and joined with a single LF, no trailing LF. See README."
+        },
+        "extracted_at": { "type": "string", "format": "date-time" },
+        "synthetic": { "type": "boolean" },
+        "license_review_status": { "$ref": "#/$defs/licenseReviewStatus" },
+        "record_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["boards", "routes"],
+          "properties": {
+            "boards": { "type": "integer", "minimum": 0 },
+            "routes": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "notes": { "type": "string", "maxLength": 2000 }
+      },
+      "if": { "properties": { "synthetic": { "const": true } } },
+      "then": { "properties": { "license_review_status": { "const": "SYNTHETIC" } } },
+      "else": { "properties": { "license_review_status": { "enum": ["LOCAL_RESEARCH_ONLY", "REVIEWED_PERMITTED"] } } }
+    },
+    "board": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "board_id",
+        "provider",
+        "layout_id",
+        "size_id",
+        "synthetic",
+        "geometry",
+        "available_angles",
+        "holds"
+      ],
+      "properties": {
+        "type": { "const": "board" },
+        "board_id": { "$ref": "#/$defs/boardId" },
+        "provider": { "$ref": "#/$defs/shortId" },
+        "layout_id": { "$ref": "#/$defs/shortId" },
+        "size_id": { "$ref": "#/$defs/shortId" },
+        "synthetic": { "type": "boolean", "description": "Must equal the manifest's synthetic flag (cross-line rule). Stored in boards.synthetic." },
+        "geometry": {
+          "type": "object",
+          "description": "Coordinate frame for holds[].x/y; mirrors OpenAPI BoardGeometry. Stored in boards.geometry_json.",
+          "additionalProperties": false,
+          "required": ["units", "width", "height", "y_axis"],
+          "properties": {
+            "units": { "type": "string", "enum": ["NORMALIZED", "MILLIMETRES"] },
+            "width": { "type": "number", "exclusiveMinimum": 0 },
+            "height": { "type": "number", "exclusiveMinimum": 0 },
+            "y_axis": { "type": "string", "enum": ["UP", "DOWN"], "description": "UP means y grows towards the top of the board." }
+          }
+        },
+        "available_angles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/angleDeg" },
+          "description": "Angles this board can be set to; every route variant angle_deg must be one of them. Stored in boards.available_angles_json."
+        },
+        "holds": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["provider_hold_id", "x", "y"],
+            "properties": {
+              "provider_hold_id": { "$ref": "#/$defs/providerHoldId", "description": "Unique within the board (holds UNIQUE (board_id, provider_hold_id))." },
+              "x": { "type": "number", "description": "In geometry.units; the importer stores numeric(8,3), so producers should round to at most 3 decimals." },
+              "y": { "type": "number" },
+              "geometry_meta": { "type": "object", "description": "Free-form producer metadata (e.g. grid row/col). Stored in holds.geometry_meta_json." }
+            }
+          }
+        }
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "provider_route_uuid",
+        "board_id",
+        "name",
+        "setter_pseudonym",
+        "tags",
+        "active_from",
+        "active_to",
+        "placements",
+        "variants"
+      ],
+      "properties": {
+        "type": { "const": "route" },
+        "provider_route_uuid": { "$ref": "#/$defs/providerRouteUuid" },
+        "board_id": { "$ref": "#/$defs/boardId", "description": "Must name a board line earlier in the same file." },
+        "name": { "type": ["string", "null"], "maxLength": 200 },
+        "setter_pseudonym": { "type": ["string", "null"], "maxLength": 100, "description": "Never a real account name; producers pseudonymise before export." },
+        "tags": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 40 } },
+        "active_from": { "$ref": "#/$defs/nullableDateTime" },
+        "active_to": { "$ref": "#/$defs/nullableDateTime" },
+        "placements": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Shared by every variant of the route in v1 (per-angle placement differences are not representable yet; the importer copies these onto each route_variants row).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["provider_hold_id", "role"],
+            "properties": {
+              "provider_hold_id": { "$ref": "#/$defs/providerHoldId", "description": "Must exist in the referenced board's holds." },
+              "role": { "type": "string", "enum": ["START", "HAND", "FOOT", "FINISH"] },
+              "placement_order": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "variants": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["angle_deg", "grade_numeric", "grade_observation_count"],
+            "properties": {
+              "angle_deg": { "$ref": "#/$defs/angleDeg", "description": "Unique within the route; must be in the board's available_angles." },
+              "grade_numeric": { "type": ["number", "null"], "description": "Difficulty on the numeric grade axis (contracts/catalog/grade-scale.v1.json); null when ungraded. Stored as numeric(5,2)." },
+              "grade_observation_count": { "type": "integer", "minimum": 0 },
+              "validation_status": { "type": "string", "enum": ["ACTIVE", "RETIRED", "INVALID"], "default": "ACTIVE" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
