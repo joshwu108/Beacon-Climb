@@ -20,12 +20,36 @@ block() {
   exit 0
 }
 
-# ---------- 1. night mode ----------
+# ---------- 1. night mode (only for the session that received the overnight prompt) ----------
 NIGHT_FLAG="planning/handoffs/NIGHT-ACTIVE"
 NIGHT_LOG="$(ls planning/handoffs/NIGHT-*.md 2>/dev/null | grep -v DONE | head -1)"
-NIGHT_COUNTER="planning/handoffs/.night-stop-count"
 NIGHT_CAP=80
-if [ -f "$NIGHT_FLAG" ]; then
+# Identify the overnight session: its transcript has a USER message containing the prompt's
+# opening phrase. Other sessions in the same repo (reviews, chat) must not be held open.
+is_night_owner="$(printf '%s' "$input" | python3 -I -c '
+import sys, json
+try:
+    d = json.load(sys.stdin); tp = d.get("transcript_path") or ""
+    marker = "sole engineer on Beacon Climb tonight"
+    found = False
+    with open(tp, encoding="utf-8", errors="ignore") as f:
+        for line in f:
+            if marker not in line: continue
+            try: obj = json.loads(line)
+            except Exception: continue
+            if obj.get("type") == "user":
+                msg = obj.get("message", {}); content = msg.get("content", "")
+                text = content if isinstance(content, str) else json.dumps(content)
+                if marker in text and "tool_result" not in text[:200]:
+                    found = True; break
+    print("yes" if found else "no")
+except Exception:
+    print("no")')"
+session_id="$(printf '%s' "$input" | python3 -I -c 'import sys,json
+try: print(json.load(sys.stdin).get("session_id","nosession"))
+except Exception: print("nosession")')"
+NIGHT_COUNTER="planning/handoffs/.night-stop-count-${session_id}"
+if [ -f "$NIGHT_FLAG" ] && [ "$is_night_owner" = "yes" ]; then
   if [ -n "$NIGHT_LOG" ] && grep -qi '^## *Morning summary' "$NIGHT_LOG"; then
     rm -f "$NIGHT_COUNTER"
   else
