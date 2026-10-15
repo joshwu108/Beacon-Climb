@@ -38,6 +38,13 @@ printf 'x' > bad-raw.db
 printf 'x' > bad-raw.sqlite
 printf 'x' > bad-raw.sqlite3
 printf 'x' > bad-shadow.SQLITE.bak
+printf 'SQLite format 3\000rest' > kilter.bin
+printf 'x' > weights.safetensors
+printf 'x' > model.onnx
+printf 'x' > model.pkl
+printf 'x' > cat.jsonl.gz
+printf 'x' > arrays.npz
+printf 'x' > bundle.zip
 printf 'readme\n' > fine.md
 printf '{"a":1}\n' > fine.json
 
@@ -56,6 +63,13 @@ expect 1 "sqlite rejected" bad-raw.sqlite
 expect 1 "sqlite3 rejected" bad-raw.sqlite3
 expect 1 "sqlite anywhere in name rejected" bad-shadow.SQLITE.bak
 expect 1 "one bad file among good ones fails the whole run" good-synthetic.jsonl fine.md bad-table.csv
+expect 1 "sqlite header under another name rejected" kilter.bin
+expect 1 "safetensors rejected" weights.safetensors
+expect 1 "onnx rejected" model.onnx
+expect 1 "pickle rejected" model.pkl
+expect 1 "gzipped jsonl rejected" cat.jsonl.gz
+expect 1 "npz rejected" arrays.npz
+expect 1 "zip rejected" bundle.zip
 expect 0 "uppercase extension of allowed file passes" fine.md
 
 echo "guard self-test: $pass passed, $fail failed"

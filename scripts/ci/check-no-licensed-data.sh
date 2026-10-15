@@ -12,7 +12,13 @@ from pathlib import Path
 
 # Extensions that are never acceptable in version control: raw databases, tabular exports,
 # serialized model weights and columnar dumps.
-FORBIDDEN_SUFFIXES = {".db", ".csv", ".pt", ".pth", ".parquet", ".sqlite", ".sqlite3"}
+FORBIDDEN_SUFFIXES = {
+    ".db", ".csv", ".tsv", ".pt", ".pth", ".parquet", ".sqlite", ".sqlite3",
+    ".safetensors", ".onnx", ".pkl", ".pickle", ".npz", ".npy", ".h5", ".hdf5",
+    ".feather", ".arrow", ".zip", ".gz", ".bz2", ".xz", ".zst", ".7z", ".tar",
+}
+# Any tracked file starting with the SQLite header is a database whatever its name.
+SQLITE_MAGIC = b"SQLite format 3\x00"
 # JSON Lines catalogs are allowed only when the first line is a manifest declaring
 # "synthetic": true (contracts/catalog). Anything else is treated as licensed.
 MANIFEST_SUFFIXES = {".jsonl", ".ndjson"}
@@ -23,6 +29,14 @@ def tracked_paths(argv):
         return [p for p in argv[1:] if p]
     out = subprocess.check_output(["git", "ls-files", "-z"]).decode()
     return [p for p in out.split("\0") if p]
+
+
+def is_sqlite_file(path: Path) -> bool:
+    try:
+        with path.open("rb") as stream:
+            return stream.read(len(SQLITE_MAGIC)) == SQLITE_MAGIC
+    except OSError:
+        return False
 
 
 def manifest_error(path: Path):
@@ -49,6 +63,9 @@ for name in tracked_paths(sys.argv):
     if ".sqlite" in lowered:
         errors.append(f"{name}: tracked SQLite file")
         continue
+    if path.is_file() and is_sqlite_file(path):
+        errors.append(f"{name}: SQLite file header detected")
+        continue
     suffix = path.suffix.lower()
     if suffix in FORBIDDEN_SUFFIXES:
         errors.append(f"{name}: forbidden data/model extension {suffix}")
@@ -66,5 +83,5 @@ for error in errors:
 if errors:
     print(f"Licensed-data guard FAILED: {len(errors)} offending path(s)")
     raise SystemExit(1)
-print("Licensed-data guard passed: no tracked databases, tabular/model dumps or non-synthetic JSONL")
+print("Licensed-data guard passed: no tracked databases, archives, tabular/model dumps or non-synthetic JSONL")
 PY

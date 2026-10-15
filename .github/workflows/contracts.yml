@@ -12,6 +12,8 @@ on:
       - "contracts/**"
       - "test/contracts/**"
       - ".github/workflows/contracts.yml"
+permissions:
+  contents: read
 concurrency:
   group: contracts-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -28,8 +30,8 @@ jobs:
           if [ -f test/contracts/package.json ]; then
             echo "available=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::test/contracts/package.json does not exist; contract validation skipped"
-            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::error::test/contracts/package.json does not exist; contract validation cannot run (BC-0123 F9)"
+            exit 1
           fi
       - uses: actions/setup-node@v4
         if: steps.harness.outputs.available == 'true'

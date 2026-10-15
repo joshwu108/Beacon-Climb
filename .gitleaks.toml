@@ -1,14 +1,20 @@
 # gitleaks configuration (ADR-0007: gitleaks in pre-commit and CI).
-# Extends the default rule set; allowlist only the committed demo fixtures whose
-# placeholder credentials are part of the public contract examples.
+# Extends the default rule set. The allowlist is path-scoped (BC-0123 F10): the demo
+# placeholder credentials are ignored only inside the contract fixtures and env example,
+# so the same strings elsewhere are still reported.
 [extend]
 useDefault = true
 
-[allowlist]
-description = "Contract fixtures carry placeholder credentials by design"
+[[allowlists]]
+description = "Contract fixtures and env example carry placeholder credentials by design"
+# Both conditions must match (path AND regex) for a finding to be allowlisted.
+regexTarget = "match"
 paths = [
   '''contracts/examples/createSession/request\.json''',
   '''contracts/examples/createSession/response\.json''',
+  '''contracts/examples/registerUser/request\.json''',
+  '''contracts/examples/registerUser/response\.json''',
+  '''\.env\.example''',
 ]
 regexes = [
   '''opaque-demo-token''',

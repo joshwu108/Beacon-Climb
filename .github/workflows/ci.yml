@@ -4,6 +4,8 @@ on:
     branches: [integration, main]
   push:
     branches: [integration, main]
+permissions:
+  contents: read
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
