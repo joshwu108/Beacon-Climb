@@ -42,7 +42,8 @@ import tools.jackson.databind.exc.UnrecognizedPropertyException;
  *       type} or {@code enum} keyword; missing or malformed body, wrong media type, missing header
  *       or parameter, parameter type mismatch: 422 VALIDATION_FAILED. The contract declares no 400
  *       or 415 on these operations, so they are 422 everywhere.
- *   <li>Body past the limit (chunked, caught by the bounded stream): 413 PAYLOAD_TOO_LARGE.
+ *   <li>Body past the limit (chunked, caught by the bounded stream, whether through Jackson or a
+ *       controller reading the stream itself): 413 PAYLOAD_TOO_LARGE.
  *   <li>Unknown route or method: 404 NOT_FOUND (no enumeration of methods on reserved paths).
  *   <li>Unacceptable {@code Accept}: 406 VALIDATION_FAILED, body still JSON.
  *   <li>{@link ErrorResponseException} (e.g. {@code ResponseStatusException}): status mapped by
@@ -62,7 +63,24 @@ public class ApiExceptionHandler {
     ex.headers().forEach(builder::header);
     return builder
         .contentType(MediaType.APPLICATION_JSON)
-        .body(envelope(ex.code(), ex.getMessage(), ex.fieldErrors(), request));
+        .body(
+            new ErrorEnvelope(
+                ex.code(),
+                ex.getMessage(),
+                RequestIdFilter.current(request),
+                ex.fieldErrors(),
+                ex.currentRevision()));
+  }
+
+  /** A bounded-stream overflow raised by a controller that reads the body itself (BC-0109). */
+  @ExceptionHandler(PayloadTooLargeException.class)
+  ResponseEntity<ErrorEnvelope> payloadTooLarge(HttpServletRequest request) {
+    return respond(
+        HttpStatus.CONTENT_TOO_LARGE,
+        ErrorCode.PAYLOAD_TOO_LARGE,
+        "Request body is too large",
+        List.of(),
+        request);
   }
 
   @ExceptionHandler(HttpMessageNotReadableException.class)

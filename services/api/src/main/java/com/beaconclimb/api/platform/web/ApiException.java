@@ -15,6 +15,7 @@ public class ApiException extends RuntimeException {
   private final HttpStatus status;
   private final List<FieldError> fieldErrors;
   private final Map<String, String> headers;
+  private final Integer currentRevision;
 
   public ApiException(ErrorCode code, HttpStatus status, String message) {
     this(code, status, message, List.of(), Map.of());
@@ -31,11 +32,22 @@ public class ApiException extends RuntimeException {
       String message,
       List<FieldError> fieldErrors,
       Map<String, String> headers) {
+    this(code, status, message, fieldErrors, headers, null);
+  }
+
+  private ApiException(
+      ErrorCode code,
+      HttpStatus status,
+      String message,
+      List<FieldError> fieldErrors,
+      Map<String, String> headers,
+      Integer currentRevision) {
     super(message, null, false, false);
     this.code = code;
     this.status = status;
     this.fieldErrors = List.copyOf(fieldErrors);
     this.headers = Map.copyOf(headers);
+    this.currentRevision = currentRevision;
   }
 
   public static ApiException validationFailed(List<FieldError> fieldErrors) {
@@ -44,6 +56,20 @@ public class ApiException extends RuntimeException {
         HttpStatus.UNPROCESSABLE_CONTENT,
         "Request failed validation",
         fieldErrors);
+  }
+
+  /**
+   * 409 REVISION_CONFLICT (ADR-0002, BC-0109): the envelope carries {@code current_revision} so the
+   * client can re-read and retry with a fresh {@code If-Match}.
+   */
+  public static ApiException revisionConflict(int currentRevision) {
+    return new ApiException(
+        ErrorCode.REVISION_CONFLICT,
+        HttpStatus.CONFLICT,
+        "Attempt revision changed",
+        List.of(),
+        Map.of(),
+        currentRevision);
   }
 
   public static ApiException unauthenticated() {
@@ -74,5 +100,10 @@ public class ApiException extends RuntimeException {
 
   public Map<String, String> headers() {
     return headers;
+  }
+
+  /** Present only for REVISION_CONFLICT; null otherwise. */
+  public Integer currentRevision() {
+    return currentRevision;
   }
 }

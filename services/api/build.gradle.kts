@@ -47,6 +47,12 @@ tasks.named<ProcessResources>("processResources") {
         include("catalog-v1.schema.json")
         into("contracts/catalog")
     }
+    // BC-0109: every outbox payload is validated against the attempts.v1 event contract before
+    // it is inserted (ADR-0002, TM-11), so the schema ships inside the jar the same way.
+    from("../../contracts/events") {
+        include("attempts.v1.schema.json")
+        into("contracts/events")
+    }
 }
 tasks.withType<Test> {
     useJUnitPlatform()

@@ -42,6 +42,19 @@ public abstract class ImporterTestSupport extends AbstractPostgresIT {
    * class (the BC-0106 endpoint tests also load the demo board) ran first in this JVM.
    */
   protected void deleteBoard(String boardId, String sha) {
+    // BC-0109: attempts (and their audit and outbox rows) reference the board's variants.
+    String boardAttempts =
+        "SELECT a.attempt_id FROM attempts a JOIN route_variants v ON v.variant_id = a.variant_id"
+            + " JOIN routes r ON r.route_id = v.route_id WHERE r.board_id = :b";
+    jdbc.sql("DELETE FROM attempt_event_outbox WHERE aggregate_id IN (" + boardAttempts + ")")
+        .param("b", boardId)
+        .update();
+    jdbc.sql("DELETE FROM attempt_revisions WHERE attempt_id IN (" + boardAttempts + ")")
+        .param("b", boardId)
+        .update();
+    jdbc.sql("DELETE FROM attempts WHERE attempt_id IN (" + boardAttempts + ")")
+        .param("b", boardId)
+        .update();
     jdbc.sql(
             "DELETE FROM route_placements WHERE variant_id IN (SELECT v.variant_id FROM"
                 + " route_variants v JOIN routes r ON r.route_id = v.route_id WHERE r.board_id = :b)")

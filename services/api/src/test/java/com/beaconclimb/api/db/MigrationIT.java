@@ -18,10 +18,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * BC-0101/BC-0107: every Flyway migration applies on an empty Postgres 17 as beacon_migrate, the
- * runtime role beacon_app gets DML and nothing more, the constraints from planning/06 sections 1
- * and 6 hold, and the golden schema document docs/db/schema-v1.md matches pg_dump of the live
- * database.
+ * BC-0101/BC-0107/BC-0109: every Flyway migration applies on an empty Postgres 17 as
+ * beacon_migrate, the runtime role beacon_app gets DML and nothing more, the constraints from
+ * planning/06 sections 1, 6 and 7 hold, and the golden schema document docs/db/schema-v1.md matches
+ * pg_dump of the live database.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 class MigrationIT extends AbstractPostgresIT {
@@ -30,7 +30,8 @@ class MigrationIT extends AbstractPostgresIT {
   private static final List<Map.Entry<String, String>> MIGRATIONS =
       List.of(
           Map.entry("1", "V1__identity_catalog_provenance.sql"),
-          Map.entry("2", "V2__sessions.sql"));
+          Map.entry("2", "V2__sessions.sql"),
+          Map.entry("3", "V3__attempts_outbox.sql"));
 
   private static final List<String> ALL_TABLES =
       List.of(
@@ -43,7 +44,10 @@ class MigrationIT extends AbstractPostgresIT {
           "routes",
           "route_variants",
           "route_placements",
-          "sessions");
+          "sessions",
+          "attempts",
+          "attempt_revisions",
+          "attempt_event_outbox");
 
   private static final UUID PROVENANCE_ID = UUID.fromString("00000000-0000-7000-8000-000000000001");
   private static final String BOARD_ID = "migration-it-board";
@@ -60,7 +64,7 @@ class MigrationIT extends AbstractPostgresIT {
   }
 
   @Test
-  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionTwo() {
+  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionThree() {
     List<Map<String, Object>> rows =
         jdbc()
             .queryForList(
@@ -70,7 +74,7 @@ class MigrationIT extends AbstractPostgresIT {
     assertThat(rows)
         .extracting(row -> Map.entry(row.get("version").toString(), row.get("script").toString()))
         .containsExactlyElementsOf(MIGRATIONS);
-    assertThat(rows.getLast().get("version").toString()).isEqualTo("2");
+    assertThat(rows.getLast().get("version").toString()).isEqualTo("3");
   }
 
   @Test
@@ -192,11 +196,46 @@ class MigrationIT extends AbstractPostgresIT {
   }
 
   @Test
+  void attemptsIndexesAndOutboxPartialIndexExist() {
+    assertThat(indexDefinition("attempts_user_history_idx"))
+        .contains("ON public.attempts USING btree (user_id, occurred_at DESC, attempt_id DESC)");
+    assertThat(indexDefinition("attempts_user_variant_idx"))
+        .contains("ON public.attempts USING btree (user_id, variant_id, occurred_at DESC)");
+    assertThat(indexDefinition("attempts_user_id_submission_idempotency_key_key"))
+        .contains("UNIQUE INDEX")
+        .contains("(user_id, submission_idempotency_key)");
+    assertThat(indexDefinition("attempt_event_outbox_unpublished_idx"))
+        .contains("ON public.attempt_event_outbox USING btree (created_at)")
+        .contains("WHERE (published_at IS NULL)");
+  }
+
+  @Test
+  @Transactional
+  void attemptsCountCheckRejectsZero() {
+    UUID userId = seedUserBoardAndVariant();
+    assertThatThrownBy(() -> insertAttempt(userId, 0, "ACTIVE"))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("attempts_attempts_count_check");
+  }
+
+  @Test
+  @Transactional
+  void attemptsStatusCheckRejectsUnknownStatus() {
+    UUID userId = seedUserBoardAndVariant();
+    assertThatThrownBy(() -> insertAttempt(userId, 1, "DELETED"))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("attempts_status_check");
+  }
+
+  @Test
   void goldenSchemaDocMatchesLiveDatabase() throws Exception {
     String live = SchemaGolden.dumpNormalisedSchema(SchemaGolden.sharedContainer());
     assertThat(live)
         .contains("CREATE TABLE public.route_placements")
-        .contains("CREATE TABLE public.sessions");
+        .contains("CREATE TABLE public.sessions")
+        .contains("CREATE TABLE public.attempts")
+        .contains("CREATE TABLE public.attempt_revisions")
+        .contains("CREATE TABLE public.attempt_event_outbox");
     if (SchemaGolden.shouldUpdate()) {
       SchemaGolden.writeDoc(live);
       return;
@@ -206,6 +245,45 @@ class MigrationIT extends AbstractPostgresIT {
             "%s is out of date; regenerate with %s=1 ./gradlew :api:test --tests '*MigrationIT*'",
             SchemaGolden.DOC_PATH, SchemaGolden.UPDATE_ENV_VAR)
         .isEqualTo(live);
+  }
+
+  private String indexDefinition(String indexName) {
+    return jdbc()
+        .queryForObject(
+            "select indexdef from pg_indexes where schemaname = 'public' and indexname = ?",
+            String.class,
+            indexName);
+  }
+
+  private UUID seedUserBoardAndVariant() {
+    UUID userId = UUID.fromString("00000000-0000-7000-8000-0000000000ad");
+    jdbc()
+        .update(
+            "insert into users (id, username, password_hash) values (?, ?, ?)",
+            userId,
+            "migration-it-attempts",
+            "argon2id$placeholder");
+    seedProvenanceBoardHoldRoute();
+    insertVariant(VARIANT_ID, 40);
+    return userId;
+  }
+
+  private void insertAttempt(UUID userId, int attemptsCount, String status) {
+    jdbc()
+        .update(
+            "insert into attempts (attempt_id, user_id, variant_id, route_variant_public_id,"
+                + " occurred_at, received_at, attempts_count, sent, status,"
+                + " submission_idempotency_key, request_fingerprint, response_body_json,"
+                + " updated_at) values (?, ?, ?, ?, now(), now(), ?, true, ?, ?, ?, '{}'::jsonb,"
+                + " now())",
+            UUID.fromString("00000000-0000-7000-8000-0000000000ae"),
+            userId,
+            VARIANT_ID,
+            "demo-route-001:40",
+            attemptsCount,
+            status,
+            "k-" + status + "-" + attemptsCount,
+            "0".repeat(64));
   }
 
   private void seedProvenanceBoardHoldRoute() {

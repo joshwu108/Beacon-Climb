@@ -89,7 +89,8 @@ public class CatalogService {
         tags.isEmpty());
   }
 
-  private static RouteVariantSummaryView summary(VariantRow row) {
+  /** {@code RouteVariantSummary} of a variant row; shared with the attempts slice (BC-0109). */
+  public static RouteVariantSummaryView summary(VariantRow row) {
     return new RouteVariantSummaryView(
         RouteVariantId.format(row.providerRouteUuid(), row.angleDeg()),
         row.boardId(),
