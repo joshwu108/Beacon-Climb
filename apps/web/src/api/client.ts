@@ -33,6 +33,9 @@ export const createApiClient = (
 ): ApiClient => {
   const client = createClient<paths>({
     baseUrl: options.baseUrl ?? apiBaseUrl,
+    // Resolve fetch per request: openapi-fetch would otherwise capture the global at
+    // creation time, before MSW's Node interceptor (tests) has replaced it.
+    fetch: (request) => globalThis.fetch(request),
   });
   client.use(createAuthMiddleware(options.store ?? tokenStore));
   return client;

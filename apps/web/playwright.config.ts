@@ -4,9 +4,10 @@ import { defineConfig } from '@playwright/test';
  * Playwright against the Vite dev server with MSW mocks (VITE_USE_MOCKS=true, set by the
  * `dev` script). Every page load gets fresh mock state, so specs register their own user.
  *
- * Projects: the onboarding flow at 375 and 1280 (BC-0115) and explore screenshots at
- * 320 / 768 / 1024 / 1440 (BC-0116). Baselines live in e2e/__screenshots__/<project>/ and
- * were generated on macOS with headless Chromium; regenerate with --update-snapshots.
+ * Projects: the onboarding flow at 375 and 1280 (BC-0115), explore screenshots at
+ * 320 / 768 / 1024 / 1440 (BC-0116), the session builder and the attempt log at 375 and
+ * 1280 (BC-0117, BC-0118). Baselines live in e2e/__screenshots__/<project>/ and were
+ * generated on macOS with headless Chromium; regenerate with --update-snapshots.
  */
 const PORT = 4173;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
@@ -15,6 +16,13 @@ const chromium = {
   browserName: 'chromium' as const,
   colorScheme: 'light' as const,
 };
+
+const phone = {
+  viewport: { width: 375, height: 812 },
+  isMobile: true,
+  hasTouch: true,
+};
+const laptop = { viewport: { width: 1280, height: 800 } };
 
 export default defineConfig({
   testDir: './e2e',
@@ -38,20 +46,12 @@ export default defineConfig({
     },
   },
   projects: [
-    {
-      name: 'onboarding-375',
-      testMatch: /onboarding\.spec\.ts/,
-      use: {
-        viewport: { width: 375, height: 812 },
-        isMobile: true,
-        hasTouch: true,
-      },
-    },
-    {
-      name: 'onboarding-1280',
-      testMatch: /onboarding\.spec\.ts/,
-      use: { viewport: { width: 1280, height: 800 } },
-    },
+    { name: 'onboarding-375', testMatch: /onboarding\.spec\.ts/, use: phone },
+    { name: 'onboarding-1280', testMatch: /onboarding\.spec\.ts/, use: laptop },
+    { name: 'session-375', testMatch: /session\.spec\.ts/, use: phone },
+    { name: 'session-1280', testMatch: /session\.spec\.ts/, use: laptop },
+    { name: 'attempts-375', testMatch: /attempts\.spec\.ts/, use: phone },
+    { name: 'attempts-1280', testMatch: /attempts\.spec\.ts/, use: laptop },
     {
       name: 'explore-320',
       testMatch: /explore-screenshots\.spec\.ts/,

@@ -56,6 +56,14 @@ export const routes: RouteObject[] = [
         },
       },
       {
+        path: 'attempts/new',
+        lazy: async () => {
+          const { AttemptFormPage } =
+            await import('../features/attempts/AttemptFormPage');
+          return { Component: AttemptFormPage };
+        },
+      },
+      {
         path: 'decisions/:decisionId',
         lazy: async () => {
           const { DecisionPage } =

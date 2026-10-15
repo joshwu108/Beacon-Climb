@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router';
+import { SignOutButton } from './SignOutButton';
 import './app-shell.css';
 
 const MAIN_ID = 'main-content';
@@ -13,8 +14,8 @@ const NAV_ITEMS = [
 ] as const;
 
 /**
- * Semantic shell: skip link, banner header with the brand, primary navigation
- * (bottom bar below 1024px, left rail above), main outlet and a data-note footer.
+ * Semantic shell: skip link, banner header with the brand and sign-out, primary
+ * navigation (bottom bar below 1024px, left rail above), main outlet and a data-note footer.
  */
 export const AppShell = () => (
   <div className="shell">
@@ -26,9 +27,12 @@ export const AppShell = () => (
         <span className="brand__name">Beacon Climb</span>
         <span className="brand__tag">Field notebook</span>
       </p>
-      {useMocks ? (
-        <span className="stamp stamp--warning">Mock data</span>
-      ) : null}
+      <div className="shell__header-tools">
+        {useMocks ? (
+          <span className="stamp stamp--warning">Mock data</span>
+        ) : null}
+        <SignOutButton />
+      </div>
     </header>
     <nav className="shell__nav" aria-label="Main navigation">
       <ul className="nav-list">

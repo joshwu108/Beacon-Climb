@@ -1,0 +1,200 @@
+/* Session builder (BC-0117): setup sheet on the left, lineup cards as stacked sheets.
+   The accent colour is reserved for recommendation items (reason chips, NEW stamp). */
+
+.session {
+  gap: var(--space-5);
+}
+
+.session__header {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.session__loading,
+.session__skeleton {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.session__chip {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.session__chip-angle {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.session__columns {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.session__form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.session__actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.session__results {
+  display: grid;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+.session__lineup {
+  display: grid;
+  gap: var(--space-4);
+  transition: opacity var(--duration-normal) var(--ease-out);
+}
+
+.session__lineup--stale .cards {
+  opacity: 0.55;
+}
+
+.session__lineup-head {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.session__lineup-head h2:focus {
+  outline: none;
+}
+
+.session__empty {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.card {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.card--skeleton {
+  min-height: 9rem;
+}
+
+/* Every other card is nudged, like sheets dropped on a desk. */
+.cards > .card:nth-child(even) {
+  transform: translateX(var(--space-2));
+}
+
+.card__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.card__position {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-stamp);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.card__name {
+  font-size: var(--text-md);
+  overflow-wrap: anywhere;
+}
+
+.card__grade {
+  display: grid;
+  justify-items: end;
+  line-height: 1;
+}
+
+.card__grade-number {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.card__grade-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding-block-start: var(--space-2);
+  border-block-start: var(--border-width) solid var(--color-border-subtle);
+}
+
+.card__why {
+  color: var(--color-accent);
+  font-weight: 600;
+  text-decoration-color: var(--color-accent);
+}
+
+.card__why:hover {
+  text-decoration-thickness: 2px;
+}
+
+@media (min-width: 1024px) {
+  .session__chip {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .session__chip-angle {
+    font-family: var(--font-display);
+    font-size: var(--text-md);
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .session__columns {
+    grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr);
+  }
+
+  .session__form {
+    position: sticky;
+    top: var(--space-4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session__lineup {
+    transition: none;
+  }
+}

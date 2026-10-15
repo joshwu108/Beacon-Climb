@@ -446,3 +446,88 @@ fieldset[disabled] .segmented__option {
     color: HighlightText;
   }
 }
+
+/* --- Shared controls (BC-0117/BC-0118): number stepper, reason chips, estimate line,
+   neutral banner. Used by the session builder, decision detail and attempt log. --- */
+
+.stepper {
+  display: inline-grid;
+  grid-template-columns: auto 4.5rem auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.stepper__button {
+  min-inline-size: var(--size-hit-min);
+  padding-inline: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+}
+
+.stepper__input {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.reasons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.reasons--detailed {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.reasons__item {
+  display: inline-block;
+  padding: 0.15em 0.6em;
+  border: var(--border-width) solid var(--color-accent);
+  border-radius: var(--radius-pill);
+  color: var(--color-accent);
+  background: var(--color-accent-bg);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.reasons--detailed .reasons__item {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-input);
+  color: inherit;
+  background: transparent;
+  border-color: var(--color-border-subtle);
+  box-shadow: inset 3px 0 0 var(--color-accent);
+  font-weight: 400;
+}
+
+.reasons--detailed .reasons__label {
+  font-weight: 600;
+}
+
+.reasons__explanation {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.estimate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.banner--neutral {
+  color: var(--color-text);
+  background: var(--color-surface-sunken);
+  border-color: var(--color-border);
+}

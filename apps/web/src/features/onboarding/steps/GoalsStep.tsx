@@ -10,8 +10,10 @@ import { StepHeading } from '../StepHeading';
 import type { PreferencesDraft } from '../steps';
 import { useSavePreferences } from '../useOnboardingMutations';
 
+import { GOALS, type Goal } from '../goals';
+
 export type GradeBand = components['schemas']['GradeBand'];
-export type Goal = components['schemas']['Goal'];
+export { GOALS, type Goal };
 
 export interface GoalsStepProps {
   readonly draft: PreferencesDraft;
@@ -48,25 +50,6 @@ export const GRADE_BANDS: readonly {
     id: 'EXPERT',
     label: 'Expert',
     hint: 'Start on the hardest routes the board has.',
-  },
-];
-
-export const GOALS: readonly { id: Goal; label: string; hint: string }[] = [
-  {
-    id: 'TECHNIQUE',
-    label: 'Technique',
-    hint: 'Movement quality on routes within reach.',
-  },
-  { id: 'STRENGTH', label: 'Strength', hint: 'Short routes with hard moves.' },
-  {
-    id: 'ENDURANCE',
-    label: 'Endurance',
-    hint: 'Longer routes with more moves.',
-  },
-  {
-    id: 'PROJECT',
-    label: 'Project',
-    hint: 'One route at your limit to come back to.',
   },
 ];
 

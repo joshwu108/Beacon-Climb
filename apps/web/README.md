@@ -2,8 +2,9 @@
 
 Vite 6, React 19, TypeScript (strict), React Router 7, TanStack Query 5, a typed client
 generated from `contracts/openapi.yaml` (1.1.0) and MSW mocks built from
-`contracts/examples`. Scaffolded in BC-0114; onboarding (BC-0115) and explore (BC-0116)
-are built; session, attempts and decisions are BC-0117/BC-0118.
+`contracts/examples`. Scaffolded in BC-0114; onboarding (BC-0115), explore (BC-0116), the
+session builder and decision detail (BC-0117) and the attempt log (BC-0118) are built
+against the mocks; BC-0121 proves them against the real API.
 
 ## Run
 
@@ -29,13 +30,39 @@ and `If-Match` request headers in CORS, and expose `X-Request-Id` and `Retry-Aft
   have none). Bodies, statuses and `X-Request-Id` headers are imported straight from
   `contracts/examples/<operationId>/response*.json`; nothing is copied.
 - Stateful behaviour: `registerUser` returns the token fixture, then `409 USERNAME_TAKEN` for a
-  repeated username; `createSession` returns the 422 fixture for a short password;
-  `createAttempt` returns 201, then 200 (replay fixture) for the same `Idempotency-Key` and
-  body, and `409 IDEMPOTENCY_CONFLICT` for the same key with a different body; `patchAttempt`
-  requires `If-Match` to equal the current revision (`"1"` initially, `"2"` after a patch) and
-  returns the 409 fixture otherwise. Bearer-protected operations answer `401 UNAUTHENTICATED`
-  without an `Authorization` header, and unknown ids are `404 NOT_FOUND`.
+  repeated username; `createSession` returns the 422 fixture for a short password.
+  Bearer-protected operations answer `401 UNAUTHENTICATED` without an `Authorization` header,
+  unknown ids are `404 NOT_FOUND`, and `createAttempt` / `createRecommendations` answer
+  `403 CONSENT_REQUIRED` while the per-process profile (after `registerUser`) has no consent.
   `resetMockState()` resets it all (done after every test).
+- Offline: when the page reports `navigator.onLine === false` (Playwright's
+  `context.setOffline(true)`) every handler answers with a network error
+  (`HttpResponse.error()`), because the service worker would otherwise keep answering while
+  the browser is offline.
+- Attempts (BC-0118, `src/mocks/state.ts` + `src/mocks/recommend.ts`): an in-memory attempt
+  store seeded with the `listAttempts` fixture rows. `createAttempt` validates the body
+  (`attempts_count >= 1`, `occurred_at` at most five minutes ahead -> the committed 422
+  fixtures; optional-field ranges -> a derived `VALIDATION_FAILED`) and is stateful per
+  `Idempotency-Key`: first call 201 with a generated attempt (ids
+  `018f0000-0000-7000-8000-a<counter>`; the committed request body maps onto the committed
+  attempt), same key + same canonical body -> 200 with the stored attempt, same key +
+  different body -> the 409 fixture. `getAttempt` and `listAttempts` serve the store;
+  listing is newest first by `occurred_at` then `attempt_id` (A11), `limit` 1..100,
+  `status` filter, cursor = base64url of `"<occurred_at>|<attempt_id>"` (`INVALID_CURSOR`
+  otherwise). `patchAttempt` requires `If-Match` to equal the stored revision (quoted),
+  answers the 409 fixture with the real `current_revision` otherwise, applies the patch,
+  bumps the revision and sets `RETRACTED` for `retract: true`.
+- Recommendations and decisions (BC-0117): `createRecommendations` serves the committed
+  response for the committed request body; any other request gets a deterministic lineup
+  from the synthetic catalog (routes at the requested angle, rotated by a hash of
+  `session_id`, `exclude_route_variant_ids` skipped, `position` 1..n, `rank_score`
+  descending, reason codes from the catalog facts, `cold_start` while fewer than five ACTIVE
+  attempts exist, `fallback_used: false`, `predicted_send_probability: null`). It validates
+  `max_routes` (422 fixture for < 1, derived `VALIDATION_FAILED` for > 20), `board_id`
+  (`UNKNOWN_BOARD`) and `angle_deg` (`UNSUPPORTED_ANGLE`). Every call records a `Decision`
+  (`created_at`, the request) that `getDecision` serves; the fixture decision id still
+  serves the fixture. Nothing in the lineup is a ranking: the real policy lives in
+  `services/api`.
 - Profile (BC-0115): `GET /v1/me` serves the fixture (a returning user with consent and
   preferences) until `registerUser` runs in the same page/process; a registered user starts
   with `consent: null, preferences: null` and `createConsent` / `putPreferences` fill them in,
@@ -73,7 +100,14 @@ any failure into `ApiError` (`status`, `code`, `message`, `requestId`, `fieldErr
 Token store (`src/features/auth/token-store.ts`): memory first, mirrored to `sessionStorage`
 so a reload in the same tab keeps the session. Documented trade-off (BC-0115): readable by any
 script on the origin, so the app depends on a strict CSP; `localStorage` is deliberately not
-used.
+used. The client resolves `globalThis.fetch` per request (not at creation) so MSW's Node
+interceptor, installed after module import, is always used in tests.
+
+Sign out (`src/features/auth/sign-out.ts`, header button in the shell while a token exists):
+`DELETE /v1/auth/session`, then the token, the query cache and the attempt drafts are cleared
+locally even if that request failed, and the app returns to `/onboarding`. A 401 elsewhere
+only clears the token: drafts stay on the device (journeys.md, "Your drafts are still on this
+device").
 
 ## Canonical JSON
 
@@ -118,12 +152,85 @@ label when present, "ungraded" otherwise), observation count and a "Low evidence
 10 observations. `/explore/:routeVariantId` shows the route on `BoardSvg`, grade, evidence,
 tags or the "Style tags: not available for this route." notice, and a back link.
 
+The route detail also links to `/attempts/new?route_variant_id=…` ("Log an attempt on this
+route").
+
 `src/components/board-svg/BoardSvg.tsx` is pure: `viewBox` from `Board.geometry` (y flipped
 once when `y_axis` is `UP`), every hold as a muted dot, placements as role shapes (START
 double ring, HAND filled circle, FOOT triangle, FINISH ring with a bar) each with a
 `<title>`, `role="img"` with a count summary, and a visually hidden ordered list of
 placements ("Start hold h1 at 0.25, 0.50 (middle left)") referenced by `aria-describedby`.
 `BoardLegend` prints the shape key in words. Nothing animates.
+
+## Session builder and decisions (BC-0117)
+
+`/session` (`src/features/session`) needs a session and preferences (otherwise a redirect to
+onboarding, or a "finish setup" notice when preferences are missing). Goal (`Goal` enum with
+the plain-language copy from `src/features/onboarding/goals.ts`), route count (UI 3..6, the
+contract allows 1..20) and the client `session_id` live in the URL (`?session_id=&goal=&routes=`);
+the id is generated once per visit with `crypto.randomUUID()` so a reload reuses it.
+"Build my session" sends `POST /v1/me/sessions/recommendations` with `board_id` and
+`angle_deg` from `GET /v1/me` preferences. The lineup is an `ol` in `position` order: route
+name (link to explore), grade or "ungraded", observation count, up to three reason chips
+(`src/features/decision/reason-codes.ts`, every `ReasonCode` -> label + one-sentence
+explanation; unknown codes print as "Other reason: CODE"), "+N more" to the decision,
+`predicted_send_probability: null` -> "No personalised estimate yet" with the uncertainty
+label, `cold_start` -> "Recommendations are heuristic until you log a few attempts",
+`fallback_used` -> warning banner and a "Simplified recommendation" stamp on every card.
+"Swap" re-requests with the route added to `exclude_route_variant_ids` (same count, same
+`session_id`); "Dismiss" does the same with one route fewer; the dismissed list is shown with
+a Reset. Each card links "Log attempt" (`/attempts/new?route_variant_id=…`) and "Why this
+route" (`/decisions/:id?position=n`). Errors: `403 CONSENT_REQUIRED` links to the consent
+step, 422 maps `field_errors` onto goal / route count or links to setup, 503 and network
+failures show the request id with a manual "Try again" while the previous lineup stays
+visible, dimmed, stamped "Not refreshed". The lineup heading takes focus after every build and
+a polite live region announces the result. The successful response is written into the
+decision query cache so the detail page opens without a second request.
+
+`/decisions/:decisionId` (`src/features/decision`, `GET /v1/me/decisions/{decision_id}`):
+request context (goal, board, angle, max_routes, excluded ids, session id, `created_at`),
+versions (`policy_version`, `model_version`, with `none` printed as "no learned model in
+use", `feature_as_of`), the cold-start / fallback flags as banners and text, and the ranked
+list with every reason explained, `rank_score` with three decimals labelled "relative order
+only", the estimate line and a "Log an attempt" link per route. Malformed ids and 404 share the
+"not found or not yours" state (ADR-0005).
+
+## Attempt log (BC-0118)
+
+`/attempts/new?route_variant_id=…` (`src/features/attempts/AttemptFormPage.tsx`, reachable
+from session cards, the decision page and the explore detail): `occurred_at`
+(`datetime-local`, default now; the client rejects more than five minutes ahead, mirroring
+`OCCURRED_AT_IN_FUTURE`), `attempts_count` stepper (>= 1), `sent` switch, progress slider in
+percent (sent as `completion_fraction`, only when not sent and only when touched),
+perceived effort 1..10 (optional), notes (<= 500 with a counter; rendered as text only). A
+consent gate (`GET /v1/me`) disables Save and links to the consent step.
+
+Draft model (`src/features/attempts/draft-store.ts`): `{draft_id, idempotency_key, body,
+state: draft | sending | synced | failed, attempt, error, created_at, route_name}`,
+persisted in IndexedDB (`beacon.drafts.v1`, store `drafts`) through a small promise wrapper
+with an in-memory fallback when IndexedDB is missing or fails to open (jsdom, private mode).
+`route_name` is display-only. The draft id and its Idempotency-Key are generated once when
+the form opens; the record is written on the first Save and every retry reuses it, so a double
+click (synchronous guard + per-draft in-flight promise in `attempt-sync.ts`), a lost reply or
+a reconnect can never create two attempts; a 200 replay counts as saved. A draft found in
+`sending` after a reload becomes `failed` with an unknown-outcome message. Failures: network /
+5xx / 429 keep the draft with "Retry" (same key) and "Keep as draft"; `409
+IDEMPOTENCY_CONFLICT` explains and offers "Create new draft" (new key); 422 maps
+`field_errors`; `403 CONSENT_REQUIRED` links to the consent step. `useReconnectSync` retries
+failed-but-retryable drafts once on the `online` event, and once on mount when the browser is
+online; a synced draft navigates to the log and is removed from the device once the server
+list shows it.
+
+`/attempts` (`AttemptsPage.tsx`): drafts not yet synced on top ("Waiting to save") with their
+state stamp, Retry / Discard / "Log a new attempt"; then `GET /v1/me/attempts` newest first,
+20 per page, "Load more" on `next_cursor`. Rows show route and grade, local time, attempts,
+Sent / Not sent, progress, effort, notes, "Revision N", "Corrected" (revision > 1) and
+"Retracted". "Correct" opens an inline form (count, sent, progress, effort, notes; route and
+time are not patchable) and sends only the changed fields with `If-Match: "<revision>"`;
+"Undo (retract)" confirms inline, then `PATCH {retract: true}`. A `409 REVISION_CONFLICT`
+shows "This attempt changed elsewhere (revision N). Refresh" from `current_revision`; Refresh
+re-reads with `getAttempt`, updates the row and the open form, and the next Save uses the new
+revision.
 
 ## Checks and budget
 
@@ -138,7 +245,10 @@ pnpm --filter @beacon/web test:e2e  # playwright (chromium, dev server + mocks o
 Playwright (`playwright.config.ts`, specs in `e2e/`) starts `pnpm dev` with mocks on port 4173
 (`reuseExistingServer: false`). Projects: `onboarding-375` and `onboarding-1280` run the whole
 first-run flow; `explore-320/768/1024/1440` take viewport screenshots of `/explore` and one
-route detail and compare them with `toHaveScreenshot`. Baselines are committed under
+route detail and compare them with `toHaveScreenshot`; `session-375/1280` resume a seeded
+user, build a session, dismiss a route and open the decision; `attempts-375/1280` log with a
+double click, correct, hit a revision conflict made "elsewhere" (a direct `fetch` from the
+page against the in-page mocks) and save while offline (`context.setOffline`), then sync. Baselines are committed under
 `e2e/__screenshots__/<project>/` and were generated on macOS with headless Chromium
 (`pnpm --filter @beacon/web exec playwright test --update-snapshots`); other platforms
 render fonts differently and need their own baselines. Browsers are installed with
@@ -147,7 +257,11 @@ dependency, so the e2e suite has no axe scan; axe runs per step and per screen i
 
 The budget is the planning/06 §11 figure (< 150 kB gzipped app JS). It is measured on the
 built files with `@size-limit/file` (no re-bundling) and sums every JS chunk, including the
-lazy route chunks, so it is conservative.
+lazy route chunks, so it is conservative. `vite.config.ts` keeps it under budget with
+`build.target: 'es2022'` (no down-levelling of class fields and friends; Safari 15.4+),
+`modulePreload.polyfill: false` (browsers without `modulepreload` simply do not preload) and
+Rollup's `experimentalMinChunkSize` (tiny shared chunks are folded into their importers; the
+route boundaries stay lazy).
 
 Tests run in `src/test/jsdom-environment.ts`, a jsdom environment that keeps Node's
 `AbortController`/`AbortSignal`; React Router builds a `Request` for lazy routes and Node's
@@ -163,16 +277,19 @@ src/
 ├── api/                      client.ts, errors.ts, generated/schema.d.ts (+ drift test)
 ├── components/
 │   ├── board-svg/            BoardSvg, BoardLegend, geometry.ts (viewBox, flip, descriptions)
-│   ├── layout/               AppShell (skip link, header, nav, main, footer), NotFoundPage
+│   ├── layout/               AppShell (skip link, header + SignOutButton, nav, main, footer), NotFoundPage
 │   └── ui/                   PageSkeleton, ApiErrorBanner (+ api-error-copy), FieldError, field-errors
 ├── features/
-│   ├── auth/                 token-store.ts, useMe.ts (GET /v1/me), useAuthenticate.ts
+│   ├── auth/                 token-store.ts, useMe.ts (GET /v1/me), useAuthenticate.ts, sign-out.ts
 │   ├── boards/               useBoards.ts (GET /v1/boards, board label)
-│   ├── onboarding/           OnboardingPage, steps.ts (resume logic), steps/*, progress, mutations
+│   ├── onboarding/           OnboardingPage, steps.ts (resume logic), goals.ts, steps/*, progress, mutations
 │   ├── explore/              ExplorePage, RouteDetailPage, RouteFilters, RouteList, filters.ts, useRoutes.ts
-│   ├── session/ attempts/ decision/   placeholder screens (BC-0117..0118)
-├── lib/                      jcs.ts (RFC 8785 + SHA-256)
-├── mocks/                    handlers.ts, state.ts, catalog.ts, browser.ts, server.ts
+│   ├── session/              SessionPage, SessionForm, Lineup, session-params.ts, useRecommendations.ts
+│   ├── decision/             DecisionPage, reason-codes.ts, ReasonList, LineupNotices, useDecision.ts
+│   ├── attempts/             AttemptsPage, AttemptRow, AttemptFormPage, AttemptForm, attempt-form.ts,
+│   │                         draft-store.ts (IndexedDB + memory), attempt-sync.ts, useAttempts.ts
+├── lib/                      jcs.ts (RFC 8785 + SHA-256), format.ts (local date-time)
+├── mocks/                    handlers.ts, state.ts, catalog.ts, recommend.ts, browser.ts, server.ts
 ├── styles/                   tokens.css (from docs/ux/design-tokens.md), global.css
 └── test/                     setup.ts, axe.ts, render.tsx, jsdom-environment.ts
 ```

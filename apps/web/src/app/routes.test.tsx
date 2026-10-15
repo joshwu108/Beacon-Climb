@@ -1,38 +1,29 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { expectNoBlockingViolations } from '../test/axe';
 import { renderApp } from '../test/render';
 
-// /explore and /onboarding are real screens (BC-0115, BC-0116) with their own tests.
-const PLACEHOLDER_ROUTES = [
-  { path: '/session', h1: 'Build a session' },
-  { path: '/attempts', h1: 'Log attempts' },
-  {
-    path: '/decisions/018f0000-0000-7000-8000-000000000003',
-    h1: 'Why this route?',
-  },
+// /explore, /session, /attempts and /decisions are real screens (BC-0115 to BC-0118)
+// with their own tests; here only the routing shell is covered.
+const PROTECTED_ROUTES = [
+  '/session',
+  '/attempts',
+  '/attempts/new?route_variant_id=synthetic-route-001%3A35',
+  '/decisions/018f0000-0000-7000-8000-000000000003',
 ] as const;
 
-describe('placeholder routes', () => {
-  it.each(PLACEHOLDER_ROUTES)(
-    '$path renders h1 "$h1" and is axe clean',
-    async ({ path, h1 }) => {
-      const { container } = renderApp(path);
+describe('routes', () => {
+  it.each(PROTECTED_ROUTES)(
+    '%s redirects to onboarding without a session',
+    async (path) => {
+      renderApp(path);
       expect(
-        await screen.findByRole('heading', { level: 1, name: h1 }),
+        await screen.findByRole('heading', {
+          level: 1,
+          name: 'Set up Beacon Climb',
+        }),
       ).toBeVisible();
-      expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
-      await expectNoBlockingViolations(container);
     },
   );
-
-  it('/decisions/:decisionId prints the id from the URL', async () => {
-    renderApp('/decisions/018f0000-0000-7000-8000-000000000003');
-    await screen.findByRole('heading', { level: 1 });
-    expect(
-      screen.getByText('018f0000-0000-7000-8000-000000000003'),
-    ).toBeInTheDocument();
-  });
 
   it('/ redirects to /onboarding', async () => {
     renderApp('/');

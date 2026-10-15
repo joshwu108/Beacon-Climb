@@ -133,6 +133,14 @@ export const RouteDetailPage = () => {
           )}
           <BoardLegend />
           <p className="field__hint">Holds shown are this route only.</p>
+          <p>
+            <Link
+              className="button button--secondary"
+              to={`/attempts/new?route_variant_id=${encodeURIComponent(variant.route_variant_id)}`}
+            >
+              Log an attempt on this route
+            </Link>
+          </p>
         </section>
 
         <aside className="sheet detail__sheet" aria-label="Route facts">

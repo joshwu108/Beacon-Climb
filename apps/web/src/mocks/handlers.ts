@@ -9,9 +9,14 @@
  * worker (VITE_API_BASE_URL) and the Node server used by tests.
  *
  * Non-fixture responses (documented in README "Mocks"): 401 UNAUTHENTICATED, 404
- * NOT_FOUND, the derived 422s (UNSUPPORTED_ANGLE, UNKNOWN_BOARD, INVALID_CURSOR), the
- * generated catalog pages served by listRoutes / getRoute (src/mocks/catalog.ts), the
- * echoed Preferences body from putPreferences and the per-process GET /v1/me profile.
+ * NOT_FOUND, 403 CONSENT_REQUIRED, the derived 422s (UNSUPPORTED_ANGLE, UNKNOWN_BOARD,
+ * INVALID_CURSOR, VALIDATION_FAILED), the generated catalog pages served by listRoutes /
+ * getRoute (src/mocks/catalog.ts), the echoed Preferences body from putPreferences, the
+ * per-process GET /v1/me profile, the attempt store behind createAttempt / getAttempt /
+ * patchAttempt / listAttempts and the decisions recorded by createRecommendations
+ * (src/mocks/state.ts, src/mocks/recommend.ts). When the page reports
+ * `navigator.onLine === false` (Playwright's offline emulation) every handler answers
+ * with a network error, since the service worker would otherwise never touch the network.
  */
 import {
   http,
@@ -21,14 +26,22 @@ import {
   type PathParams,
 } from 'msw';
 import { serialize } from '../lib/jcs';
-import { mockState, type Preferences } from './state';
+import {
+  mockState,
+  nextMockId,
+  type Attempt,
+  type Decision,
+  type Preferences,
+} from './state';
 import {
   DEFAULT_PAGE_LIMIT,
   FIXTURE_BOARD,
   MAX_PAGE_LIMIT,
   findVariant,
   queryCatalog,
+  toSummary,
 } from './catalog';
+import { buildRecommendations, queryAttempts } from './recommend';
 
 import getHealthLive from '../../../../contracts/examples/getHealthLive/response.json';
 import getHealthReady from '../../../../contracts/examples/getHealthReady/response.json';
@@ -46,16 +59,15 @@ import putPreferences from '../../../../contracts/examples/putPreferences/respon
 import putPreferences422 from '../../../../contracts/examples/putPreferences/response-422.json';
 import createConsent from '../../../../contracts/examples/createConsent/response.json';
 import deleteConsent from '../../../../contracts/examples/deleteConsent/response.json';
-import listAttempts from '../../../../contracts/examples/listAttempts/response.json';
+import createAttemptRequest from '../../../../contracts/examples/createAttempt/request.json';
 import createAttempt from '../../../../contracts/examples/createAttempt/response.json';
-import createAttempt200 from '../../../../contracts/examples/createAttempt/response-200.json';
 import createAttempt409 from '../../../../contracts/examples/createAttempt/response-409.json';
 import createAttempt422 from '../../../../contracts/examples/createAttempt/response-422.json';
 import createAttempt422Future from '../../../../contracts/examples/createAttempt/response-422-future.json';
 import getAttempt from '../../../../contracts/examples/getAttempt/response.json';
-import patchAttempt from '../../../../contracts/examples/patchAttempt/response.json';
 import patchAttempt409 from '../../../../contracts/examples/patchAttempt/response-409.json';
 import patchAttempt422 from '../../../../contracts/examples/patchAttempt/response-422.json';
+import createRecommendationsRequest from '../../../../contracts/examples/createRecommendations/request.json';
 import createRecommendations from '../../../../contracts/examples/createRecommendations/response.json';
 import createRecommendations422 from '../../../../contracts/examples/createRecommendations/response-422.json';
 import getDecision from '../../../../contracts/examples/getDecision/response.json';
@@ -99,11 +111,16 @@ const notFound = (): Response =>
 
 /**
  * Envelopes the fixtures do not cover (UNSUPPORTED_ANGLE on preferences, INVALID_CURSOR
- * and UNKNOWN_BOARD on routes). Same shape as the contracts/examples response-422 files,
- * built from the request so the field error names the offending field.
+ * and UNKNOWN_BOARD on routes, VALIDATION_FAILED for max_routes > 20). Same shape as the
+ * contracts/examples response-422 files, built from the request so the field error
+ * names the offending field.
  */
 const derived422 = (
-  code: 'UNSUPPORTED_ANGLE' | 'UNKNOWN_BOARD' | 'INVALID_CURSOR',
+  code:
+    | 'UNSUPPORTED_ANGLE'
+    | 'UNKNOWN_BOARD'
+    | 'INVALID_CURSOR'
+    | 'VALIDATION_FAILED',
   message: string,
   fieldErrors: { field: string; code: string; message: string }[],
 ): Response =>
@@ -116,6 +133,43 @@ const derived422 = (
     },
     { status: 422, headers: { 'X-Request-Id': 'mock-derived-422' } },
   );
+
+/** Writes that need active consent (A7/A9) when the per-process profile has none. */
+const consentRequired = (): Response =>
+  HttpResponse.json(
+    {
+      code: 'CONSENT_REQUIRED',
+      message: 'Active consent is required',
+      request_id: 'mock-consent-required',
+      field_errors: [],
+    },
+    { status: 403, headers: { 'X-Request-Id': 'mock-consent-required' } },
+  );
+
+const hasConsent = (): boolean =>
+  mockState.me === null ||
+  (mockState.me.consent !== null && mockState.me.consent.revoked_at === null);
+
+const json = (
+  body: unknown,
+  status = 200,
+  requestId = 'mock-store',
+): Response =>
+  HttpResponse.json(body as Record<string, unknown>, {
+    status,
+    headers: { 'X-Request-Id': requestId },
+  });
+
+/** Playwright's offline emulation: the worker would still answer, so fail like the network. */
+const isPageOffline = (): boolean =>
+  (globalThis.navigator as { onLine?: boolean } | undefined)?.onLine === false;
+
+const withNetwork =
+  (
+    resolver: HttpResponseResolver<PathParams>,
+  ): HttpResponseResolver<PathParams> =>
+  (info) =>
+    isPageOffline() ? HttpResponse.error() : resolver(info);
 
 const hasBearer = (request: Request): boolean =>
   /^Bearer\s+\S+/.test(request.headers.get('Authorization') ?? '');
@@ -132,12 +186,12 @@ const readJson = async (request: Request): Promise<Record<string, unknown>> => {
 };
 
 /** Guard for bearer-protected operations: no token means 401 before the resolver runs. */
-const auth =
-  (
-    resolver: HttpResponseResolver<PathParams>,
-  ): HttpResponseResolver<PathParams> =>
-  (info) =>
-    hasBearer(info.request) ? resolver(info) : unauthenticated();
+const auth = (
+  resolver: HttpResponseResolver<PathParams>,
+): HttpResponseResolver<PathParams> =>
+  withNetwork((info) =>
+    hasBearer(info.request) ? resolver(info) : unauthenticated(),
+  );
 
 const USERNAME_RE = /^[a-z0-9_]{3,32}$/;
 
@@ -159,32 +213,80 @@ const optionalNumber = (text: string | null): number | undefined => {
   return Number.isFinite(value) ? value : undefined;
 };
 const FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
-const FIXTURE_ATTEMPT_ID = getAttempt.body.attempt_id;
-const FIXTURE_DECISION_ID = getDecision.body.decision_id;
+const FIXTURE_ATTEMPT = getAttempt.body as Attempt;
+const FIXTURE_DECISION = getDecision.body as Decision;
+const FIXTURE_ATTEMPT_BODY = serialize(createAttemptRequest.body);
+const FIXTURE_RECOMMENDATION_BODY = serialize(
+  createRecommendationsRequest.body,
+);
+const MAX_ROUTES = 20;
+
+const optionalInRange = (
+  value: unknown,
+  min: number,
+  max: number,
+  integer: boolean,
+): boolean =>
+  value === undefined ||
+  value === null ||
+  (typeof value === 'number' &&
+    value >= min &&
+    value <= max &&
+    (!integer || Number.isInteger(value)));
+
+/** Build an Attempt from a validated AttemptCreate body. */
+const attemptFrom = (body: Record<string, unknown>, now: string): Attempt => {
+  const variant = findVariant(String(body.route_variant_id));
+  const summary = variant === null ? FIXTURE_ATTEMPT.route : toSummary(variant);
+  return {
+    attempt_id: nextMockId('attempt'),
+    route_variant_id: String(body.route_variant_id),
+    route: { ...summary, route_variant_id: String(body.route_variant_id) },
+    occurred_at: String(body.occurred_at),
+    received_at: now,
+    attempts_count: body.attempts_count as number,
+    sent: body.sent === true,
+    completion_fraction:
+      (body.completion_fraction as number | undefined) ?? null,
+    perceived_effort: (body.perceived_effort as number | undefined) ?? null,
+    notes: (body.notes as string | undefined) ?? null,
+    revision: 1,
+    status: 'ACTIVE',
+  };
+};
 
 const publicHandlers: HttpHandler[] = [
   http.get('*/health/live', () => fixture(getHealthLive)),
   http.get('*/health/ready', () => fixture(getHealthReady)),
-  http.get('*/v1/consent/current', () => fixture(getConsentDocument)),
+  http.get(
+    '*/v1/consent/current',
+    withNetwork(() => fixture(getConsentDocument)),
+  ),
 
-  http.post('*/v1/auth/register', async ({ request }) => {
-    const body = await readJson(request);
-    const username = typeof body.username === 'string' ? body.username : '';
-    if (!USERNAME_RE.test(username)) return fixture(registerUser422);
-    if (mockState.registeredUsernames.has(username))
-      return fixture(registerUser409);
-    mockState.registeredUsernames.add(username);
-    mockState.me = { consent: null, preferences: null };
-    return fixture(registerUser);
-  }),
+  http.post(
+    '*/v1/auth/register',
+    withNetwork(async ({ request }) => {
+      const body = await readJson(request);
+      const username = typeof body.username === 'string' ? body.username : '';
+      if (!USERNAME_RE.test(username)) return fixture(registerUser422);
+      if (mockState.registeredUsernames.has(username))
+        return fixture(registerUser409);
+      mockState.registeredUsernames.add(username);
+      mockState.me = { consent: null, preferences: null };
+      return fixture(registerUser);
+    }),
+  ),
 
-  http.post('*/v1/auth/session', async ({ request }) => {
-    const body = await readJson(request);
-    const password = typeof body.password === 'string' ? body.password : '';
-    if (password.length < 8) return fixture(createSession422);
-    mockState.me = null;
-    return fixture(createSession);
-  }),
+  http.post(
+    '*/v1/auth/session',
+    withNetwork(async ({ request }) => {
+      const body = await readJson(request);
+      const password = typeof body.password === 'string' ? body.password : '';
+      if (password.length < 8) return fixture(createSession422);
+      mockState.me = null;
+      return fixture(createSession);
+    }),
+  ),
 ];
 
 const protectedHandlers: HttpHandler[] = [
@@ -310,82 +412,210 @@ const protectedHandlers: HttpHandler[] = [
   ),
   http.get(
     '*/v1/me/attempts',
-    auth(() => fixture(listAttempts)),
+    auth(({ request }) => {
+      const params = new URL(request.url).searchParams;
+      const limit = Number(params.get('limit') ?? String(DEFAULT_PAGE_LIMIT));
+      if (!Number.isInteger(limit) || limit < 1 || limit > MAX_PAGE_LIMIT) {
+        return derived422('VALIDATION_FAILED', 'Request failed validation', [
+          { field: 'limit', code: 'range', message: 'must be 1..100' },
+        ]);
+      }
+      const status = params.get('status');
+      const result = queryAttempts([...mockState.attempts.values()], {
+        cursor: params.get('cursor') ?? undefined,
+        limit,
+        status:
+          status === 'ACTIVE' || status === 'RETRACTED' ? status : undefined,
+      });
+      if (result.kind === 'invalid_cursor') {
+        return derived422('INVALID_CURSOR', 'Cursor is not valid', [
+          { field: 'cursor', code: 'invalid', message: 'cursor is not valid' },
+        ]);
+      }
+      return json({ items: result.items, next_cursor: result.nextCursor });
+    }),
   ),
 
   http.post(
     '*/v1/me/attempts',
     auth(async ({ request }) => {
+      if (!hasConsent()) return consentRequired();
       const body = await readJson(request);
-      const attemptsCount =
-        typeof body.attempts_count === 'number' ? body.attempts_count : 0;
-      if (attemptsCount < 1) return fixture(createAttempt422);
+      const attemptsCount = body.attempts_count;
+      if (
+        typeof attemptsCount !== 'number' ||
+        !Number.isInteger(attemptsCount) ||
+        attemptsCount < 1
+      ) {
+        return fixture(createAttempt422);
+      }
       const occurredAt = Date.parse(
         typeof body.occurred_at === 'string' ? body.occurred_at : '',
       );
-      if (
-        Number.isFinite(occurredAt) &&
-        occurredAt > Date.now() + FUTURE_TOLERANCE_MS
-      ) {
+      if (!Number.isFinite(occurredAt)) {
+        return derived422('VALIDATION_FAILED', 'Request failed validation', [
+          {
+            field: 'occurred_at',
+            code: 'format',
+            message: 'must be a date-time',
+          },
+        ]);
+      }
+      if (occurredAt > Date.now() + FUTURE_TOLERANCE_MS) {
         return fixture(createAttempt422Future);
+      }
+      if (
+        !optionalInRange(body.completion_fraction, 0, 1, false) ||
+        !optionalInRange(body.perceived_effort, 1, 10, true) ||
+        (body.notes !== undefined &&
+          (typeof body.notes !== 'string' || body.notes.length > 500))
+      ) {
+        return derived422('VALIDATION_FAILED', 'Request failed validation', [
+          {
+            field: 'notes',
+            code: 'range',
+            message: 'check the optional fields',
+          },
+        ]);
       }
       const key = request.headers.get('Idempotency-Key') ?? '';
       const bodyFingerprint = serialize(body);
-      const seen = mockState.attemptFingerprints.get(key);
-      if (seen === undefined) {
-        mockState.attemptFingerprints.set(key, bodyFingerprint);
-        return fixture(createAttempt);
+      const seen = mockState.attemptKeys.get(key);
+      if (seen !== undefined) {
+        return seen.fingerprint === bodyFingerprint
+          ? json(mockState.attempts.get(seen.attemptId), 200, 'mock-replay')
+          : fixture(createAttempt409);
       }
-      return seen === bodyFingerprint
-        ? fixture(createAttempt200)
-        : fixture(createAttempt409);
+      // The committed request body maps onto the committed attempt (already seeded).
+      const attempt =
+        bodyFingerprint === FIXTURE_ATTEMPT_BODY
+          ? (mockState.attempts.get(FIXTURE_ATTEMPT.attempt_id) ??
+            (createAttempt.body as Attempt))
+          : attemptFrom(body, new Date().toISOString());
+      mockState.attempts.set(attempt.attempt_id, attempt);
+      mockState.attemptKeys.set(key, {
+        fingerprint: bodyFingerprint,
+        attemptId: attempt.attempt_id,
+      });
+      return bodyFingerprint === FIXTURE_ATTEMPT_BODY
+        ? fixture({ ...createAttempt, body: attempt })
+        : json(attempt, 201, 'mock-created');
     }),
   ),
 
   http.get(
     '*/v1/me/attempts/:attemptId',
-    auth(({ params }) =>
-      params.attemptId === FIXTURE_ATTEMPT_ID
-        ? fixture(getAttempt)
-        : notFound(),
-    ),
+    auth(({ params }) => {
+      const attempt = mockState.attempts.get(String(params.attemptId));
+      return attempt === undefined ? notFound() : json(attempt);
+    }),
   ),
 
   http.patch(
     '*/v1/me/attempts/:attemptId',
     auth(async ({ params, request }) => {
-      if (params.attemptId !== FIXTURE_ATTEMPT_ID) return notFound();
+      const current = mockState.attempts.get(String(params.attemptId));
+      if (current === undefined) return notFound();
       const body = await readJson(request);
-      if (typeof body.attempts_count === 'number' && body.attempts_count < 1) {
+      if (
+        (body.attempts_count !== undefined &&
+          !optionalInRange(
+            body.attempts_count,
+            1,
+            Number.MAX_SAFE_INTEGER,
+            true,
+          )) ||
+        !optionalInRange(body.completion_fraction, 0, 1, false) ||
+        !optionalInRange(body.perceived_effort, 1, 10, true)
+      ) {
         return fixture(patchAttempt422);
       }
       const ifMatch = request.headers.get('If-Match');
-      if (ifMatch !== `"${mockState.attemptRevision}"`)
-        return fixture(patchAttempt409);
-      mockState.attemptRevision = patchAttempt.body.revision;
-      return fixture(patchAttempt);
+      if (ifMatch !== `"${current.revision}"`) {
+        return fixture({
+          ...patchAttempt409,
+          body: { ...patchAttempt409.body, current_revision: current.revision },
+        });
+      }
+      const next: Attempt = {
+        ...current,
+        ...(typeof body.attempts_count === 'number'
+          ? { attempts_count: body.attempts_count }
+          : {}),
+        ...(typeof body.sent === 'boolean' ? { sent: body.sent } : {}),
+        ...(typeof body.completion_fraction === 'number'
+          ? { completion_fraction: body.completion_fraction }
+          : {}),
+        ...(typeof body.perceived_effort === 'number'
+          ? { perceived_effort: body.perceived_effort }
+          : {}),
+        ...(typeof body.notes === 'string' ? { notes: body.notes } : {}),
+        status: body.retract === true ? 'RETRACTED' : current.status,
+        revision: current.revision + 1,
+      };
+      mockState.attempts.set(next.attempt_id, next);
+      return json(next, 200, 'mock-patched');
     }),
   ),
 
   http.post(
     '*/v1/me/sessions/recommendations',
     auth(async ({ request }) => {
+      if (!hasConsent()) return consentRequired();
       const body = await readJson(request);
       const maxRoutes =
         typeof body.max_routes === 'number' ? body.max_routes : 1;
-      return maxRoutes < 1
-        ? fixture(createRecommendations422)
-        : fixture(createRecommendations);
+      if (maxRoutes < 1) return fixture(createRecommendations422);
+      if (maxRoutes > MAX_ROUTES) {
+        return derived422('VALIDATION_FAILED', 'Request failed validation', [
+          { field: 'max_routes', code: 'maximum', message: 'must be <= 20' },
+        ]);
+      }
+      if (body.board_id !== FIXTURE_BOARD.board_id) {
+        return derived422('UNKNOWN_BOARD', 'Unknown board', [
+          { field: 'board_id', code: 'unknown', message: 'unknown board' },
+        ]);
+      }
+      if (
+        typeof body.angle_deg !== 'number' ||
+        !isSupportedAngle(body.angle_deg)
+      ) {
+        return unsupportedAngle();
+      }
+      const createdAt = new Date().toISOString();
+      if (serialize(body) === FIXTURE_RECOMMENDATION_BODY) {
+        mockState.decisions.set(FIXTURE_DECISION.decision_id, FIXTURE_DECISION);
+        return fixture(createRecommendations);
+      }
+      const response = buildRecommendations({
+        decisionId: nextMockId('decision'),
+        angleDeg: body.angle_deg,
+        maxRoutes,
+        sessionId: String(body.session_id ?? ''),
+        exclude: Array.isArray(body.exclude_route_variant_ids)
+          ? body.exclude_route_variant_ids.map(String)
+          : [],
+        attempts: [...mockState.attempts.values()],
+      });
+      mockState.decisions.set(response.decision_id, {
+        ...response,
+        created_at: createdAt,
+        request: body as unknown as Decision['request'],
+      });
+      return json(response, 200, 'mock-decision');
     }),
   ),
 
   http.get(
     '*/v1/me/decisions/:decisionId',
-    auth(({ params }) =>
-      params.decisionId === FIXTURE_DECISION_ID
+    auth(({ params }) => {
+      const id = String(params.decisionId);
+      const recorded = mockState.decisions.get(id);
+      if (recorded !== undefined) return json(recorded);
+      return id === FIXTURE_DECISION.decision_id
         ? fixture(getDecision)
-        : notFound(),
-    ),
+        : notFound();
+    }),
   ),
 ];
 

@@ -235,3 +235,215 @@ describe('mock handlers', () => {
     });
   });
 });
+
+describe('mock handlers: attempts and recommendations (BC-0117/BC-0118)', () => {
+  const post = (key: string, body: unknown) =>
+    fetch(`${BASE}/v1/me/attempts`, {
+      method: 'POST',
+      headers: { ...AUTH, 'Idempotency-Key': key },
+      body: JSON.stringify(body),
+    });
+  const newBody = {
+    route_variant_id: 'synthetic-route-002:35',
+    occurred_at: '2026-10-14T16:00:00Z',
+    attempts_count: 1,
+    sent: false,
+    notes: 'first go',
+  };
+
+  it('createAttempt is stateful per Idempotency-Key: 201, then 200 replay, then 409 for a different body', async () => {
+    const first = await post('k1', newBody);
+    expect(first.status).toBe(201);
+    const created = (await first.json()) as {
+      attempt_id: string;
+      notes: string;
+      revision: number;
+    };
+    expect(created.notes).toBe('first go');
+    expect(created.revision).toBe(1);
+    const replay = await post('k1', newBody);
+    expect(replay.status).toBe(200);
+    await expect(replay.json()).resolves.toEqual(created);
+    const conflict = await post('k1', { ...newBody, sent: true });
+    expect(conflict.status).toBe(409);
+    await expect(conflict.json()).resolves.toMatchObject({
+      code: 'IDEMPOTENCY_CONFLICT',
+    });
+    const get = await fetch(`${BASE}/v1/me/attempts/${created.attempt_id}`, {
+      headers: AUTH,
+    });
+    expect(get.status).toBe(200);
+  });
+
+  it('listAttempts serves the store newest first with cursor paging and a status filter', async () => {
+    await post('k2', newBody);
+    const list = await fetch(`${BASE}/v1/me/attempts?limit=1`, {
+      headers: AUTH,
+    });
+    const page1 = (await list.json()) as {
+      items: { occurred_at: string }[];
+      next_cursor: string;
+    };
+    expect(page1.items[0]!.occurred_at).toBe('2026-10-14T16:00:00Z');
+    expect(page1.next_cursor).not.toBeNull();
+    const page2 = (await (
+      await fetch(
+        `${BASE}/v1/me/attempts?limit=1&cursor=${page1.next_cursor}`,
+        { headers: AUTH },
+      )
+    ).json()) as typeof page1;
+    expect(page2.items[0]!.occurred_at).toBe('2026-10-14T14:00:00Z');
+    expect(page2.next_cursor).toBeNull();
+    const retracted = await fetch(`${BASE}/v1/me/attempts?status=RETRACTED`, {
+      headers: AUTH,
+    });
+    await expect(retracted.json()).resolves.toEqual({
+      items: [],
+      next_cursor: null,
+    });
+    expect(
+      (await fetch(`${BASE}/v1/me/attempts?cursor=***`, { headers: AUTH }))
+        .status,
+    ).toBe(422);
+  });
+
+  it('patchAttempt retracts and bumps the revision; a stale If-Match reports the current one', async () => {
+    const url = `${BASE}/v1/me/attempts/018f0000-0000-7000-8000-000000000002`;
+    const retract = await fetch(url, {
+      method: 'PATCH',
+      headers: { ...AUTH, 'If-Match': '"1"' },
+      body: JSON.stringify({ retract: true }),
+    });
+    await expect(retract.json()).resolves.toMatchObject({
+      status: 'RETRACTED',
+      revision: 2,
+    });
+    const stale = await fetch(url, {
+      method: 'PATCH',
+      headers: { ...AUTH, 'If-Match': '"1"' },
+      body: JSON.stringify({ sent: false }),
+    });
+    await expect(stale.json()).resolves.toMatchObject({
+      code: 'REVISION_CONFLICT',
+      current_revision: 2,
+    });
+  });
+
+  it('createRecommendations is deterministic per session_id, honours excludes and records a decision', async () => {
+    const body = {
+      board_id: 'synthetic-demo-1',
+      angle_deg: 45,
+      goal: 'ENDURANCE',
+      max_routes: 4,
+      session_id: '33333333-3333-7333-8333-333333333333',
+      exclude_route_variant_ids: [] as string[],
+    };
+    const recommend = (b: unknown) =>
+      fetch(`${BASE}/v1/me/sessions/recommendations`, {
+        method: 'POST',
+        headers: AUTH,
+        body: JSON.stringify(b),
+      }).then(
+        (r) =>
+          r.json() as Promise<{
+            decision_id: string;
+            cold_start: boolean;
+            recommendations: { route_variant_id: string; position: number }[];
+          }>,
+      );
+    const a = await recommend(body);
+    const b = await recommend(body);
+    const ids = (r: typeof a) =>
+      r.recommendations.map((x) => x.route_variant_id);
+    expect(ids(a)).toEqual(ids(b));
+    expect(a.recommendations.map((x) => x.position)).toEqual([1, 2, 3, 4]);
+    expect(a.cold_start).toBe(true);
+    const c = await recommend({
+      ...body,
+      exclude_route_variant_ids: [ids(a)[0]],
+    });
+    expect(ids(c)).not.toContain(ids(a)[0]);
+    expect(ids(c)).toHaveLength(4);
+    const decision = await fetch(`${BASE}/v1/me/decisions/${c.decision_id}`, {
+      headers: AUTH,
+    });
+    await expect(decision.json()).resolves.toMatchObject({
+      decision_id: c.decision_id,
+      request: { exclude_route_variant_ids: [ids(a)[0]], goal: 'ENDURANCE' },
+      recommendations: c.recommendations,
+    });
+  });
+
+  it('createRecommendations serves the fixture for the fixture request and validates the rest', async () => {
+    const recommend = (b: unknown) =>
+      fetch(`${BASE}/v1/me/sessions/recommendations`, {
+        method: 'POST',
+        headers: AUTH,
+        body: JSON.stringify(b),
+      });
+    const fixtureRequest = {
+      board_id: 'synthetic-demo-1',
+      angle_deg: 35,
+      goal: 'TECHNIQUE',
+      max_routes: 4,
+      session_id: '018f0000-0000-7000-8000-000000000004',
+      exclude_route_variant_ids: [],
+    };
+    await expect(
+      recommend(fixtureRequest).then((r) => r.json()),
+    ).resolves.toMatchObject({
+      decision_id: '018f0000-0000-7000-8000-000000000003',
+    });
+    expect((await recommend({ ...fixtureRequest, max_routes: 0 })).status).toBe(
+      422,
+    );
+    expect(
+      (await recommend({ ...fixtureRequest, max_routes: 21 })).status,
+    ).toBe(422);
+    await expect(
+      recommend({ ...fixtureRequest, angle_deg: 50 }).then((r) => r.json()),
+    ).resolves.toMatchObject({ code: 'UNSUPPORTED_ANGLE' });
+    await expect(
+      recommend({ ...fixtureRequest, board_id: 'other' }).then((r) => r.json()),
+    ).resolves.toMatchObject({ code: 'UNKNOWN_BOARD' });
+  });
+
+  it('writes answer 403 CONSENT_REQUIRED for a registered user without consent', async () => {
+    await fetch(`${BASE}/v1/auth/register`, {
+      method: 'POST',
+      headers: AUTH,
+      body: JSON.stringify({
+        username: 'noconsent',
+        password: 'demo-password',
+      }),
+    });
+    const res = await post('k3', newBody);
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({
+      code: 'CONSENT_REQUIRED',
+    });
+  });
+
+  it('answers with a network error while the page reports being offline', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      Navigator.prototype,
+      'onLine',
+    );
+    Object.defineProperty(navigator, 'onLine', {
+      configurable: true,
+      get: () => false,
+    });
+    try {
+      await expect(
+        fetch(`${BASE}/v1/boards`, { headers: AUTH }),
+      ).rejects.toThrow();
+    } finally {
+      delete (navigator as unknown as Record<string, unknown>).onLine;
+      if (descriptor)
+        Object.defineProperty(Navigator.prototype, 'onLine', descriptor);
+    }
+    expect((await fetch(`${BASE}/v1/boards`, { headers: AUTH })).status).toBe(
+      200,
+    );
+  });
+});
