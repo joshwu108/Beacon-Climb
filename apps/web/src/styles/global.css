@@ -72,6 +72,16 @@ textarea {
   box-shadow: 0 0 0 var(--focus-ring-gap) var(--color-focus-gap);
 }
 
+/* Date and time inputs: Chromium focuses the inner field (shadow DOM), so the host never
+   matches :focus-visible and would show no ring when reached with Tab (BC-0119). */
+input[type='date']:focus-within,
+input[type='time']:focus-within,
+input[type='datetime-local']:focus-within {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+  box-shadow: 0 0 0 var(--focus-ring-gap) var(--color-focus-gap);
+}
+
 /* Hide content visually but keep it for assistive tech. */
 .visually-hidden:not(:focus):not(:active) {
   position: absolute;

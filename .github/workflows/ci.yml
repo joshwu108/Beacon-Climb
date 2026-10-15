@@ -113,3 +113,36 @@ jobs:
         if: always()
         run: |
           echo "Gitleaks wall-clock: $(($(date +%s) - started))s" >> "$GITHUB_STEP_SUMMARY"
+
+  web-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start timer
+        run: echo "started=$(date +%s)" >> "$GITHUB_ENV"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.3"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @beacon/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @beacon/web test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-playwright-report
+          path: apps/web/playwright-report
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-test-results
+          path: apps/web/test-results
+          if-no-files-found: ignore
+      - name: Elapsed
+        if: always()
+        run: |
+          echo "Web e2e wall-clock: $(($(date +%s) - started))s" >> "$GITHUB_STEP_SUMMARY"

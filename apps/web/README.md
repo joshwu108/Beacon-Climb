@@ -242,18 +242,58 @@ pnpm --filter @beacon/web size      # size-limit: all dist/assets/*.js, gzip, li
 pnpm --filter @beacon/web test:e2e  # playwright (chromium, dev server + mocks on :4173)
 ```
 
+### Playwright suite
+
 Playwright (`playwright.config.ts`, specs in `e2e/`) starts `pnpm dev` with mocks on port 4173
-(`reuseExistingServer: false`). Projects: `onboarding-375` and `onboarding-1280` run the whole
-first-run flow; `explore-320/768/1024/1440` take viewport screenshots of `/explore` and one
-route detail and compare them with `toHaveScreenshot`; `session-375/1280` resume a seeded
-user, build a session, dismiss a route and open the decision; `attempts-375/1280` log with a
-double click, correct, hit a revision conflict made "elsewhere" (a direct `fetch` from the
-page against the in-page mocks) and save while offline (`context.setOffline`), then sync. Baselines are committed under
-`e2e/__screenshots__/<project>/` and were generated on macOS with headless Chromium
-(`pnpm --filter @beacon/web exec playwright test --update-snapshots`); other platforms
-render fonts differently and need their own baselines. Browsers are installed with
-`pnpm --filter @beacon/web exec playwright install chromium`. `@axe-core/playwright` is not a
-dependency, so the e2e suite has no axe scan; axe runs per step and per screen in Vitest.
+(`reuseExistingServer: false`), Chromium only, `timezoneId: UTC` so fixture timestamps render
+the same on every machine. Reporters: `list` plus `html` written to `playwright-report/`
+(gitignored; open it with `pnpm --filter @beacon/web exec playwright show-report`). Projects:
+
+- Flow specs: `onboarding-375/1280` run the whole first-run flow; `session-375/1280` resume a
+  seeded user, build a session, dismiss a route and open the decision; `attempts-375/1280` log
+  with a double click, correct, hit a revision conflict made "elsewhere" (a direct `fetch` from
+  the page against the in-page mocks) and save while offline (`context.setOffline`), then sync.
+- Quality bar (BC-0119): `bp-320`, `bp-375`, `bp-768`, `bp-1024`, `bp-1440` and `bp-1920` run
+  `a11y.spec.ts` and `responsive.spec.ts` over the twelve page states in `e2e/states.ts`
+  (onboarding account / consent / board / goals, explore list, route detail, session builder
+  before and after a lineup, decision detail, attempt log with server rows and a draft that
+  needs attention, attempt form with a validation error, 404). `keyboard` (1024) runs
+  `keyboard.spec.ts`; `reduced-motion` (1024 with `prefers-reduced-motion: reduce`) runs
+  `reduced-motion.spec.ts`. States are deterministic: a fixed `session_id` (the mock lineup is
+  rotated by its hash), the fixture decision id, `page.clock.setFixedTime` on the attempt form
+  and a draft seeded straight into IndexedDB.
+
+What each gate asserts:
+
+- `a11y.spec.ts`: `@axe-core/playwright` on every state at every breakpoint; serious or
+  critical violations fail the test. Moderate and minor ones, and a per-page rule summary,
+  are test annotations (`axe-moderate`, `axe-minor`, `axe-summary`): in the HTML report open
+  the test and read its "Annotations" block (the list reporter does not print them).
+- `responsive.spec.ts`: `document.documentElement.scrollWidth <= window.innerWidth` (no
+  sideways scroll; `body { overflow-x: clip }` does not hide overflow from this check) and a
+  visible main landmark at all six widths; at 320 / 768 / 1024 / 1440 a viewport-only
+  `toHaveScreenshot` per state, baselines in `e2e/__screenshots__/<project>/<state>.png`
+  (48 PNGs; the BC-0116 `explore` and `route-detail` shots now live here).
+- `keyboard.spec.ts`: Tab reaches the skip link first and Enter lands focus on `main`; the
+  account step, the explore rows, the lineup's Swap / Dismiss and the attempt form work with
+  Tab, Enter and Space alone; the first 15 Tab stops on eight pages each show a computed focus
+  ring (outline or box-shadow; for an invisible native input the parent that carries
+  `:has(input:focus-visible)` is inspected).
+- `reduced-motion.spec.ts`: the media query matches and no element on explore, the lineup or
+  the attempt form keeps an animation or transition longer than 0.01 ms, the value every
+  duration token collapses to under reduced motion (not 0, so `transitionend` still fires).
+
+Baselines were generated on macOS with headless Chromium. The screenshot comparison runs only
+when `process.platform === 'darwin'` (annotation `screenshot-skipped` otherwise), so the Linux
+`web-e2e` job in `.github/workflows/ci.yml` passes the overflow and landmark checks without
+pixel baselines and uploads `playwright-report/` and `test-results/` (traces on failure) as
+artifacts. To compare pixels in CI as well, run
+`pnpm --filter @beacon/web exec playwright test --update-snapshots` once on Linux into a
+platform-specific directory (add a `{platform}` segment to `snapshotPathTemplate`) and drop
+the darwin guard. After an intended visual change, regenerate with the same command and review
+the PNG diffs before committing. Browsers: `pnpm --filter @beacon/web exec playwright install
+chromium`. Lighthouse is not installed in this repo, so no performance budget is recorded by
+this suite yet (the ticket plans it as recorded, not asserted).
 
 The budget is the planning/06 §11 figure (< 150 kB gzipped app JS). It is measured on the
 built files with `@size-limit/file` (no re-bundling) and sums every JS chunk, including the

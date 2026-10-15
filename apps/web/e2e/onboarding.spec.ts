@@ -3,8 +3,8 @@ import { expect, test, type Page } from '@playwright/test';
 /**
  * BC-0115 acceptance: the whole first-run flow against the mocks at 375 and 1280 (see
  * playwright.config.ts projects). Each page load has fresh mock state, so the username
- * below is new every time. @axe-core/playwright is not a dependency, so no axe scan runs
- * here; axe coverage per step is in src/features/onboarding/OnboardingPage.test.tsx.
+ * below is new every time. The axe scan per step is in e2e/a11y.spec.ts (BC-0119) and per
+ * screen in src/features/onboarding/OnboardingPage.test.tsx.
  */
 
 const stepHeading = (page: Page, name: RegExp) =>
