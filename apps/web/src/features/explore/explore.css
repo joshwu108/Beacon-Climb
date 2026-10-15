@@ -1,0 +1,322 @@
+/* Explore (BC-0116): a field-notebook index, not a card grid. Rows are ruled lines with
+   an ordinal, a grade column set in the display face, the route name and its evidence. */
+
+.explore,
+.detail {
+  gap: var(--space-5);
+}
+
+.explore__header {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.explore__loading,
+.detail__loading {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.explore__chip {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.explore__chip-board {
+  font-family: var(--font-ui);
+  letter-spacing: 0.02em;
+}
+
+.explore__chip-angle {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.explore__filters {
+  padding-block: var(--space-4);
+}
+
+.filters {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.filters__group {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.filters__group legend {
+  padding: 0;
+  margin-block-end: var(--space-1);
+}
+
+.filters__group[aria-invalid='true'] legend {
+  color: var(--color-error);
+}
+
+.filters__range {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 8rem));
+  gap: var(--space-3);
+}
+
+.filters__range-field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.filters__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.explore__index {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.explore__index-heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-block-end: var(--space-2);
+  border-block-end: 2px solid var(--color-text);
+}
+
+.index {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.index__status,
+.index__end {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.index__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.index__row {
+  border-block-end: var(--border-width) solid var(--color-border-subtle);
+}
+
+.index__row--skeleton {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  gap: var(--space-4);
+  align-items: center;
+  min-height: 4.25rem;
+}
+
+.index__link {
+  display: grid;
+  grid-template-columns: 2rem 4rem minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  min-height: 4.25rem;
+  padding: var(--space-3) var(--space-2);
+  text-decoration: none;
+  color: inherit;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.index__link:hover {
+  background: var(--color-surface-raised);
+}
+
+.index__link:hover .index__arrow {
+  transform: translateX(4px);
+}
+
+.index__link:focus-visible {
+  outline-offset: calc(-1 * var(--focus-ring-offset));
+  background: var(--color-surface-raised);
+}
+
+.index__ordinal {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-stamp);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.index__grade {
+  display: grid;
+  justify-items: start;
+  line-height: 1;
+}
+
+.index__grade-number {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.index__grade-number--none {
+  color: var(--color-text-muted);
+}
+
+.index__grade-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
+}
+
+.index__body {
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.index__name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.index__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.index__arrow {
+  color: var(--color-text-muted);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.index__more {
+  justify-self: start;
+}
+
+.index__empty {
+  padding: var(--space-5) 0;
+  gap: var(--space-2);
+}
+
+.index__empty-title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+/* Route detail */
+.detail__back {
+  font-size: var(--text-sm);
+}
+
+.detail__header {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.detail__columns {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.detail__board {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.detail__sheet {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.facts {
+  margin: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.facts__row {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.facts__row dt {
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-stamp);
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.facts__row dd {
+  margin: 0;
+}
+
+.facts__grade {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--text-grade);
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.facts__grade-label {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.facts__missing {
+  color: var(--color-text-muted);
+}
+
+.tags {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+@media (min-width: 768px) {
+  .detail__columns {
+    grid-template-columns: minmax(0, 3fr) minmax(16rem, 2fr);
+  }
+
+  /* The facts sheet sits a step lower than the board, like a pinned note. */
+  .detail__sheet {
+    margin-block-start: var(--space-6);
+  }
+}
+
+@media (min-width: 1024px) {
+  .explore__filters {
+    max-width: var(--size-reading-max);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .index__link:hover .index__arrow {
+    transform: none;
+  }
+}

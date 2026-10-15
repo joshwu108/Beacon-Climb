@@ -1,0 +1,153 @@
+/* Board SVG (design-tokens.md section 6). Shape + text carry the role; colour is the
+   redundant fourth channel. Nothing animates. */
+
+.board {
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.board__svg {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  min-block-size: var(--board-min-height);
+  border-radius: var(--radius-sheet);
+  background: var(--color-surface-sunken);
+  box-shadow: var(--elevation-board);
+  font-family: var(--font-ui);
+}
+
+.board__face {
+  fill: var(--color-board-face);
+  stroke: var(--color-border);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.hold {
+  fill: var(--color-hold-neutral);
+  opacity: 0.45;
+}
+
+.hold--placed {
+  opacity: 0;
+}
+
+.marker__fill {
+  stroke: var(--color-surface-raised);
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.marker__ring {
+  fill: none;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.marker__bar {
+  stroke-width: 4;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.marker__label {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-anchor: middle;
+  fill: var(--color-text);
+  paint-order: stroke fill;
+  stroke: var(--color-board-face);
+  stroke-width: 6px;
+  stroke-linejoin: round;
+}
+
+.marker--start .marker__fill,
+.marker--start .marker__ring {
+  fill: var(--color-hold-start);
+}
+
+.marker--start .marker__ring {
+  fill: none;
+  stroke: var(--color-hold-start);
+}
+
+.marker--hand .marker__fill {
+  fill: var(--color-hold-hand);
+}
+
+.marker--foot .marker__fill {
+  fill: var(--color-hold-foot);
+}
+
+.marker--finish .marker__ring,
+.marker--finish .marker__bar {
+  stroke: var(--color-hold-finish);
+}
+
+.marker--finish .marker__ring {
+  fill: var(--color-surface-raised);
+}
+
+.marker--dim {
+  opacity: 0.3;
+}
+
+/* Legend */
+.legend__list {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.legend__row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+.legend__row dt {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+
+.legend__row dd {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.legend__glyph {
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  background: var(--color-board-face);
+  border-radius: var(--radius-stamp);
+}
+
+@media (forced-colors: active) {
+  .board__face {
+    fill: Canvas;
+    stroke: CanvasText;
+  }
+
+  .hold,
+  .marker__fill {
+    fill: CanvasText;
+  }
+
+  .marker__ring,
+  .marker__bar {
+    stroke: CanvasText;
+  }
+
+  .marker__label {
+    fill: CanvasText;
+    stroke: Canvas;
+  }
+}
