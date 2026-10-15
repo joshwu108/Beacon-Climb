@@ -95,7 +95,8 @@ class AttemptInvariantsPropertyTest {
             new ConsentGuard(new ConsentRepository(jdbc), new ConsentDocumentService()),
             tx,
             json,
-            clock);
+            clock,
+            List.of());
   }
 
   @Property(tries = 25)

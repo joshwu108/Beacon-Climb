@@ -1,4 +1,4 @@
-.PHONY: dev down reset-db test test-api test-web test-ml lint fmt guards seed-demo import synthetic-board bench-catalog
+.PHONY: dev down reset-db test test-api test-web test-ml lint fmt guards seed-demo import synthetic-board bench-catalog recompute-features
 
 COMPOSE := docker compose --env-file .env -f infra/compose/docker-compose.yml --profile core
 
@@ -66,6 +66,20 @@ import: .env
 	  --spring.profiles.active=import --import.file=$(FILE) \
 	  $(if $(ACK),--import.acknowledge-audit=true,) \
 	  $(if $(REPORT_DIR),--import.report-dir=$(REPORT_DIR),)
+
+# BC-0113: `make recompute-features [USER=<uuid>|all] [W=2026-10-14T14:00:00Z]` recomputes the
+# climber-features.v1 snapshot (user_feature_snapshots, source SYNC) for one user or every
+# non-erased account at the explicit cutoff W (default: now). Same host-JVM pattern as `import`.
+# Prints `recomputed user_id=... cutoff_w=... feature_as_of=... checksum=...` per user.
+# Exit codes: 0 all recomputed, 1 at least one user failed, 2 bad USER or W. USER is only
+# honoured when given on the make command line (the login shell exports USER=<account name>).
+recompute-features: .env
+	./gradlew :api:bootJar
+	set -a; . ./.env; set +a; \
+	BEACON_DB_URL=jdbc:postgresql://127.0.0.1:5432/beacon \
+	"$${JAVA_HOME:+$$JAVA_HOME/bin/}java" -jar services/api/build/libs/api-0.1.0.jar \
+	  --spring.profiles.active=recompute --recompute.user=$(if $(filter command line,$(origin USER)),$(USER),all) \
+	  $(if $(W),--recompute.w=$(W),)
 
 # BC-0104: regenerate the SYNTHETIC demo catalog fixture (deterministic for the seed; the
 # committed file must not change). Run as a script with -I because -I implies -P, which keeps

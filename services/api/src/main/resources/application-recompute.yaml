@@ -1,0 +1,17 @@
+# BC-0113: `--spring.profiles.active=recompute` turns the jar into the feature recompute CLI
+# (`make recompute-features [USER=<uuid>|all] [W=<instant>]`). No web server; Flyway still runs
+# so user_feature_snapshots exists before rows are written.
+spring:
+  main:
+    web-application-type: none
+    banner-mode: off
+logging:
+  level:
+    root: WARN
+    com.beaconclimb.api.features: INFO
+  structured:
+    format:
+      # The CLI is read by a person; an empty format restores the plain pattern.
+      console: ""
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %5p %logger{0} - %m%n"

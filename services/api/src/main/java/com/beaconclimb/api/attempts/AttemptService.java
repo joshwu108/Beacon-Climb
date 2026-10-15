@@ -43,6 +43,10 @@ import tools.jackson.databind.json.JsonMapper;
  * UPDATE itself (409 REVISION_CONFLICT with {@code current_revision}); an accepted change writes
  * the next snapshot and its ATTEMPT_CORRECTED or ATTEMPT_RETRACTED event in the same transaction.
  * Log lines carry ids and outcomes only, never notes or bodies (TM-10, TM-16).
+ *
+ * <p>After a create or patch transaction has committed, every {@link AttemptWriteListener} (the
+ * BC-0113 feature recompute) runs in the same request but outside that transaction; a listener
+ * failure is its own to log and can never turn a committed write into an error response.
  */
 @Service
 public class AttemptService {
@@ -68,6 +72,7 @@ public class AttemptService {
   private final TransactionTemplate tx;
   private final JsonMapper json;
   private final Clock clock;
+  private final List<AttemptWriteListener> listeners;
 
   public AttemptService(
       AttemptRepository attempts,
@@ -77,7 +82,8 @@ public class AttemptService {
       ConsentGuard consent,
       TransactionTemplate tx,
       JsonMapper json,
-      Clock clock) {
+      Clock clock,
+      List<AttemptWriteListener> listeners) {
     this.attempts = attempts;
     this.audit = audit;
     this.events = events;
@@ -86,6 +92,7 @@ public class AttemptService {
     this.tx = tx;
     this.json = json;
     this.clock = clock;
+    this.listeners = List.copyOf(listeners);
   }
 
   public CreateResult create(UUID userId, String idempotencyKey, String rawBody) {
@@ -113,6 +120,7 @@ public class AttemptService {
             tx.execute(status -> record(row, idempotencyKey, fingerprint, traceId)));
     if (inserted) {
       log.info("attempt outcome=CREATED user_id={} attempt_id={}", userId, row.attemptId());
+      afterWrite(userId);
       return new CreateResult(AttemptView.of(AttemptBody.of(row), row.route()), true);
     }
     AttemptRow committed =
@@ -142,7 +150,16 @@ public class AttemptService {
     UUID id = parseAttemptId(attemptId);
     AttemptPatch patch = AttemptPatchValidator.validate(AttemptFields.parseObject(rawBody));
     String traceId = TraceIds.current();
-    return tx.execute(status -> applyPatch(userId, id, ifMatch, patch, traceId));
+    AttemptView view = tx.execute(status -> applyPatch(userId, id, ifMatch, patch, traceId));
+    afterWrite(userId);
+    return view;
+  }
+
+  /** Listeners run after the write has committed; each one guards its own failures. */
+  private void afterWrite(UUID userId) {
+    for (AttemptWriteListener listener : listeners) {
+      listener.afterAttemptWrite(userId);
+    }
   }
 
   /** Inside the create transaction: the insert and, only when it won, the audit row and event. */
