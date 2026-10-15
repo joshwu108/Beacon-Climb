@@ -7,7 +7,9 @@ useDefault = true
 
 [[allowlists]]
 description = "Contract fixtures and env example carry placeholder credentials by design"
-# Both conditions must match (path AND regex) for a finding to be allowlisted.
+# Both conditions must match (path AND regex) for a finding to be allowlisted;
+# gitleaks defaults to OR, so the condition is set explicitly (BC-0123 second pass).
+condition = "AND"
 regexTarget = "match"
 paths = [
   '''contracts/examples/createSession/request\.json''',

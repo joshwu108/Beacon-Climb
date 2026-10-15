@@ -68,12 +68,14 @@ Consequences behind nginx on :3000:
   browser user out of sign-in for 15 minutes. Direct calls to :8080 keep their own key.
 
 Fine for one laptop; before any shared host set
-`BEACON_HTTP_TRUSTEDPROXIES=<web container IP or subnet>` on the `api` service (a list of IP
-literals or CIDR ranges, e.g. the compose network's subnet from
-`docker network inspect <project>_default`). Then the first `X-Forwarded-For` entry is the
-client for requests whose peer is in that list, and :8080 callers (whose peer is the Docker
-gateway, not the web container) stay keyed on their own address. Never list a range that a
-client can connect from directly, and never put an appending proxy in front of nginx.
+`BEACON_HTTP_TRUSTEDPROXIES=<web container IP>/32` on the `api` service (a list of IP
+literals or CIDR ranges; read the web container's address from
+`docker inspect <project>-web-1`). List only the web container, never the whole compose
+subnet: that subnet also contains the Docker gateway, which is the peer address of every
+direct :8080 caller, and listing it would let those callers forge `X-Forwarded-For` and dodge
+the per-IP limits. Then the first `X-Forwarded-For` entry is the client for requests whose
+peer is the web container, and :8080 callers stay keyed on their own address. Never put an
+appending proxy in front of nginx.
 
 Flyway runs inside the api at startup. A future one-shot migrate service can own that
 step instead: start the api with `BEACON_FLYWAY_ENABLED=false` (`spring.flyway.enabled`)

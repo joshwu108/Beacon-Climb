@@ -16,9 +16,11 @@ FORBIDDEN_SUFFIXES = {
     ".db", ".csv", ".tsv", ".pt", ".pth", ".parquet", ".sqlite", ".sqlite3",
     ".safetensors", ".onnx", ".pkl", ".pickle", ".npz", ".npy", ".h5", ".hdf5",
     ".feather", ".arrow", ".zip", ".gz", ".bz2", ".xz", ".zst", ".7z", ".tar",
+    ".bin", ".ckpt", ".joblib", ".gguf",
 }
 # Any tracked file starting with the SQLite header is a database whatever its name.
 SQLITE_MAGIC = b"SQLite format 3\x00"
+GZIP_MAGIC = b"\x1f\x8b"
 # JSON Lines catalogs are allowed only when the first line is a manifest declaring
 # "synthetic": true (contracts/catalog). Anything else is treated as licensed.
 MANIFEST_SUFFIXES = {".jsonl", ".ndjson"}
@@ -31,12 +33,17 @@ def tracked_paths(argv):
     return [p for p in out.split("\0") if p]
 
 
-def is_sqlite_file(path: Path) -> bool:
+def binary_header(path: Path):
     try:
         with path.open("rb") as stream:
-            return stream.read(len(SQLITE_MAGIC)) == SQLITE_MAGIC
+            head = stream.read(len(SQLITE_MAGIC))
     except OSError:
-        return False
+        return None
+    if head == SQLITE_MAGIC:
+        return "SQLite file header detected"
+    if head[: len(GZIP_MAGIC)] == GZIP_MAGIC:
+        return "gzip header detected (compressed data under another name)"
+    return None
 
 
 def manifest_error(path: Path):
@@ -63,8 +70,9 @@ for name in tracked_paths(sys.argv):
     if ".sqlite" in lowered:
         errors.append(f"{name}: tracked SQLite file")
         continue
-    if path.is_file() and is_sqlite_file(path):
-        errors.append(f"{name}: SQLite file header detected")
+    header_problem = binary_header(path) if path.is_file() else None
+    if header_problem:
+        errors.append(f"{name}: {header_problem}")
         continue
     suffix = path.suffix.lower()
     if suffix in FORBIDDEN_SUFFIXES:

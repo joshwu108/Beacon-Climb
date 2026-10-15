@@ -16,8 +16,9 @@ import org.springframework.web.servlet.HandlerMapping;
 
 /**
  * One INFO access line per request after the chain completes: method, path template when MVC
- * matched one (raw path otherwise; never the query string), status, duration and the user id when
- * authenticated, plus the request id from the MDC. Headers, bodies, tokens and notes are never
+ * matched one (raw request URI otherwise, which for a request rejected by the path normalisation
+ * filter is the disguised path itself; never the query string), status, duration and the user id
+ * when authenticated, plus the request id from the MDC. Headers, bodies, tokens and notes are never
  * logged (TM-16, TM-33). Runs right after the request id filter so the duration covers
  * authentication and rate limiting too.
  */

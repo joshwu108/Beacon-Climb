@@ -36,6 +36,7 @@ class FeatureRecomputeRunner implements ApplicationRunner, ExitCodeGenerator {
 
   private final FeatureRecomputeService features;
   private final RecomputeProperties properties;
+  static final java.time.Duration MAX_FUTURE_SKEW = java.time.Duration.ofMinutes(5);
   private final Clock clock;
   private int exitCode = EXIT_USAGE;
 
@@ -89,12 +90,21 @@ class FeatureRecomputeRunner implements ApplicationRunner, ExitCodeGenerator {
     if (properties.w() == null || properties.w().isBlank()) {
       return clock.instant().truncatedTo(ChronoUnit.MILLIS);
     }
+    Instant w;
     try {
-      return Instant.parse(properties.w());
+      w = Instant.parse(properties.w());
     } catch (DateTimeParseException e) {
       throw new IllegalArgumentException(
           "--recompute.w must be an RFC 3339 instant such as 2026-10-14T14:00:00Z", e);
     }
+    // A future cutoff would pin the live row (upserts are monotonic on cutoff_w) and silence
+    // every later attempt-write recompute until that date (BC-0123 second pass, N2).
+    Instant latest = clock.instant().plus(MAX_FUTURE_SKEW);
+    if (w.isAfter(latest)) {
+      throw new IllegalArgumentException(
+          "--recompute.w must not be later than now plus " + MAX_FUTURE_SKEW + " (was " + w + ")");
+    }
+    return w;
   }
 
   private List<UUID> users() {

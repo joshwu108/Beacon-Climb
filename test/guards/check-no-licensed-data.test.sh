@@ -45,6 +45,9 @@ printf 'x' > model.pkl
 printf 'x' > cat.jsonl.gz
 printf 'x' > arrays.npz
 printf 'x' > bundle.zip
+printf '\037\213\010rest' > routes.dat
+printf 'x' > weights.ckpt
+printf 'x' > model.gguf
 printf 'readme\n' > fine.md
 printf '{"a":1}\n' > fine.json
 
@@ -70,6 +73,9 @@ expect 1 "pickle rejected" model.pkl
 expect 1 "gzipped jsonl rejected" cat.jsonl.gz
 expect 1 "npz rejected" arrays.npz
 expect 1 "zip rejected" bundle.zip
+expect 1 "gzip header under another name rejected" routes.dat
+expect 1 "ckpt rejected" weights.ckpt
+expect 1 "gguf rejected" model.gguf
 expect 0 "uppercase extension of allowed file passes" fine.md
 
 echo "guard self-test: $pass passed, $fail failed"

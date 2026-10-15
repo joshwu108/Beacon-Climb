@@ -117,6 +117,23 @@ class FeatureRecomputeRunnerTest {
     assertThat(service.calls).isEqualTo(Collections.emptyList());
   }
 
+  @Test
+  void futureCutoffIsAUsageErrorSoTheLiveRowCannotBePinnedAhead() {
+    RecordingService service = new RecordingService();
+    String tooLate = NOW.plus(FeatureRecomputeRunner.MAX_FUTURE_SKEW).plusSeconds(1).toString();
+    String withinSkew = NOW.plus(FeatureRecomputeRunner.MAX_FUTURE_SKEW).toString();
+
+    FeatureRecomputeRunner future =
+        new FeatureRecomputeRunner(service, new RecomputeProperties("all", tooLate), clock());
+    future.run(new DefaultApplicationArguments());
+    FeatureRecomputeRunner allowed =
+        new FeatureRecomputeRunner(service, new RecomputeProperties("all", withinSkew), clock());
+    allowed.run(new DefaultApplicationArguments());
+
+    assertThat(future.getExitCode()).isEqualTo(2);
+    assertThat(allowed.getExitCode()).isZero();
+  }
+
   private static Clock clock() {
     return Clock.fixed(NOW, ZoneOffset.UTC);
   }
