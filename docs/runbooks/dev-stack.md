@@ -48,10 +48,11 @@ Every container has `no-new-privileges`, `cap_drop: ALL` (the init container add
 
 The web image is built with `VITE_API_BASE_URL=http://127.0.0.1:3000`, i.e. its own
 origin, and nginx forwards `/v1/*` and `/health/*` to the api container. The browser
-therefore never makes a cross-origin request and no CORS exception is needed. The api still
-lists `http://localhost:3000` and `http://127.0.0.1:3000` (plus the Vite dev-server
-origins on 5173) in `BEACON_HTTP_CORSALLOWEDORIGINS` so a page opened as
-`localhost:3000` keeps working; any other origin gets 403 from the API's CORS filter.
+therefore never makes a cross-origin request and no CORS exception is needed. Open the app
+as `http://127.0.0.1:3000`, not `localhost:3000`: the page's CSP (`connect-src 'self'`) and the
+baked-in base URL point at 127.0.0.1, so a `localhost:3000` page cannot reach the API
+(BC-0123 I2). The api still lists both 3000 origins and the Vite dev-server origins on 5173 in
+`BEACON_HTTP_CORSALLOWEDORIGINS`; any other origin gets 403 from the API's CORS filter.
 `X-Request-Id` passes through nginx unchanged (the API echoes it).
 
 `beacon.http.trusted-proxies` is empty by default (BC-0123 F3), so the API keys every
