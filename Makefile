@@ -47,8 +47,20 @@ fmt:
 seed-demo:
 	@echo "not implemented until BC-0120" >&2; exit 1
 
-import:
-	@echo "not implemented until BC-0105" >&2; exit 1
+# BC-0105: `make import FILE=<catalog.jsonl> [ACK=1] [REPORT_DIR=reports/import]` loads a catalog
+# v1 file into the compose Postgres (published on 127.0.0.1:5432). The api container runs on a
+# read-only filesystem, so the importer runs the same jar on the host JVM with the .env secrets.
+# Exit codes: 0 clean, 2 rows rejected (see report), 3 licence gate, 4 content_sha256 mismatch,
+# 5 not a catalog v1 file. ACK=1 acknowledges the data-source audit for synthetic=false files.
+import: .env
+	@test -n "$(FILE)" || { echo "usage: make import FILE=<catalog.jsonl> [ACK=1]" >&2; exit 2; }
+	./gradlew :api:bootJar
+	set -a; . ./.env; set +a; \
+	BEACON_DB_URL=jdbc:postgresql://127.0.0.1:5432/beacon \
+	"$${JAVA_HOME:+$$JAVA_HOME/bin/}java" -jar services/api/build/libs/api-0.1.0.jar \
+	  --spring.profiles.active=import --import.file=$(FILE) \
+	  $(if $(ACK),--import.acknowledge-audit=true,) \
+	  $(if $(REPORT_DIR),--import.report-dir=$(REPORT_DIR),)
 
 # BC-0104: regenerate the SYNTHETIC demo catalog fixture (deterministic for the seed; the
 # committed file must not change). Run as a script with -I because -I implies -P, which keeps

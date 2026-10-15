@@ -23,17 +23,27 @@ dependencies {
     // Argon2id password hashing (ADR-0005). spring-security-crypto needs Bouncy Castle at runtime.
     implementation("org.springframework.security:spring-security-crypto")
     implementation("org.bouncycastle:bcprov-jdk18on:1.86")
+    // JSON Schema 2020-12 validator (Jackson 3 based, matching Boot 4.1): catalog line validation
+    // in the importer (BC-0105) and contract conformance in tests.
+    implementation("com.networknt:json-schema-validator:3.0.8")
     runtimeOnly("org.postgresql:postgresql")
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     testImplementation("org.testcontainers:testcontainers-postgresql")
-    // JSON Schema 2020-12 validator (Jackson 3 based, matching Boot 4.1) for contract conformance.
-    testImplementation("com.networknt:json-schema-validator:3.0.8")
     testImplementation("net.jqwik:jqwik:1.9.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 spotless { java { googleJavaFormat("1.28.0") } }
+
+// BC-0105: the importer validates every catalog line against the versioned contract. The schema is
+// copied into the jar at build time from contracts/catalog so the file is not duplicated in git.
+tasks.named<ProcessResources>("processResources") {
+    from("../../contracts/catalog") {
+        include("catalog-v1.schema.json")
+        into("contracts/catalog")
+    }
+}
 tasks.withType<Test> { useJUnitPlatform() }
