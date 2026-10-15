@@ -18,14 +18,21 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * BC-0101: Flyway V1 applies on an empty Postgres 17 as beacon_migrate, the runtime role beacon_app
- * gets DML and nothing more, the constraints from planning/06 section 1 hold, and the golden schema
- * document docs/db/schema-v1.md matches pg_dump of the live database.
+ * BC-0101/BC-0107: every Flyway migration applies on an empty Postgres 17 as beacon_migrate, the
+ * runtime role beacon_app gets DML and nothing more, the constraints from planning/06 sections 1
+ * and 6 hold, and the golden schema document docs/db/schema-v1.md matches pg_dump of the live
+ * database.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 class MigrationIT extends AbstractPostgresIT {
 
-  private static final List<String> V1_TABLES =
+  /** Expected (version, script) pairs in order; extend when adding a migration. */
+  private static final List<Map.Entry<String, String>> MIGRATIONS =
+      List.of(
+          Map.entry("1", "V1__identity_catalog_provenance.sql"),
+          Map.entry("2", "V2__sessions.sql"));
+
+  private static final List<String> ALL_TABLES =
       List.of(
           "users",
           "consents",
@@ -35,7 +42,8 @@ class MigrationIT extends AbstractPostgresIT {
           "holds",
           "routes",
           "route_variants",
-          "route_placements");
+          "route_placements",
+          "sessions");
 
   private static final UUID PROVENANCE_ID = UUID.fromString("00000000-0000-7000-8000-000000000001");
   private static final String BOARD_ID = "migration-it-board";
@@ -52,17 +60,21 @@ class MigrationIT extends AbstractPostgresIT {
   }
 
   @Test
-  void flywayHistoryRecordsVersionOneAsSuccess() {
-    Map<String, Object> row =
+  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionTwo() {
+    List<Map<String, Object>> rows =
         jdbc()
-            .queryForMap(
-                "select version, success, script from flyway_schema_history where version = '1'");
-    assertThat(row.get("success")).isEqualTo(true);
-    assertThat(row.get("script").toString()).isEqualTo("V1__identity_catalog_provenance.sql");
+            .queryForList(
+                "select version, success, script from flyway_schema_history"
+                    + " where version is not null order by installed_rank");
+    assertThat(rows).extracting(row -> row.get("success")).containsOnly(true);
+    assertThat(rows)
+        .extracting(row -> Map.entry(row.get("version").toString(), row.get("script").toString()))
+        .containsExactlyElementsOf(MIGRATIONS);
+    assertThat(rows.getLast().get("version").toString()).isEqualTo("2");
   }
 
   @Test
-  void allNineTablesExistInPublicAndAreOwnedByMigrateRole() {
+  void allTablesExistInPublicAndAreOwnedByMigrateRole() {
     List<Map<String, Object>> rows =
         jdbc()
             .queryForList(
@@ -70,8 +82,29 @@ class MigrationIT extends AbstractPostgresIT {
                     + " and tablename <> 'flyway_schema_history' order by tablename");
     assertThat(rows)
         .extracting(row -> row.get("tablename"))
-        .containsExactlyInAnyOrderElementsOf(V1_TABLES);
+        .containsExactlyInAnyOrderElementsOf(ALL_TABLES);
     assertThat(rows).extracting(row -> row.get("tableowner")).containsOnly("beacon_migrate");
+  }
+
+  @Test
+  void sessionsTableHasUserIndexAndRequiresExistingUser() {
+    String definition =
+        jdbc()
+            .queryForObject(
+                "select indexdef from pg_indexes where schemaname = 'public'"
+                    + " and indexname = 'sessions_user_id_idx'",
+                String.class);
+    assertThat(definition).contains("ON public.sessions USING btree (user_id)");
+    assertThatThrownBy(
+            () ->
+                jdbc()
+                    .update(
+                        "insert into sessions (token_hash, user_id, created_at, expires_at)"
+                            + " values (?, ?, now(), now())",
+                        "f".repeat(64),
+                        UUID.fromString("00000000-0000-7000-8000-0000000000ac")))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("sessions_user_id_fkey");
   }
 
   @Test
@@ -161,7 +194,9 @@ class MigrationIT extends AbstractPostgresIT {
   @Test
   void goldenSchemaDocMatchesLiveDatabase() throws Exception {
     String live = SchemaGolden.dumpNormalisedSchema(SchemaGolden.sharedContainer());
-    assertThat(live).contains("CREATE TABLE public.route_placements");
+    assertThat(live)
+        .contains("CREATE TABLE public.route_placements")
+        .contains("CREATE TABLE public.sessions");
     if (SchemaGolden.shouldUpdate()) {
       SchemaGolden.writeDoc(live);
       return;

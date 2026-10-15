@@ -164,8 +164,10 @@ paths:
     delete:
       operationId: deleteSession
       summary: Log out
-      description: Revokes the presented bearer token (ADR-0005 revocation on logout,
-        C-04). Idempotent for an already revoked but still well-formed token.
+      description: >-
+        Revokes the presented bearer token (ADR-0005 revocation on logout, C-04). A revoked,
+        expired, unknown or malformed token returns 401 like any other authenticated
+        operation (TM-21, a replayed revoked token is never accepted).
       tags:
       - API
       responses:

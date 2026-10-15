@@ -9,6 +9,22 @@ spring:
     # Migration role owns the schema (infra/compose/postgres/init.sql).
     user: ${BEACON_MIGRATE_DB_USER:beacon_migrate}
     password: ${BEACON_MIGRATE_DB_PASSWORD}
+  jackson:
+    deserialization:
+      # Contract schemas are additionalProperties:false; an unknown member is 422 UNKNOWN_FIELD
+      # (ADR-0002, ApiExceptionHandler).
+      fail-on-unknown-properties: true
+beacon:
+  auth:
+    # ADR-0005: 10 failed login attempts per 15 minutes per username and per client IP.
+    login-limit: 10
+    login-window: 15m
+    # ADR-0005: opaque bearer tokens live 24 h (2 h on a public demo, privacy doc section 7).
+    session-ttl: 24h
+logging:
+  pattern:
+    # RequestIdFilter puts the request id in the MDC so every line can be correlated (TM-16).
+    level: "%5p [request_id=%X{request_id:-}]"
 management:
   endpoints:
     web:

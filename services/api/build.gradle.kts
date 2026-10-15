@@ -9,6 +9,10 @@ version = "0.1.0"
 
 java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }
 
+// BC-0107: controller interfaces are hand-written. openapi-generator 7.26.0 (spring) cannot load
+// contracts/openapi.yaml because the frozen 1.1.0 spec uses more than 50 YAML aliases, which the
+// bundled swagger-parser rejects before validation. Contract conformance is proven instead by
+// ContractSchemas (test) validating every observed response body against the component schemas.
 dependencies {
     implementation(platform("org.springframework.boot:spring-boot-dependencies:4.1.1"))
     testImplementation(platform("org.springframework.boot:spring-boot-dependencies:4.1.1"))
@@ -16,12 +20,17 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
+    // Argon2id password hashing (ADR-0005). spring-security-crypto needs Bouncy Castle at runtime.
+    implementation("org.springframework.security:spring-security-crypto")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.86")
     runtimeOnly("org.postgresql:postgresql")
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     testImplementation("org.testcontainers:testcontainers-postgresql")
+    // JSON Schema 2020-12 validator (Jackson 3 based, matching Boot 4.1) for contract conformance.
+    testImplementation("com.networknt:json-schema-validator:3.0.8")
     testImplementation("net.jqwik:jqwik:1.9.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
