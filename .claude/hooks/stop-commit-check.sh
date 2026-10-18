@@ -41,8 +41,12 @@ try:
             except Exception: continue
             if obj.get("type") == "user":
                 msg = obj.get("message", {}); content = msg.get("content", "")
-                text = content if isinstance(content, str) else json.dumps(content)
-                if marker in text and "tool_result" not in text[:200]:
+                if isinstance(content, list):
+                    content = "".join(c.get("text", "") for c in content
+                                      if isinstance(c, dict) and c.get("type") == "text")
+                # Only a message that IS the overnight prompt counts, not one that quotes it
+                # (compaction summaries and chat about the prompt mention the phrase too).
+                if isinstance(content, str) and content.lstrip().startswith("You are the " + marker):
                     found = True; break
     print("yes" if found else "no")
 except Exception:
