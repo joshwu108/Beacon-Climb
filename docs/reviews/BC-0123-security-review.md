@@ -219,7 +219,7 @@ The two scratch programs are in `/private/tmp/claude-501/-Users-joshuawu-Beacon-
 | F6 app role privileges | fixed: V7 makes attempt_revisions append-only; one-shot compose `migrate` service (BC-0123c F6b: api jar under the `migrate` profile, same hardening, only holder of BEACON_MIGRATE_DB_PASSWORD; api runs with BEACON_FLYWAY_ENABLED=false and no migrate password, `MigrateProfileIT`) | 842c137, this commit |
 | F7 guard coverage | fixed: more extensions + SQLite header sniff | c2d5dfa |
 | F8 dev-only vitest/tinypool advisories | open: upgrade vitest ≥ 4.1.11 deferred (prod audit clean) | — |
-| F9 CI hardening | partly: read-only permissions on all workflows, contracts job fails instead of skipping; SHA pins and dependency scans deferred | c2d5dfa |
+| F9 CI hardening | fixed: every workflow `uses:` pinned to a full commit SHA with the version in a trailing comment (resolved with `git ls-remote --tags`, 2026-10-18); `pnpm audit --audit-level high` added to the web job. Gap: no Java dependency scan in CI because OWASP dependency-check needs the NVD feed (network + API key) and cannot run offline | c2d5dfa, this commit |
 | F10 gitleaks allowlist | fixed: path-scoped | c2d5dfa |
 | F11 parallel login limit | fixed: atomic reservation | 842c137 |
 | F12 corrected notes on replay | fixed: replay carries current notes; privacy doc updated | 842c137 |
