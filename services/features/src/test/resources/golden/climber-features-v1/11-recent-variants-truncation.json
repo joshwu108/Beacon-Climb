@@ -1,0 +1,251 @@
+{
+  "name" : "11-recent-variants-truncation",
+  "description" : "30 rows over 25 distinct variants: recent_variant_ids holds the first 20 distinct values newest first",
+  "cutoff_w" : "2026-10-14T14:00:00Z",
+  "attempts" : [ {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000001",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-000:40",
+    "occurred_at" : "2026-10-14T14:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 15.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000002",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T13:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 16.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000003",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-002:40",
+    "occurred_at" : "2026-10-14T12:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 17.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000004",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-003:40",
+    "occurred_at" : "2026-10-14T11:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 18.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000005",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-004:40",
+    "occurred_at" : "2026-10-14T10:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 19.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000006",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-005:40",
+    "occurred_at" : "2026-10-14T09:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 20.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000007",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-006:40",
+    "occurred_at" : "2026-10-14T08:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 21.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000008",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-007:40",
+    "occurred_at" : "2026-10-14T07:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 22.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000009",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-008:40",
+    "occurred_at" : "2026-10-14T06:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 23.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-00000000000a",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-009:40",
+    "occurred_at" : "2026-10-14T05:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 24.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-00000000000b",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-010:40",
+    "occurred_at" : "2026-10-14T04:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 25.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-00000000000c",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-011:40",
+    "occurred_at" : "2026-10-14T03:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 26.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-00000000000d",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-012:40",
+    "occurred_at" : "2026-10-14T02:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 15.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-00000000000e",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-013:40",
+    "occurred_at" : "2026-10-14T01:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 16.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-00000000000f",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-014:40",
+    "occurred_at" : "2026-10-14T00:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 17.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000010",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-015:40",
+    "occurred_at" : "2026-10-13T23:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 18.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000011",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-016:40",
+    "occurred_at" : "2026-10-13T22:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 19.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000012",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-017:40",
+    "occurred_at" : "2026-10-13T21:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 20.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000013",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-018:40",
+    "occurred_at" : "2026-10-13T20:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 21.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000014",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-019:40",
+    "occurred_at" : "2026-10-13T19:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 22.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000015",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-020:40",
+    "occurred_at" : "2026-10-13T18:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 23.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000016",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-021:40",
+    "occurred_at" : "2026-10-13T17:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 24.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000017",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-022:40",
+    "occurred_at" : "2026-10-13T16:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 25.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000018",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-023:40",
+    "occurred_at" : "2026-10-13T15:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 26.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000019",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-024:40",
+    "occurred_at" : "2026-10-13T14:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 15.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-00000000001a",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-000:40",
+    "occurred_at" : "2026-10-13T13:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 16.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-00000000001b",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-13T12:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 17.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-00000000001c",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-002:40",
+    "occurred_at" : "2026-10-13T11:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 18.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-00000000001d",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-003:40",
+    "occurred_at" : "2026-10-13T10:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 19.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-00000000001e",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-004:40",
+    "occurred_at" : "2026-10-13T09:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 20.0,
+    "status" : "ACTIVE"
+  } ],
+  "expected" : {
+    "feature_as_of" : "2026-10-14T14:00:00Z",
+    "provenance_checksum" : "474c63ade3fcca84cefc8b1cc027bb586d440f65e2173aaa894fde45cf9c8659",
+    "aggregates_json" : "{\"attempts_30d\":30,\"attempts_7d\":30,\"attempts_90d\":30,\"distinct_sessions_30d\":1,\"last_session_at\":\"2026-10-14T14:00:00Z\",\"max_sent_grade_numeric_90d\":24,\"recent_variant_ids\":[\"synthetic-route-000:40\",\"synthetic-route-001:40\",\"synthetic-route-002:40\",\"synthetic-route-003:40\",\"synthetic-route-004:40\",\"synthetic-route-005:40\",\"synthetic-route-006:40\",\"synthetic-route-007:40\",\"synthetic-route-008:40\",\"synthetic-route-009:40\",\"synthetic-route-010:40\",\"synthetic-route-011:40\",\"synthetic-route-012:40\",\"synthetic-route-013:40\",\"synthetic-route-014:40\",\"synthetic-route-015:40\",\"synthetic-route-016:40\",\"synthetic-route-017:40\",\"synthetic-route-018:40\",\"synthetic-route-019:40\"],\"send_rate_by_grade_band_90d\":{\"ADVANCED\":{\"attempts\":8,\"sends\":2},\"BEGINNER\":{\"attempts\":9,\"sends\":3},\"EXPERT\":{\"attempts\":2,\"sends\":0},\"INTERMEDIATE\":{\"attempts\":11,\"sends\":5}},\"sends_30d\":10,\"sends_7d\":10,\"sends_90d\":10}"
+  }
+}

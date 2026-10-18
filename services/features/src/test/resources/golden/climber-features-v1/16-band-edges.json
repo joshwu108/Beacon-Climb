@@ -1,0 +1,75 @@
+{
+  "name" : "16-band-edges",
+  "description" : "grade_numeric at 13.99, 14, 17.99, 18, 21.99, 22, 25.99, 26 lands on the fixed edges",
+  "cutoff_w" : "2026-10-14T14:00:00Z",
+  "attempts" : [ {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000001",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T14:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 13.99,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000002",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T14:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 14.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000003",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T14:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 17.99,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000004",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T14:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 18.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000005",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T14:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 21.99,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000006",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T14:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 22.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000007",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T14:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 25.99,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000008",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T14:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 26.0,
+    "status" : "ACTIVE"
+  } ],
+  "expected" : {
+    "feature_as_of" : "2026-10-14T14:00:00Z",
+    "provenance_checksum" : "f8049693f719039ca32b95c08c83b7cb2a804c682e75de4957969c0dc0c73226",
+    "aggregates_json" : "{\"attempts_30d\":8,\"attempts_7d\":8,\"attempts_90d\":8,\"distinct_sessions_30d\":1,\"last_session_at\":\"2026-10-14T14:00:00Z\",\"max_sent_grade_numeric_90d\":25.99,\"recent_variant_ids\":[\"synthetic-route-001:40\"],\"send_rate_by_grade_band_90d\":{\"ADVANCED\":{\"attempts\":2,\"sends\":2},\"BEGINNER\":{\"attempts\":2,\"sends\":1},\"EXPERT\":{\"attempts\":1,\"sends\":0},\"INTERMEDIATE\":{\"attempts\":2,\"sends\":1},\"NOVICE\":{\"attempts\":1,\"sends\":1}},\"sends_30d\":5,\"sends_7d\":5,\"sends_90d\":5}"
+  }
+}

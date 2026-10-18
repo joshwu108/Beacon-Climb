@@ -1,0 +1,43 @@
+{
+  "name" : "09-retracted-excluded",
+  "description" : "a RETRACTED current revision contributes nothing (not even to the checksum); a retraction listed before the superseded ACTIVE revision still wins",
+  "cutoff_w" : "2026-10-14T14:00:00Z",
+  "attempts" : [ {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000001",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T13:59:50Z",
+    "sent" : true,
+    "grade_numeric" : 20.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000002",
+    "revision" : 2,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T13:59:40Z",
+    "sent" : false,
+    "grade_numeric" : null,
+    "status" : "RETRACTED"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000003",
+    "revision" : 3,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T13:59:30Z",
+    "sent" : false,
+    "grade_numeric" : null,
+    "status" : "RETRACTED"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000003",
+    "revision" : 2,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T13:59:30Z",
+    "sent" : true,
+    "grade_numeric" : 20.0,
+    "status" : "ACTIVE"
+  } ],
+  "expected" : {
+    "feature_as_of" : "2026-10-14T13:59:50Z",
+    "provenance_checksum" : "6249978ef5b9fc7362f472ef459553404b46d94c4e60f5772277cff7b486356d",
+    "aggregates_json" : "{\"attempts_30d\":1,\"attempts_7d\":1,\"attempts_90d\":1,\"distinct_sessions_30d\":1,\"last_session_at\":\"2026-10-14T13:59:50Z\",\"max_sent_grade_numeric_90d\":20,\"recent_variant_ids\":[\"synthetic-route-001:40\"],\"send_rate_by_grade_band_90d\":{\"INTERMEDIATE\":{\"attempts\":1,\"sends\":1}},\"sends_30d\":1,\"sends_7d\":1,\"sends_90d\":1}"
+  }
+}

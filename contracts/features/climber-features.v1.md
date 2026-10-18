@@ -143,3 +143,52 @@ the checksum; parity runs must use one catalog version (ADR-0004 reconciliation)
 Any change to a definition above, to the key set, to the band edges, to the timestamp or number
 format, or to the checksum recipe is a new `feature_schema_version` and a new document version;
 rows of different versions coexist under the composite primary key.
+
+## 10. Stream implementation notes (BC-0304)
+
+The Flink job (`services/stream`, `com.beaconclimb.stream.features.ClimberFeaturesFunction`) and
+the api recompute share one implementation of §1–§6: the plain-Java module `services/features`
+(`com.beaconclimb.features.FeatureComputer`, `FeatureAggregates`, `GradeBandBuckets`,
+`AttemptFeatureRow`), a verbatim port of the api classes. The api still runs its own copy until
+the switch-over follow-up makes it depend on the module; until then the committed golden fixtures
+(`services/features/src/test/resources/golden/climber-features-v1`, format in
+`services/features/README.md`) are what both copies are held to.
+
+* **State.** Keyed by `user_id`; `MapState<attempt_id, AttemptState(revision, tombstone,
+  occurred_at, route_variant_id, sent, grade_numeric)>` holds the highest revision seen per attempt.
+  `ATTEMPT_RECORDED` / `ATTEMPT_CORRECTED` with a revision above the stored one replaces the entry;
+  `ATTEMPT_RETRACTED` with a higher revision tombstones it (the revision stays, the row contributes
+  nothing); a revision lower than or equal to the stored one, including a duplicate delivery,
+  changes nothing and emits nothing. The non-tombstoned entries are exactly `A(u, W)` of §1 before
+  the cutoff filter.
+* **Cutoff `W` (the parity rule).** On every applied change `W := max(current watermark,
+  occurred_at of the event just applied)` and the aggregates are recomputed over the entries with
+  `occurred_at <= W`; `source_watermark = W`. Entries ahead of `W` (out-of-orderness allows
+  `occurred_at > watermark`) stay in state and enter a later recompute once `W` reaches them, so a
+  record always equals the batch recompute at `cutoff_w = source_watermark` and
+  `feature_as_of <= source_watermark` holds. Before any watermark exists (job start, and the first
+  event after a restore, because Flink does not checkpoint watermarks) `W = occurred_at`.
+* **Empty included set.** When nothing is included (everything retracted, or every entry ahead of
+  `W`) the record carries the empty-set aggregates (`last_session_at: null`, the checksum of the
+  empty string) and, since the event schema requires a timestamp, `feature_as_of = source_watermark`.
+  The batch side stores `feature_as_of = null` for the same set; parity compares `aggregates` and
+  `provenance_checksum` only.
+* **Late events.** An event with `occurred_at < current watermark − 24 h` (the allowed lateness) is
+  not applied: its original bytes go to `stream-reconciliation.v1` keyed by `user_id` with the
+  headers `reason=LATE_BEYOND_WINDOW` and `watermark=<W>` (`W` as above, which for a late event is
+  the current watermark). Events up to 24 h behind the watermark are applied with `W` = the
+  watermark. With the production watermark trailing the newest `occurred_at` by 24 h this admits
+  events up to 48 h behind the newest event seen; the exact boundary is tested
+  (`ClimberFeaturesFunctionTest.latenessBoundary`). Invalid bytes never reach this operator (DLQ,
+  BC-0302); an event whose `user_id` key is empty is ignored.
+* **`grade_numeric` comes from the event.** The stream reads the optional
+  `attributes.grade_numeric` (the variant's grade when the attempt was written; absent or `null` is
+  UNGRADED) and never joins the catalog. The batch side joins the variant's **current**
+  `grade_numeric` (§1). The two agree while the catalog is unchanged between the write and the
+  recompute; a catalog re-import that changes a variant's grade moves
+  `send_rate_by_grade_band_90d` / `max_sent_grade_numeric_90d` on the batch side only (the checksum
+  is unaffected either way, §6), so parity runs use one catalog version and reconciliation
+  (ADR-0004) republishes after a re-import.
+* **Record bytes.** `aggregates` is embedded as the canonical text of `FeatureAggregates.toJson()`
+  unchanged (a raw value inside the envelope, not re-serialised); `produced_at` is the operator's
+  processing time; `producer = "stream"`; `event_id` is a UUIDv7.

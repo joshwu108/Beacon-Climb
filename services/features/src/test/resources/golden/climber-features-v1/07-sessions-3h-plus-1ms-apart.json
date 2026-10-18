@@ -1,0 +1,51 @@
+{
+  "name" : "07-sessions-3h-plus-1ms-apart",
+  "description" : "two rows 3h+1ms apart open a second session; t, t+1h, t+2h59m, t+6h give 2",
+  "cutoff_w" : "2026-10-14T14:00:00Z",
+  "attempts" : [ {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000001",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-12T14:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 20.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000002",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-12T15:00:00Z",
+    "sent" : false,
+    "grade_numeric" : 20.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000003",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-12T16:59:00Z",
+    "sent" : false,
+    "grade_numeric" : 20.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000004",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-12T20:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 20.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000005",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-12T23:00:00.001Z",
+    "sent" : true,
+    "grade_numeric" : 20.0,
+    "status" : "ACTIVE"
+  } ],
+  "expected" : {
+    "feature_as_of" : "2026-10-12T23:00:00.001Z",
+    "provenance_checksum" : "822b4c149c8ade240b66dae98f8b79daf8a2dc1aed472a157f88c3200cdfdbfd",
+    "aggregates_json" : "{\"attempts_30d\":5,\"attempts_7d\":5,\"attempts_90d\":5,\"distinct_sessions_30d\":3,\"last_session_at\":\"2026-10-12T23:00:00.001Z\",\"max_sent_grade_numeric_90d\":20,\"recent_variant_ids\":[\"synthetic-route-001:40\"],\"send_rate_by_grade_band_90d\":{\"INTERMEDIATE\":{\"attempts\":5,\"sends\":2}},\"sends_30d\":2,\"sends_7d\":2,\"sends_90d\":2}"
+  }
+}

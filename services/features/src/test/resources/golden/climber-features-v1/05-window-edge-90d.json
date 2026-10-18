@@ -1,0 +1,27 @@
+{
+  "name" : "05-window-edge-90d",
+  "description" : "rows at exactly W-90d (outside every window, still in recent_variant_ids and the checksum) and W-90d+1ms (inside 90d)",
+  "cutoff_w" : "2026-10-14T14:00:00Z",
+  "attempts" : [ {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000001",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-002:40",
+    "occurred_at" : "2026-07-16T14:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 20.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000002",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-07-16T14:00:00.001Z",
+    "sent" : true,
+    "grade_numeric" : 20.0,
+    "status" : "ACTIVE"
+  } ],
+  "expected" : {
+    "feature_as_of" : "2026-07-16T14:00:00.001Z",
+    "provenance_checksum" : "6bc8a869a919cf3de818961c312e892f228114c8f8f60d1a97b1fefb5c681ebc",
+    "aggregates_json" : "{\"attempts_30d\":0,\"attempts_7d\":0,\"attempts_90d\":1,\"distinct_sessions_30d\":0,\"last_session_at\":\"2026-07-16T14:00:00.001Z\",\"max_sent_grade_numeric_90d\":20,\"recent_variant_ids\":[\"synthetic-route-001:40\",\"synthetic-route-002:40\"],\"send_rate_by_grade_band_90d\":{\"INTERMEDIATE\":{\"attempts\":1,\"sends\":1}},\"sends_30d\":0,\"sends_7d\":0,\"sends_90d\":1}"
+  }
+}

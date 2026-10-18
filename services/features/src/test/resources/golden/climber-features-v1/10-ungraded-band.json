@@ -1,0 +1,35 @@
+{
+  "name" : "10-ungraded-band",
+  "description" : "null grade_numeric rows fall into the UNGRADED band and never set max_sent_grade",
+  "cutoff_w" : "2026-10-14T14:00:00Z",
+  "attempts" : [ {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000001",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T13:59:50Z",
+    "sent" : true,
+    "grade_numeric" : null,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000002",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T13:59:40Z",
+    "sent" : false,
+    "grade_numeric" : null,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000003",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T13:59:30Z",
+    "sent" : true,
+    "grade_numeric" : 13.5,
+    "status" : "ACTIVE"
+  } ],
+  "expected" : {
+    "feature_as_of" : "2026-10-14T13:59:50Z",
+    "provenance_checksum" : "f7a3eaf07403286d80608501f8512925330ff4c4811fdeea59d9b2882c3464e8",
+    "aggregates_json" : "{\"attempts_30d\":3,\"attempts_7d\":3,\"attempts_90d\":3,\"distinct_sessions_30d\":1,\"last_session_at\":\"2026-10-14T13:59:50Z\",\"max_sent_grade_numeric_90d\":13.5,\"recent_variant_ids\":[\"synthetic-route-001:40\"],\"send_rate_by_grade_band_90d\":{\"NOVICE\":{\"attempts\":1,\"sends\":1},\"UNGRADED\":{\"attempts\":2,\"sends\":1}},\"sends_30d\":2,\"sends_7d\":2,\"sends_90d\":2}"
+  }
+}

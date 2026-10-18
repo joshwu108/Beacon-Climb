@@ -31,6 +31,9 @@ dependencies {
     // BC-0302: the shared validation library (schemas, EventValidator, DlqRecord); it brings
     // json-schema-validator 3.0.8 and jackson-databind 3.2.1 into the fat jar.
     implementation(project(":events"))
+    // BC-0304: the shared climber-features.v1 computer (FeatureComputer, FeatureAggregates with
+    // the canonical JCS bytes and the provenance checksum); the api uses the same module.
+    implementation(project(":features"))
     implementation("org.apache.flink:flink-connector-kafka:$flinkKafkaConnectorVersion")
     implementation("org.apache.kafka:kafka-clients:$kafkaClientsVersion")
     implementation("tools.jackson.core:jackson-databind:$jacksonVersion")
@@ -39,6 +42,12 @@ dependencies {
     testImplementation("org.apache.flink:flink-clients:$flinkVersion")
     testImplementation("org.apache.flink:flink-connector-base:$flinkVersion")
     testImplementation("org.apache.flink:flink-test-utils:$flinkVersion")
+    // BC-0304: KeyedOneInputStreamOperatorTestHarness (flink-streaming-java tests jar) and the
+    // MockEnvironment it runs on (flink-runtime tests jar); both verified on repo1.maven.org.
+    testImplementation("org.apache.flink:flink-streaming-java:$flinkVersion:tests")
+    testImplementation("org.apache.flink:flink-runtime:$flinkVersion:tests")
+    // The golden fixture reader, so the operator is replayed over the committed fixture files.
+    testImplementation(testFixtures(project(":features")))
     testImplementation("org.junit.jupiter:junit-jupiter:5.14.2")
     testImplementation("org.assertj:assertj-core:3.27.6")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.14.2")

@@ -1,0 +1,11 @@
+{
+  "name" : "01-empty",
+  "description" : "no attempts: zeros, nulls, sha256 of the empty string",
+  "cutoff_w" : "2026-10-14T14:00:00Z",
+  "attempts" : [ ],
+  "expected" : {
+    "feature_as_of" : null,
+    "provenance_checksum" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "aggregates_json" : "{\"attempts_30d\":0,\"attempts_7d\":0,\"attempts_90d\":0,\"distinct_sessions_30d\":0,\"last_session_at\":null,\"max_sent_grade_numeric_90d\":null,\"recent_variant_ids\":[],\"send_rate_by_grade_band_90d\":{},\"sends_30d\":0,\"sends_7d\":0,\"sends_90d\":0}"
+  }
+}

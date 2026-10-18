@@ -7,11 +7,15 @@ import com.beaconclimb.events.EventSchemas;
 import com.beaconclimb.events.EventValidator;
 import com.beaconclimb.events.ValidationResult;
 import com.beaconclimb.events.ValidationResult.Valid;
+import com.beaconclimb.features.AttemptFeatureRow;
+import com.beaconclimb.features.FeatureComputer;
+import com.beaconclimb.stream.features.ClimberFeaturesFunction;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -36,7 +40,9 @@ import tools.jackson.databind.node.ObjectNode;
  * bounded collection in place of the KafkaSource and {@link ListSink}s in place of the KafkaSinks.
  * Watermarks are emitted per element (punctuated, same 24 h bound as production) so the late-event
  * path is deterministic rather than timer-dependent. Invalid records (BC-0302) must leave as
- * schema-valid stream-dlq.v1 records carrying the original bytes and the DLQ headers.
+ * schema-valid stream-dlq.v1 records carrying the original bytes and the DLQ headers. The three
+ * valid examples are revisions 1, 2 and 3 of ONE attempt (recorded, corrected, retracted), so the
+ * real aggregates (BC-0304) go 1 attempt / 1 send, 1 attempt / 0 sends, empty.
  */
 @Timeout(value = 120, unit = TimeUnit.SECONDS)
 class StreamJobMiniClusterTest {
@@ -56,12 +62,14 @@ class StreamJobMiniClusterTest {
   static final Instant ON_TIME = Instant.parse("2026-10-14T14:00:00Z");
   static final Instant THREE_DAYS_EARLIER = Instant.parse("2026-10-11T14:00:00Z");
   static final String REDRIVEN_FROM = "018f0000-0000-7000-8000-0000000000dd";
+  static final UUID EXAMPLE_ATTEMPT_ID = UUID.fromString("018f0000-0000-7000-8000-000000000002");
+  static final String EXAMPLE_VARIANT = "synthetic-route-001:35";
 
   static final EventValidator VALIDATOR = new EventValidator();
 
   @Test
   @DisplayName(
-      "3 valid attempts -> 3 schema-valid climber-features.v1 placeholders keyed by user_id; a 3-day-late event lands in the reconciliation side output; junk, notes, an unknown attribute and a redriven failure leave as stream-dlq.v1 records")
+      "recorded r1, corrected r2, retracted r3 of one attempt -> 3 schema-valid climber-features.v1 records (1/1, 1/0, empty) keyed by user_id; a 3-day-late event lands in the reconciliation side output; junk, notes, an unknown attribute and a redriven failure leave as stream-dlq.v1 records")
   void roundTrip() throws Exception {
     ObjectNode late = ExampleEvents.example("valid-attempt-recorded");
     late.put("event_id", "018f0000-0000-7000-8000-00000000000a");
@@ -117,10 +125,37 @@ class StreamJobMiniClusterTest {
       assertThat(json.get("feature_as_of").asString()).isEqualTo(ON_TIME.toString());
       // W = max(current watermark, occurred_at) and the watermark trails event time by 24 h.
       assertThat(json.get("source_watermark").asString()).isEqualTo(ON_TIME.toString());
-      assertThat(json.get("provenance_checksum").asString())
-          .isEqualTo(PlaceholderFeatureRecord.EMPTY_SET_CHECKSUM);
-      assertThat(json.get("aggregates").get("attempts_90d").asInt()).isZero();
     }
+    JsonNode afterRecorded =
+        validJson(EventSchemas.FEATURES, features.get(0).value).get("aggregates");
+    assertThat(afterRecorded.get("attempts_90d").asInt()).isEqualTo(1);
+    assertThat(afterRecorded.get("sends_90d").asInt()).isEqualTo(1);
+    assertThat(afterRecorded.get("max_sent_grade_numeric_90d").asDouble()).isEqualTo(5.5);
+    assertThat(afterRecorded.get("send_rate_by_grade_band_90d").get("NOVICE").get("sends").asInt())
+        .isEqualTo(1);
+    assertThat(
+            validJson(EventSchemas.FEATURES, features.get(0).value)
+                .get("provenance_checksum")
+                .asString())
+        .isEqualTo(FeatureComputer.provenanceChecksum(List.of(exampleRow(1, true, 5.5))));
+    JsonNode afterCorrected =
+        validJson(EventSchemas.FEATURES, features.get(1).value).get("aggregates");
+    assertThat(afterCorrected.get("attempts_90d").asInt()).isEqualTo(1);
+    assertThat(afterCorrected.get("sends_90d").asInt()).isZero();
+    assertThat(afterCorrected.get("max_sent_grade_numeric_90d").isNull()).isTrue();
+    assertThat(afterCorrected.get("send_rate_by_grade_band_90d").has("UNGRADED")).isTrue();
+    assertThat(
+            validJson(EventSchemas.FEATURES, features.get(1).value)
+                .get("provenance_checksum")
+                .asString())
+        .isEqualTo(FeatureComputer.provenanceChecksum(List.of(exampleRow(2, false, null))));
+    JsonNode afterRetracted = validJson(EventSchemas.FEATURES, features.get(2).value);
+    assertThat(afterRetracted.get("aggregates").get("attempts_90d").asInt()).isZero();
+    assertThat(afterRetracted.get("aggregates").get("last_session_at").isNull()).isTrue();
+    assertThat(afterRetracted.get("provenance_checksum").asString())
+        .isEqualTo(FeatureComputer.provenanceChecksum(List.of()));
+    assertThat(afterRetracted.get("feature_as_of").asString())
+        .isEqualTo(afterRetracted.get("source_watermark").asString());
 
     List<KeyedBytes> lateRecords = ListSink.collected(LATE);
     assertThat(lateRecords).hasSize(1);
@@ -128,9 +163,9 @@ class StreamJobMiniClusterTest {
     assertThat(lateRecord.key).isEqualTo(ExampleEvents.USER_ID);
     assertThat(lateRecord.value).isEqualTo(ExampleEvents.bytes(late));
     assertThat(lateRecord.headers)
-        .containsEntry(PlaceholderFeatures.HEADER_REASON, PlaceholderFeatures.REASON_LATE)
-        .containsKey(PlaceholderFeatures.HEADER_WATERMARK);
-    assertThat(Instant.parse(lateRecord.headers.get(PlaceholderFeatures.HEADER_WATERMARK)))
+        .containsEntry(ClimberFeaturesFunction.HEADER_REASON, ClimberFeaturesFunction.REASON_LATE)
+        .containsKey(ClimberFeaturesFunction.HEADER_WATERMARK);
+    assertThat(Instant.parse(lateRecord.headers.get(ClimberFeaturesFunction.HEADER_WATERMARK)))
         .isAfter(THREE_DAYS_EARLIER)
         .isBefore(ON_TIME);
 
@@ -155,6 +190,11 @@ class StreamJobMiniClusterTest {
     assertThat(notesDlq.get("error_message").asString())
         .contains("/attributes/notes")
         .doesNotContain("private note");
+  }
+
+  private static AttemptFeatureRow exampleRow(int revision, boolean sent, Double grade) {
+    return new AttemptFeatureRow(
+        EXAMPLE_ATTEMPT_ID, revision, EXAMPLE_VARIANT, ON_TIME, sent, grade);
   }
 
   private static void assertDlq(KeyedBytes dlq, byte[] original, String code, int attempt) {

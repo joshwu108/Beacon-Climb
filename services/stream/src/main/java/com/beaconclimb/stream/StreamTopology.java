@@ -1,5 +1,6 @@
 package com.beaconclimb.stream;
 
+import com.beaconclimb.stream.features.ClimberFeaturesFunction;
 import java.time.Duration;
 import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
@@ -61,12 +62,12 @@ public final class StreamTopology {
             .name("occurred-at-watermarks")
             .uid("occurred-at-watermarks")
             .keyBy(AttemptEvent::userId)
-            .process(new PlaceholderFeatures())
-            .name("placeholder-features")
-            .uid("placeholder-features");
+            .process(new ClimberFeaturesFunction())
+            .name("climber-features")
+            .uid("climber-features");
     return new Outputs(
         features,
-        features.getSideOutput(PlaceholderFeatures.LATE),
+        features.getSideOutput(ClimberFeaturesFunction.LATE),
         parsed.getSideOutput(ParseAttempts.INVALID));
   }
 }

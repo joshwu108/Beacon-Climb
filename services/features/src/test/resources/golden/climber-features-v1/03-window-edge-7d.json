@@ -1,0 +1,35 @@
+{
+  "name" : "03-window-edge-7d",
+  "description" : "rows at exactly W-7d (outside the 7d window, inside 30d) and W-7d+1ms (inside 7d)",
+  "cutoff_w" : "2026-10-14T14:00:00Z",
+  "attempts" : [ {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000001",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-07T14:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 20.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000002",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-07T14:00:00.001Z",
+    "sent" : false,
+    "grade_numeric" : 20.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000003",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T14:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 20.0,
+    "status" : "ACTIVE"
+  } ],
+  "expected" : {
+    "feature_as_of" : "2026-10-14T14:00:00Z",
+    "provenance_checksum" : "f7a3eaf07403286d80608501f8512925330ff4c4811fdeea59d9b2882c3464e8",
+    "aggregates_json" : "{\"attempts_30d\":3,\"attempts_7d\":2,\"attempts_90d\":3,\"distinct_sessions_30d\":2,\"last_session_at\":\"2026-10-14T14:00:00Z\",\"max_sent_grade_numeric_90d\":20,\"recent_variant_ids\":[\"synthetic-route-001:40\"],\"send_rate_by_grade_band_90d\":{\"INTERMEDIATE\":{\"attempts\":3,\"sends\":2}},\"sends_30d\":2,\"sends_7d\":1,\"sends_90d\":2}"
+  }
+}

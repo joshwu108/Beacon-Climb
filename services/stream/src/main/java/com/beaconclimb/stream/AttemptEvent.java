@@ -26,6 +26,12 @@ public record AttemptEvent(
     byte[] raw)
     implements Serializable {
 
+  public static final String ATTEMPT_RECORDED = "ATTEMPT_RECORDED";
+  public static final String ATTEMPT_CORRECTED = "ATTEMPT_CORRECTED";
+  public static final String ATTEMPT_RETRACTED = "ATTEMPT_RETRACTED";
+  public static final String STATUS_ACTIVE = "ACTIVE";
+  public static final String STATUS_RETRACTED = "RETRACTED";
+
   public AttemptEvent {
     Objects.requireNonNull(eventId, "eventId");
     Objects.requireNonNull(userId, "userId");

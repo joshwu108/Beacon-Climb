@@ -1,0 +1,51 @@
+{
+  "name" : "13-max-sent-grade-with-nulls",
+  "description" : "max_sent_grade_numeric_90d ignores unsent rows, null grades and rows outside 90d",
+  "cutoff_w" : "2026-10-14T14:00:00Z",
+  "attempts" : [ {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000001",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T13:59:50Z",
+    "sent" : false,
+    "grade_numeric" : 30.0,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000002",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T13:59:40Z",
+    "sent" : true,
+    "grade_numeric" : null,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000003",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T13:59:30Z",
+    "sent" : true,
+    "grade_numeric" : 12.5,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000004",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-10-14T13:59:20Z",
+    "sent" : true,
+    "grade_numeric" : 25.75,
+    "status" : "ACTIVE"
+  }, {
+    "attempt_id" : "018f0000-0000-7000-8000-000000000005",
+    "revision" : 1,
+    "route_variant_id" : "synthetic-route-001:40",
+    "occurred_at" : "2026-07-15T14:00:00Z",
+    "sent" : true,
+    "grade_numeric" : 40.0,
+    "status" : "ACTIVE"
+  } ],
+  "expected" : {
+    "feature_as_of" : "2026-10-14T13:59:50Z",
+    "provenance_checksum" : "822b4c149c8ade240b66dae98f8b79daf8a2dc1aed472a157f88c3200cdfdbfd",
+    "aggregates_json" : "{\"attempts_30d\":4,\"attempts_7d\":4,\"attempts_90d\":4,\"distinct_sessions_30d\":1,\"last_session_at\":\"2026-10-14T13:59:50Z\",\"max_sent_grade_numeric_90d\":25.75,\"recent_variant_ids\":[\"synthetic-route-001:40\"],\"send_rate_by_grade_band_90d\":{\"ADVANCED\":{\"attempts\":1,\"sends\":1},\"EXPERT\":{\"attempts\":1,\"sends\":0},\"NOVICE\":{\"attempts\":1,\"sends\":1},\"UNGRADED\":{\"attempts\":1,\"sends\":1}},\"sends_30d\":3,\"sends_7d\":3,\"sends_90d\":3}"
+  }
+}
