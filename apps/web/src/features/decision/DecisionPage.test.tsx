@@ -35,6 +35,13 @@ describe('DecisionPage', () => {
       within(about).getByText('none (no learned model in use)'),
     ).toBeVisible();
     expect(within(about).getByText('cold start; full ranking')).toBeVisible();
+    // BC-0310: the fixture decision was a synchronous recompute with an explicit cutoff.
+    const features = within(about).getByText(/recomputed on request/);
+    expect(features).toHaveTextContent(/^recomputed on request, cutoff /);
+    expect(within(features).getByRole('time')).toHaveAttribute(
+      'dateTime',
+      decisionFixture.body.features_cutoff_w,
+    );
     expect(
       screen.getByText(/recommendations are heuristic until you log/i),
     ).toBeVisible();

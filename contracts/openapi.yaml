@@ -1,8 +1,9 @@
 openapi: 3.1.0
 info:
   title: Beacon Climb API
-  version: 1.1.0
-  description: 'CONTRACT-v1.1. Changelog: 1.1.0 — board geometry, embedded route summaries,
+  version: 1.2.0
+  description: 'CONTRACT-v1.2. Changelog: 1.2.0 — features_source and features_cutoff_w
+    on recommendations (BC-0310 stream read path). 1.1.0 — board geometry, embedded route summaries,
     closed enums, consent scopes and document, error-code enum with 401/413/429 everywhere,
     input limits, logout, register, single-attempt read, decision context, reserved erasure
     and export shapes (see contracts/README.md). 1.0.0 — initial synthetic demo and vertical
@@ -1489,6 +1490,7 @@ components:
       - policy_version
       - model_version
       - feature_as_of
+      - features_source
       - cold_start
       - recommendations
       - fallback_used
@@ -1497,6 +1499,23 @@ components:
         policy_version: *id001
         model_version: *id001
         feature_as_of: *id006
+        features_source: &id009
+          type: string
+          description: Where the climber features came from (BC-0310). STREAM = the
+            materialized stream snapshot was used; the stream path is an at-least-once
+            materialization, so a snapshot may lag or repeat events, and feature_as_of /
+            features_cutoff_w say which point it reflects. SYNC = synchronous recompute
+            from the attempt store (the batch oracle), used when no stream row existed,
+            the stream row was older than the sync row, or the stream path is disabled.
+          enum:
+          - STREAM
+          - SYNC
+        features_cutoff_w: &id010
+          type: string
+          format: date-time
+          description: Explicit cutoff W of the feature snapshot that was used (RFC 3339).
+            feature_as_of stays the maximum occurred_at considered, so features_cutoff_w
+            >= feature_as_of. Absent when the server did not record a cutoff.
         cold_start: *id004
         recommendations:
           type: array
@@ -1515,6 +1534,7 @@ components:
       - policy_version
       - model_version
       - feature_as_of
+      - features_source
       - cold_start
       - fallback_used
       - recommendations
@@ -1526,6 +1546,8 @@ components:
         policy_version: *id001
         model_version: *id001
         feature_as_of: *id006
+        features_source: *id009
+        features_cutoff_w: *id010
         cold_start: *id004
         fallback_used: *id004
         recommendations:

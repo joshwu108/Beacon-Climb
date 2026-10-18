@@ -73,6 +73,9 @@ export interface Recommendation {
 
 export interface RecommendationResponse {
   readonly decision_id: string;
+  readonly feature_as_of: string;
+  readonly features_source: 'STREAM' | 'SYNC';
+  readonly features_cutoff_w?: string;
   readonly cold_start: boolean;
   readonly fallback_used: boolean;
   readonly recommendations: readonly Recommendation[];

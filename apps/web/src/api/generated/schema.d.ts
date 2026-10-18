@@ -601,6 +601,16 @@ export interface components {
             model_version: string;
             /** Format: date-time */
             feature_as_of: string;
+            /**
+             * @description Where the climber features came from (BC-0310). STREAM = the materialized stream snapshot was used; the stream path is an at-least-once materialization, so a snapshot may lag or repeat events, and feature_as_of / features_cutoff_w say which point it reflects. SYNC = synchronous recompute from the attempt store (the batch oracle), used when no stream row existed, the stream row was older than the sync row, or the stream path is disabled.
+             * @enum {string}
+             */
+            features_source: "STREAM" | "SYNC";
+            /**
+             * Format: date-time
+             * @description Explicit cutoff W of the feature snapshot that was used (RFC 3339). feature_as_of stays the maximum occurred_at considered, so features_cutoff_w >= feature_as_of. Absent when the server did not record a cutoff.
+             */
+            features_cutoff_w?: string;
             cold_start: boolean;
             recommendations: components["schemas"]["Recommendation"][];
             fallback_used: boolean;
@@ -616,6 +626,16 @@ export interface components {
             model_version: string;
             /** Format: date-time */
             feature_as_of: string;
+            /**
+             * @description Where the climber features came from (BC-0310). STREAM = the materialized stream snapshot was used; the stream path is an at-least-once materialization, so a snapshot may lag or repeat events, and feature_as_of / features_cutoff_w say which point it reflects. SYNC = synchronous recompute from the attempt store (the batch oracle), used when no stream row existed, the stream row was older than the sync row, or the stream path is disabled.
+             * @enum {string}
+             */
+            features_source: "STREAM" | "SYNC";
+            /**
+             * Format: date-time
+             * @description Explicit cutoff W of the feature snapshot that was used (RFC 3339). feature_as_of stays the maximum occurred_at considered, so features_cutoff_w >= feature_as_of. Absent when the server did not record a cutoff.
+             */
+            features_cutoff_w?: string;
             cold_start: boolean;
             fallback_used: boolean;
             recommendations: components["schemas"]["Recommendation"][];

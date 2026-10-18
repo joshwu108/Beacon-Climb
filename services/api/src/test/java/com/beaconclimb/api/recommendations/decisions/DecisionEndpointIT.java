@@ -40,9 +40,19 @@ class DecisionEndpointIT extends RecommendationsTestSupport {
     assertThat(servedScoreBits(decision)).isEqualTo(servedScoreBits(posted));
     for (String member :
         List.of(
-            "policy_version", "model_version", "feature_as_of", "cold_start", "fallback_used")) {
+            "policy_version",
+            "model_version",
+            "feature_as_of",
+            "features_source",
+            "features_cutoff_w",
+            "cold_start",
+            "fallback_used")) {
       assertThat(decision.get(member)).as(member).isEqualTo(posted.get(member));
     }
+    // BC-0310 part 1: the read path derives the source (SYNC) and reads the cutoff from the
+    // ledger's feature_cutoff_w column; both echo what the POST served.
+    assertThat(decision.get("features_source").asString()).isEqualTo("SYNC");
+    assertThat(decision.get("features_cutoff_w").asString()).isNotBlank();
     assertThat(decision.get("created_at").asString()).isNotBlank();
     assertThat(response.getBody())
         .doesNotContain("candidate_snapshot_uri")

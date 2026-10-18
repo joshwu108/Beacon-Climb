@@ -27,12 +27,15 @@ public class DecisionQueryRepository {
 
   /**
    * The columns of one owned decision; {@code requestJson} and {@code recordJson} are JSON text.
+   * {@code featureCutoffW} is the V6 column addressing the snapshot row the ranking read (null only
+   * if a writer recorded none).
    */
   public record StoredDecision(
       UUID decisionId,
       Instant createdAt,
       String policyVersion,
       String modelVersion,
+      Instant featureCutoffW,
       boolean coldStart,
       boolean fallbackUsed,
       String requestJson,
@@ -54,8 +57,8 @@ public class DecisionQueryRepository {
 
   public Optional<StoredDecision> findOwned(UUID userId, UUID decisionId) {
     return jdbc.sql(
-            "SELECT decision_id, created_at, policy_version, model_version, cold_start,"
-                + " fallback_used, request_json::text AS request_json,"
+            "SELECT decision_id, created_at, policy_version, model_version, feature_cutoff_w,"
+                + " cold_start, fallback_used, request_json::text AS request_json,"
                 + " record_json::text AS record_json FROM recommendation_decisions"
                 + " WHERE user_id = :user_id AND decision_id = :id AND erased = false")
         .param("user_id", userId)
@@ -111,6 +114,7 @@ public class DecisionQueryRepository {
         instant(rs, "created_at"),
         rs.getString("policy_version"),
         rs.getString("model_version"),
+        instant(rs, "feature_cutoff_w"),
         rs.getBoolean("cold_start"),
         rs.getBoolean("fallback_used"),
         rs.getString("request_json"),

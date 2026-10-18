@@ -1,7 +1,7 @@
 # Beacon Climb web app (`@beacon/web`)
 
 Vite 6, React 19, TypeScript (strict), React Router 7, TanStack Query 5, a typed client
-generated from `contracts/openapi.yaml` (1.1.0) and MSW mocks built from
+generated from `contracts/openapi.yaml` (1.2.0) and MSW mocks built from
 `contracts/examples`. Scaffolded in BC-0114; onboarding (BC-0115), explore (BC-0116), the
 session builder and decision detail (BC-0117) and the attempt log (BC-0118) are built
 against the mocks; BC-0121 proves them against the real API.
@@ -201,12 +201,19 @@ step, 422 maps `field_errors` onto goal / route count or links to setup, 503 and
 failures show the request id with a manual "Try again" while the previous lineup stays
 visible, dimmed, stamped "Not refreshed". The lineup heading takes focus after every build and
 a polite live region announces the result. The successful response is written into the
-decision query cache so the detail page opens without a second request.
+decision query cache so the detail page opens without a second request. Under the lineup
+heading the freshness badge (`Freshness.tsx`, BC-0310) shows "features as of hh:mm" in local
+24 h time from `feature_as_of` ("no attempts yet" when it is missing) with a glyph and a
+suffix word for `features_source` (dot-in-ring + "live" for `STREAM`, circular arrow +
+"recomputed" for `SYNC`), and an accessible name that spells out the full date-time and the
+source; the mocks always answer `SYNC`.
 
 `/decisions/:decisionId` (`src/features/decision`, `GET /v1/me/decisions/{decision_id}`):
 request context (goal, board, angle, max_routes, excluded ids, session id, `created_at`),
 versions (`policy_version`, `model_version`, with `none` printed as "no learned model in
-use", `feature_as_of`), the cold-start / fallback flags as banners and text, and the ranked
+use", `feature_as_of`, and a "Features" row with `features_source` as "live stream" /
+"recomputed on request" plus `features_cutoff_w` when present, BC-0310), the cold-start /
+fallback flags as banners and text, and the ranked
 list with every reason explained, `rank_score` with three decimals labelled "relative order
 only", the estimate line and a "Log an attempt" link per route. Malformed ids and 404 share the
 "not found or not yours" state (ADR-0005).

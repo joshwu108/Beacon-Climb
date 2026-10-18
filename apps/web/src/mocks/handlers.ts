@@ -1,6 +1,6 @@
 /**
  * One MSW handler per implemented (non x-planned) operation in contracts/openapi.yaml
- * 1.1.0. Every response body, status and header comes from contracts/examples, imported
+ * 1.2.0. Every response body, status and header comes from contracts/examples, imported
  * directly so the fixtures are never copied. Operations marked x-planned (deleteMe,
  * replayDecision, compareDecision, getSkillMemory, getExport, listExperiments,
  * rollbackExperiment) have no handler and fall through to the network (and 501 upstream).

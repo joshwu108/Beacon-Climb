@@ -5,6 +5,7 @@ import { formatDateTime } from '../../lib/format';
 import { tokenStore } from '../auth/token-store';
 import { formatGrade, formatObservations } from '../explore/grade';
 import { goalLabel } from '../onboarding/goals';
+import { describeFeaturesSource } from '../session/Freshness';
 import { ColdStartNotice, FallbackNotice } from './LineupNotices';
 import { EstimateLine, ReasonList } from './ReasonList';
 import { describeModelVersion, formatRankScore } from './reason-codes';
@@ -220,6 +221,20 @@ export const DecisionPage = () => {
                 <time dateTime={data.feature_as_of}>
                   {formatDateTime(data.feature_as_of)}
                 </time>
+              </dd>
+            </div>
+            <div className="facts__row">
+              <dt>Features</dt>
+              <dd>
+                {describeFeaturesSource(data.features_source)}
+                {data.features_cutoff_w !== undefined ? (
+                  <>
+                    , cutoff{' '}
+                    <time dateTime={data.features_cutoff_w}>
+                      {formatDateTime(data.features_cutoff_w)}
+                    </time>
+                  </>
+                ) : null}
               </dd>
             </div>
             <div className="facts__row">

@@ -81,6 +81,9 @@ export const buildRecommendations = (
     policy_version: createRecommendations.body.policy_version,
     model_version: createRecommendations.body.model_version,
     feature_as_of: createRecommendations.body.feature_as_of,
+    // The mock has no stream path: every lineup is a synchronous recompute (BC-0310).
+    features_source: 'SYNC',
+    features_cutoff_w: createRecommendations.body.features_cutoff_w,
     cold_start: coldStart,
     recommendations,
     fallback_used: false,

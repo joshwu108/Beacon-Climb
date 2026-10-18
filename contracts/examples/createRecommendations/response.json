@@ -8,6 +8,8 @@
     "policy_version": "heuristic-v1",
     "model_version": "none",
     "feature_as_of": "2026-10-14T13:59:00Z",
+    "features_source": "SYNC",
+    "features_cutoff_w": "2026-10-14T14:00:00Z",
     "cold_start": true,
     "recommendations": [
       {

@@ -91,3 +91,25 @@ test('onboarding resume -> session -> dismiss a route -> decision detail', async
       .first(),
   ).toBeVisible();
 });
+
+test('the lineup carries the freshness badge from the mocked SYNC lineup', async ({
+  page,
+}) => {
+  await page.goto('/session');
+  await page.getByRole('button', { name: 'Build my session' }).click();
+  await expect(
+    page.getByRole('heading', { level: 2, name: /your session: 4 routes/i }),
+  ).toBeVisible();
+  // BC-0310: the mock answers features_source SYNC with the fixture feature_as_of
+  // (13:59 UTC; the Playwright clock is pinned to UTC in playwright.config.ts).
+  const badge = page.getByRole('note', {
+    name: 'Features as of Oct 14, 2026, 1:59 PM, recomputed on request.',
+  });
+  await expect(badge).toBeVisible();
+  await expect(badge).toHaveText(/^features as of 13:59\s*recomputed$/);
+  await expect(badge.locator('time')).toHaveAttribute(
+    'datetime',
+    '2026-10-14T13:59:00Z',
+  );
+  await expect(badge.locator('svg[data-glyph="cycle"]')).toHaveCount(1);
+});

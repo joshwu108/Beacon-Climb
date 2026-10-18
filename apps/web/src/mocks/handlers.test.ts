@@ -11,7 +11,7 @@ const AUTH = {
   'Content-Type': 'application/json',
 };
 
-/** Every implemented operation in openapi.yaml 1.1.0 (x-planned excluded). */
+/** Every implemented operation in openapi.yaml 1.2.0 (x-planned excluded). */
 const IMPLEMENTED_OPERATIONS = 19;
 
 describe('mock handlers', () => {

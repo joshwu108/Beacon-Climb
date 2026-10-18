@@ -198,3 +198,49 @@
     transition: none;
   }
 }
+
+/* Freshness badge (BC-0310): a small ui-face note under the lineup heading. STREAM and
+   SYNC differ by glyph and suffix word, never by colour alone; the stream dot takes the
+   accent because it is recommendation evidence, the recompute arrow stays ink. */
+.freshness {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.freshness__glyph {
+  flex: none;
+  color: var(--color-text-muted);
+}
+
+.freshness--stream .freshness__glyph {
+  color: var(--color-accent);
+}
+
+.freshness__clock {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.freshness__suffix {
+  margin-inline-start: var(--space-1);
+  padding-inline-start: var(--space-2);
+  border-inline-start: var(--border-width) solid var(--color-border-subtle);
+  font-weight: 600;
+  letter-spacing: var(--tracking-stamp);
+  text-transform: uppercase;
+}
+
+.session__lineup-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}

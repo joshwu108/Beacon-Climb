@@ -1,9 +1,9 @@
 import { Link } from 'react-router';
-import { formatDateTime } from '../../lib/format';
 import { ColdStartNotice, FallbackNotice } from '../decision/LineupNotices';
 import { EstimateLine, ReasonList } from '../decision/ReasonList';
 import { byPosition, type Recommendation } from '../decision/useDecision';
 import { formatGrade, formatObservations } from '../explore/grade';
+import { Freshness } from './Freshness';
 import type { RecommendationResponse } from './useRecommendations';
 
 export interface LineupProps {
@@ -138,12 +138,11 @@ export const Lineup = ({
         {isStale ? (
           <span className="stamp stamp--warning">Not refreshed</span>
         ) : null}
-        <p className="field__hint">
-          Picks use your history up to{' '}
-          <time dateTime={lineup.feature_as_of}>
-            {formatDateTime(lineup.feature_as_of)}
-          </time>
-          .{' '}
+        <p className="session__lineup-meta">
+          <Freshness
+            featureAsOf={lineup.feature_as_of}
+            source={lineup.features_source}
+          />
           <Link to={`/decisions/${lineup.decision_id}`}>Why these routes</Link>
         </p>
         {dismissedCount > 0 ? (

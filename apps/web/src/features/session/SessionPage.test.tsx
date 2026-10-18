@@ -98,6 +98,17 @@ describe('SessionPage', () => {
         /^\/attempts\/new\?route_variant_id=synthetic-route-/,
       ),
     );
+    // BC-0310 freshness badge: the mock lineup is a synchronous recompute.
+    const freshness = screen.getByRole('note', {
+      name: /^Features as of .+, recomputed on request\.$/,
+    });
+    expect(freshness).toHaveTextContent(
+      /^features as of \d\d:\d\d\s*recomputed$/,
+    );
+    expect(freshness.querySelector('time')).toHaveAttribute(
+      'dateTime',
+      recommendationsFixture.body.feature_as_of,
+    );
     // The lineup heading takes focus so the result is announced.
     expect(
       screen.getByRole('heading', { level: 2, name: /your session/i }),

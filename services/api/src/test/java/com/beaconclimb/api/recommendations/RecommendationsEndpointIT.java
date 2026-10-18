@@ -46,6 +46,12 @@ class RecommendationsEndpointIT extends RecommendationsTestSupport {
     assertThat(response.get("fallback_used").asBoolean()).isFalse();
     assertThat(response.get("cold_start").asBoolean()).isTrue();
     assertThat(response.get("feature_as_of").asString()).isEqualTo("2026-10-14T14:00:00Z");
+    // BC-0310 part 1: the only snapshot row is the SYNC recompute at W = now, so the source is
+    // SYNC and the explicit cutoff is at or after the effective feature_as_of (contract 1.2.0).
+    assertThat(response.get("features_source").asString()).isEqualTo("SYNC");
+    assertThat(response.get("features_cutoff_w").asString()).isEqualTo("2026-10-14T14:00:00Z");
+    assertThat(Instant.parse(response.get("features_cutoff_w").asString()))
+        .isAfterOrEqualTo(Instant.parse(response.get("feature_as_of").asString()));
     JsonNode items = response.get("recommendations");
     assertThat(items).hasSize(5);
     for (int i = 0; i < items.size(); i++) {
@@ -199,12 +205,16 @@ class RecommendationsEndpointIT extends RecommendationsTestSupport {
     assertThat(before.get("cold_start").asBoolean()).isTrue();
     assertThat(after.get("cold_start").asBoolean()).isFalse();
     assertThat(after.get("feature_as_of").asString()).isEqualTo(occurredAt.toString());
+    assertThat(after.get("features_source").asString()).isEqualTo("SYNC");
+    assertThat(Instant.parse(after.get("features_cutoff_w").asString()))
+        .isAfterOrEqualTo(Instant.parse(after.get("feature_as_of").asString()));
     assertThat(after.get("recommendations").get(0).get("reason_codes").valueStream())
         .extracting(JsonNode::asString)
         .doesNotContain("COLD_START_HEURISTIC");
     Map<String, Object> row = decisionRow(UUID.fromString(after.get("decision_id").asString()));
     assertThat(row.get("cold_start")).isEqualTo(false);
     assertThat(row.get("feature_as_of")).isNotNull();
+    assertThat(row.get("feature_cutoff_w")).isNotNull();
   }
 
   @Test

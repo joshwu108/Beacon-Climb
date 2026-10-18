@@ -472,6 +472,14 @@ test('onboard -> browse -> recommend -> log twice -> history -> cold start ends'
     for (const item of direct.body.recommendations) {
       expect(item.reason_codes).not.toContain('COLD_START_HEURISTIC');
     }
+    // BC-0310: the features behind this ranking include the attempt logged in d3 (the only
+    // ACTIVE one: d1's was retracted), so feature_as_of is at or after its occurred_at, and the
+    // source names the read path (SYNC until the stream path lands; either is contract-valid).
+    const [logged] = await attemptsFor(secondRoute.routeVariantId);
+    expect([
+      Date.parse(direct.body.feature_as_of) >= Date.parse(logged.occurred_at),
+      direct.body.features_source,
+    ]).toEqual([true, expect.stringMatching(/^(STREAM|SYNC)$/)]);
   });
 
   await test.step('g. the same Idempotency-Key replays as 200 with the same attempt_id; a different body is 409', async () => {

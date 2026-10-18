@@ -5,6 +5,7 @@ import com.beaconclimb.api.catalog.CatalogService;
 import com.beaconclimb.api.catalog.RouteVariantId;
 import com.beaconclimb.api.catalog.api.RouteVariantSummaryView;
 import com.beaconclimb.api.features.FeatureAggregates;
+import com.beaconclimb.api.features.FeatureProvenance;
 import com.beaconclimb.api.features.FeatureRecomputeService;
 import com.beaconclimb.api.features.FeatureSnapshot;
 import com.beaconclimb.api.features.FeatureSnapshotRepository;
@@ -58,11 +59,15 @@ import tools.jackson.databind.JsonNode;
  *
  * <ol>
  *   <li>features: the user's climber-features.v1 snapshot, or a synchronous recompute at {@code W =
- *       now} when none exists. {@code cold_start} is the ranker's verdict, which is true exactly
- *       when the snapshot included no ACTIVE attempt ({@code recent_variant_ids} empty and no
- *       graded send; equivalently {@code feature_as_of} null). {@code feature_as_of} in the
- *       response and the record is the snapshot's value, or {@code cutoff_w} when the history is
- *       empty, so the contract's non-null date-time always states up to when attempts were read.
+ *       now} when none exists. The row's {@link FeatureProvenance} (its {@code source} and {@code
+ *       cutoff_w}) is reported as {@code features_source} / {@code features_cutoff_w} (BC-0310);
+ *       tonight only SYNC rows exist, so the source is SYNC until the stream read path (part 2,
+ *       after BC-0305) prefers a materialized STREAM row. {@code cold_start} is the ranker's
+ *       verdict, which is true exactly when the snapshot included no ACTIVE attempt ({@code
+ *       recent_variant_ids} empty and no graded send; equivalently {@code feature_as_of} null).
+ *       {@code feature_as_of} in the response and the record is the snapshot's value, or {@code
+ *       cutoff_w} when the history is empty, so the contract's non-null date-time always states up
+ *       to when attempts were read.
  *   <li>candidates: one query for the board's visible ACTIVE variants at the angle (see {@link
  *       CandidateRepository} for the snapshot-schema precondition), one for the user's last ACTIVE
  *       attempt per variant (cooldown).
@@ -232,7 +237,7 @@ public class RecommendationService {
         pool.size(),
         result.ranked().size(),
         result.coldStart());
-    return response(entry, result.ranked(), variants);
+    return response(entry, FeatureProvenance.of(snapshot), result.ranked(), variants);
   }
 
   /**
@@ -283,7 +288,10 @@ public class RecommendationService {
   }
 
   private RecommendationResponse response(
-      LedgerEntry entry, List<Ranked> ranked, Map<String, VariantRow> variants) {
+      LedgerEntry entry,
+      FeatureProvenance provenance,
+      List<Ranked> ranked,
+      Map<String, VariantRow> variants) {
     List<RecommendationView> views = new ArrayList<>(ranked.size());
     for (Ranked item : ranked) {
       RouteVariantSummaryView route = CatalogService.summary(variants.get(item.routeVariantId()));
@@ -304,6 +312,8 @@ public class RecommendationService {
         entry.policyVersion(),
         entry.modelVersion(),
         Timestamps.format(featureAsOf),
+        provenance.source(),
+        Timestamps.format(provenance.cutoffW()),
         entry.coldStart(),
         views,
         entry.fallbackUsed());

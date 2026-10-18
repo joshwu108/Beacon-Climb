@@ -12,11 +12,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
- * Proves contract 1.1.0 conformance without generated controllers: the validator bites on extra
- * members and bad enums, the shipped fixtures pass, and the live bodies of registerUser,
- * createSession, getMe, getConsentDocument and an error response validate against their schemas.
+ * Proves contract 1.2.0 conformance without generated controllers: the validator bites on extra
+ * members, bad enums and (BC-0310) a recommendation body without {@code features_source}, the
+ * shipped fixtures pass, and the live bodies of registerUser, createSession, getMe,
+ * getConsentDocument and an error response validate against their schemas. The live
+ * createRecommendations and getDecision bodies are validated where they are produced
+ * (RecommendationsTestSupport.recommendOk and DecisionEndpointIT), which needs the seeded board.
  */
 class ContractConformanceIT extends IdentityTestSupport {
 
@@ -39,6 +43,38 @@ class ContractConformanceIT extends IdentityTestSupport {
         .anySatisfy(error -> assertThat(error.getKeyword()).isEqualTo("format"));
   }
 
+  /** Contract 1.2.0 (BC-0310): both response schemas require features_source, a closed enum. */
+  @Test
+  void recommendationSchemasRequireFeaturesSourceFromAClosedEnum() throws IOException {
+    for (Map.Entry<String, String> fixture :
+        Map.of(
+                "createRecommendations/response.json", "RecommendationResponse",
+                "getDecision/response.json", "Decision")
+            .entrySet()) {
+      ObjectNode body = (ObjectNode) fixtureBody(fixture.getKey());
+      assertThat(body.get("features_source").asString()).isEqualTo("SYNC");
+      assertThat(body.get("features_cutoff_w").asString()).isEqualTo("2026-10-14T14:00:00Z");
+
+      ObjectNode missing = body.deepCopy();
+      missing.remove("features_source");
+      assertThat(ContractSchemas.validate(fixture.getValue(), json.writeValueAsString(missing)))
+          .as("%s without features_source", fixture.getValue())
+          .anySatisfy(error -> assertThat(error.getKeyword()).isEqualTo("required"));
+
+      ObjectNode unknown = body.deepCopy();
+      unknown.put("features_source", "BATCH");
+      assertThat(ContractSchemas.validate(fixture.getValue(), json.writeValueAsString(unknown)))
+          .as("%s with an unknown features_source", fixture.getValue())
+          .anySatisfy(error -> assertThat(error.getKeyword()).isEqualTo("enum"));
+
+      ObjectNode noCutoff = body.deepCopy();
+      noCutoff.remove("features_cutoff_w");
+      assertThat(ContractSchemas.validate(fixture.getValue(), json.writeValueAsString(noCutoff)))
+          .as("%s without the optional features_cutoff_w", fixture.getValue())
+          .isEmpty();
+    }
+  }
+
   @Test
   void shippedFixturesConformToTheirSchemas() throws IOException {
     Map<String, String> fixtures =
@@ -49,14 +85,18 @@ class ContractConformanceIT extends IdentityTestSupport {
             "registerUser/response-422.json", "ErrorEnvelope",
             "createSession/response.json", "AuthResponse",
             "createSession/response-422.json", "ErrorEnvelope",
-            "getMe/response.json", "Me");
+            "getMe/response.json", "Me",
+            "createRecommendations/response.json", "RecommendationResponse",
+            "getDecision/response.json", "Decision");
     for (Map.Entry<String, String> fixture : fixtures.entrySet()) {
-      JsonNode body =
-          json.readTree(
-                  Files.readString(EXAMPLES.resolve(fixture.getKey()), StandardCharsets.UTF_8))
-              .get("body");
-      ContractSchemas.assertConforms(fixture.getValue(), json.writeValueAsString(body));
+      ContractSchemas.assertConforms(
+          fixture.getValue(), json.writeValueAsString(fixtureBody(fixture.getKey())));
     }
+  }
+
+  private JsonNode fixtureBody(String relativePath) throws IOException {
+    return json.readTree(Files.readString(EXAMPLES.resolve(relativePath), StandardCharsets.UTF_8))
+        .get("body");
   }
 
   @Test
