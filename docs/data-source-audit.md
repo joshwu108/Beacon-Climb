@@ -1,5 +1,3 @@
-BLOCKED: sqlite not present at data/raw/kilter_splits.sqlite
-
 # Data-source audit: Kilter Board L1-S10 (BC-0002, Gate D0)
 
 | Field | Value |
@@ -7,15 +5,65 @@ BLOCKED: sqlite not present at data/raw/kilter_splits.sqlite
 | Ticket | BC-0002 (Gate D0); feeds BC-0014, BC-0103, BC-0104, BC-0201 |
 | Author | Claude Code `data-auditor` |
 | Audit date | 2026-10-14 |
-| Gate D0 status | **NOT PASSED.** Schema, counts, split check and PII inspection not run; upstream rights unknown |
-| Human sign-off of the rights table (section 7) | **NOT SIGNED** |
+| Gate D0 status | **PASSED for local research use (2026-10-18).** File verified against the pinned revision; counts, split disjointness and personal columns measured (section 0); upstream (Aurora) rights still unknown, so nothing derived leaves the machine except the Modal exception below |
+| Human sign-off of the rights table (section 7) | **SIGNED 2026-10-18** by the repo owner (Joshua Wu), recorded verbatim in section 7 |
 
 Evidence rule for this document: every number sits next to the command that produced
 it and its output. Anything not measured says "not measured". Values from the dataset card
 or the Hugging Face (HF) API are labelled as such: they are what the publisher states, not
 what this audit observed in the file.
 
-## Blockers
+## 0. Measured on 2026-10-18 (supersedes the "not measured" notes below)
+
+The human placed the file at `data/raw/kilter_splits.sqlite` (copied from a local HF clone at
+revision `8a5a0f11675494c3615c2c96815af6bde93235f9`). Commands run from the repo root; the
+sqlite was opened read-only and only aggregates were printed.
+
+```text
+$ shasum -a 256 data/raw/kilter_splits.sqlite
+0a0bc5b1bed12c72898f692e2bdd6a05f35730af82dda8538f89d58a90989bc2  data/raw/kilter_splits.sqlite
+$ stat -f %z data/raw/kilter_splits.sqlite
+123748352
+$ python3 -I ml/datasets/verify_manifest.py data/raw/kilter_splits.sqlite --write ml/datasets/manifests --template ml/datasets/manifests/kilter-PENDING.json
+WROTE ml/datasets/manifests/kilter-0a0bc5b1bed1.json
+$ python3 -I ml/datasets/verify_manifest.py data/raw/kilter_splits.sqlite ml/datasets/manifests/kilter-0a0bc5b1bed1.json
+OK
+```
+
+| Table | Rows | Distinct uuid |
+|---|---|---|
+| kilter_train | 190439 | 116125 |
+| kilter_val | 23676 | 14515 |
+| kilter_test | 23787 | 14517 |
+| holes / placements / placement_roles / difficulty_grades | 3294 / 3773 / 30 / 39 | — |
+
+Findings that BC-0103 and BC-0201 must act on:
+
+1. **uuid splits are disjoint** (0 shared uuids for every pair), but **identical hold sets
+   cross splits**: 228 distinct `frames` strings appear in both train and val, 228 in both
+   train and test, 24 in both val and test. Inside train, 885 `frames` values belong to more
+   than one uuid. BC-0201 must deduplicate by a canonical hold-set hash before evaluation
+   (drop or reassign the cross-split copies) and report the counts.
+2. **Target duplicate:** `difficulty_average` equals `difficulty_numeric` on all 190439 train
+   rows. It is the label, not a feature. Also post-hoc and excluded from features:
+   `quality_average`, `ascensionist_count`, `benchmark_difficulty`, `fa_at`, `boulder_grade`,
+   `route_grade`, `is_nomatch`.
+3. **Noisy labels:** 118178 of 190439 train rows have `ascensionist_count < 3`. Grade
+   consensus on those rows is weak; BC-0203 reports metrics overall and on a
+   minimum-ascents subset, and the threshold is chosen on validation only.
+4. **Card filter is not exact:** 41 rows across all splits have `difficulty_numeric > 30.5`
+   (max 31.0), against the card's "≤ 30.5" filter. Kept, documented.
+5. **Personal columns present:** `fa_username`, `setter_id`, `setter_username`,
+   `beta_usernames`, `beta_links`, and free-text `name` and `description`. The extractor
+   (BC-0103) drops all of them; they never reach catalog JSONL, features, Modal or logs.
+6. **Multi-product reference tables:** `holes` spans 7 products and `placements` 8 layouts;
+   the extractor joins on layout 1 / sets {1, 20} only.
+7. **Shape:** one row per (uuid, angle); 15 angles from 0 to 70 (40 degrees is the largest
+   group, 55416 train rows); 1 to 15 angles per uuid, mean 1.64. `frames` is a string of
+   `p<placement_id>r<role_id>` tokens; roles 12–15 are start, middle, finish, foot.
+   `created_at` spans 2018-04-22 to 2025-07-12.
+
+## Blockers (historical, 2026-10-14; items 1 and 3 resolved on 2026-10-18)
 
 1. **sqlite absent.** The data file is not on this machine, so nothing in sections 3 to 6
    has been measured.
@@ -311,10 +359,23 @@ Explicit non-inferences:
 **Human sign-off** (to be completed by the human, not an agent):
 
 ```text
-[ ] I accept use (a) local research import under the conditions above.     Signed: ________  Date: ________
-[ ] I confirm (b), (c), (d) stay NOT PERMITTED until written clarity from Aurora Climbing is obtained.
-[ ] I have / have not contacted Aurora Climbing (circle). Reference: ________
+[x] I accept use (a) local research import under the conditions above.     Signed: Joshua Wu (repo owner)  Date: 2026-10-18
+[x] I confirm (b), (c), (d) stay NOT PERMITTED until written clarity from Aurora Climbing is obtained.
+[x] I have NOT contacted Aurora Climbing. Reference: none
 ```
+
+Recorded from the owner's chat answers on 2026-10-18 ("Yes i agree for local research use,
+yes i confirm, No, no, I allow modal use"). The second "no" answers Q4: no consented real
+attempt histories exist beyond the owner's own, so Gate D1 stays NO-GO by default.
+
+**Modal exception (owner decision, 2026-10-18).** The owner allows Modal for training and
+evaluation runs on this data. That is a transfer to a third-party processor, so it is a
+narrow exception to (c) and (d), not a lifting of them: the upload is the extracted
+training set with every personal column from section 0 item 5 removed; it lives only in a
+private Modal volume or the run's ephemeral storage; weights, embeddings and per-route
+predictions come back to `data/models/` and are never published, shared or pushed to a
+hub; metrics may enter the evidence ledger, labelled with the dataset manifest id. ADR-0007
+holds the operational rules.
 
 **Safe alternative if the human declines (a), or if rights stay ambiguous:** stop all
 Kilter work. Ship the synthetic demo board (BC-0104) for product, demo and load testing.

@@ -1,0 +1,35 @@
+{
+  "bytes": 123748352,
+  "extracted_at": "2026-10-18T19:21:21Z",
+  "file": "kilter_splits.sqlite",
+  "hf_revision": "8a5a0f11675494c3615c2c96815af6bde93235f9",
+  "license_review_status": "LOCAL_RESEARCH_ONLY",
+  "sha256": "0a0bc5b1bed12c72898f692e2bdd6a05f35730af82dda8538f89d58a90989bc2",
+  "source_url": "https://huggingface.co/datasets/Vilin97/KilterBoard",
+  "split_uuid_overlap": {
+    "kilter_train&kilter_test": 0,
+    "kilter_train&kilter_val": 0,
+    "kilter_val&kilter_test": 0
+  },
+  "status": "MEASURED",
+  "tables": {
+    "difficulty_grades": 39,
+    "holes": 3294,
+    "kilter_test": 23787,
+    "kilter_train": 190439,
+    "kilter_val": 23676,
+    "placement_roles": 30,
+    "placements": 3773
+  },
+  "upstream_reported": {
+    "fetched_at": "2026-10-14T17:20:39Z",
+    "lfs_sha256": "0a0bc5b1bed12c72898f692e2bdd6a05f35730af82dda8538f89d58a90989bc2",
+    "note": "Reported by the Hugging Face API on 2026-10-14 (curl https://huggingface.co/api/datasets/Vilin97/KilterBoard/tree/main). NOT locally verified; verify_manifest.py checks a downloaded file against these values.",
+    "size_bytes": 123748352
+  },
+  "uuid_counts": {
+    "kilter_test": 14517,
+    "kilter_train": 116125,
+    "kilter_val": 14515
+  }
+}
