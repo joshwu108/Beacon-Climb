@@ -118,6 +118,24 @@ recompute-features: .env
 	  --spring.profiles.active=recompute --recompute.user=$(if $(filter command line,$(origin USER)),$(USER),all) \
 	  $(if $(W),--recompute.w=$(W),)
 
+# BC-0309: `make reconcile` repairs the users with open reconciliation_events rows (attempts.v1
+# events the stream job judged late beyond its 24 h window, stored by the api's
+# stream-reconciliation.v1 consumer under BEACON_STREAM_ENABLED=true). Same host-JVM pattern as
+# `recompute-features`: for each such user the SYNC snapshot is recomputed at W = now through
+# FeatureRecomputeService and the rows are closed RECONCILED (checksum changed) or ALREADY_CURRENT
+# (the attempts hook had already included the late event). The STREAM row is not touched.
+# Prints `reconciled user_id=... rows=... cutoff_w=... checksum=... resolution=...` per user and a
+# `reconcile summary ...` line. Exit codes: 0 every user repaired (or nothing open), 1 at least
+# one user ended in ERROR (its rows stay open for the next run).
+.PHONY: reconcile
+
+reconcile: .env
+	./gradlew :api:bootJar
+	set -a; . ./.env; set +a; \
+	BEACON_DB_URL=jdbc:postgresql://127.0.0.1:5432/beacon \
+	"$${JAVA_HOME:+$$JAVA_HOME/bin/}java" -jar services/api/build/libs/api-0.1.0.jar \
+	  --spring.profiles.active=reconcile
+
 # BC-0302: DLQ operator targets (docs/runbooks/dlq.md). Both run the api jar's `redrive` profile
 # on the host JVM against the compose Kafka host listener (127.0.0.1:9094, override with
 # BEACON_STREAM_BOOTSTRAPSERVERS); that profile has no datasource, so Postgres is never touched.
@@ -185,3 +203,4 @@ loadgen:
 freshness:
 	@test -n "$(EVENTS)" || { echo "usage: make freshness EVENTS=<events.jsonl> [OUT=dir]" >&2; exit 2; }
 	python3 -I scripts/loadgen/freshness.py $(EVENTS) $(if $(OUT),--out $(OUT),)
+

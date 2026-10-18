@@ -1,0 +1,20 @@
+# BC-0309: `--spring.profiles.active=reconcile` turns the jar into the reconciliation repair CLI
+# (`make reconcile`). Same host-JVM pattern as the recompute profile: no web server, Flyway still
+# runs so reconciliation_events exists, Kafka stays off (the consumer that fills the table runs
+# inside the api under BEACON_STREAM_ENABLED=true; this job only reads the table and recomputes
+# the SYNC snapshot of each affected user at W = now through FeatureRecomputeService).
+spring:
+  main:
+    web-application-type: none
+    banner-mode: off
+logging:
+  level:
+    root: WARN
+    com.beaconclimb.api.features: INFO
+    com.beaconclimb.api.reconciliation: INFO
+  structured:
+    format:
+      # The CLI is read by a person; an empty format restores the plain pattern.
+      console: ""
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %5p %logger{0} - %m%n"

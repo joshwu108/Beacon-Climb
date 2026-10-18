@@ -39,6 +39,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -123,7 +124,11 @@ public abstract class MaterializerTestSupport extends StreamTestSupport {
 
   @Autowired protected FeatureSnapshotRepository snapshots;
   @Autowired protected MaterializerService materializer;
-  @Autowired protected ConcurrentMessageListenerContainer<String, byte[]> container;
+
+  @Autowired
+  @Qualifier("materializerContainer")
+  protected ConcurrentMessageListenerContainer<String, byte[]> container;
+
   @Autowired protected KafkaTemplate<String, byte[]> kafka;
   @Autowired protected EventValidator validator;
   @Autowired protected ThrowOnceHook hook;

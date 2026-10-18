@@ -12,6 +12,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -85,7 +86,8 @@ public class MaterializerConfig {
 
   @Bean
   ConcurrentMessageListenerContainer<String, byte[]> materializerContainer(
-      ConsumerFactory<String, byte[]> materializerConsumerFactory,
+      @Qualifier("materializerConsumerFactory")
+          ConsumerFactory<String, byte[]> materializerConsumerFactory,
       MaterializerListener listener,
       StreamProperties properties) {
     ContainerProperties containerProperties =

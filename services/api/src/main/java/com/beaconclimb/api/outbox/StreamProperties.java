@@ -16,6 +16,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param publisher outbox publisher tuning
  * @param consumer consumer group ids reserved for the materializer and reconciliation tickets
  * @param materializer climber-features.v1 materializer tuning (BC-0305)
+ * @param reconciliation stream-reconciliation.v1 consumer tuning (BC-0309)
  */
 @ConfigurationProperties(prefix = "beacon.stream")
 public record StreamProperties(
@@ -24,7 +25,8 @@ public record StreamProperties(
     @DefaultValue Topics topics,
     @DefaultValue Publisher publisher,
     @DefaultValue Consumer consumer,
-    @DefaultValue Materializer materializer) {
+    @DefaultValue Materializer materializer,
+    @DefaultValue Reconciliation reconciliation) {
 
   public record Topics(
       @DefaultValue("attempts.v1") String attempts,
@@ -59,5 +61,14 @@ public record StreamProperties(
    *     unlimited because skipping a feature event would silently lose a snapshot (at-least-once)
    */
   public record Materializer(
+      @DefaultValue("100") int maxPollRecords, @DefaultValue("1s") Duration retryBackoff) {}
+
+  /**
+   * @param maxPollRecords consumer {@code max.poll.records} of the reconciliation consumer; each
+   *     record is one insert and one synchronous offset commit
+   * @param retryBackoff wait before a record whose insert failed is redelivered; unlimited retries
+   *     because dropping a late event would lose the only trace of it (at-least-once)
+   */
+  public record Reconciliation(
       @DefaultValue("100") int maxPollRecords, @DefaultValue("1s") Duration retryBackoff) {}
 }

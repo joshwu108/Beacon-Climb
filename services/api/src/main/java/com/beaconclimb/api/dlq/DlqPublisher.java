@@ -62,6 +62,12 @@ public class DlqPublisher {
     return publish(rejected, why.errorCode(), why.message());
   }
 
+  /** As above, naming the api consumer that rejected the record ({@code dlq.consumer} header). */
+  public DlqRecord publish(
+      ConsumerRecord<String, byte[]> rejected, ValidationResult.Invalid why, String consumer) {
+    return publish(rejected, why.errorCode(), why.message(), consumer);
+  }
+
   /**
    * Builds and publishes the DLQ record of {@code rejected}: original bytes, key, partition, offset
    * and headers (the attempt number comes from a {@code dlq.attempt} header when the record was
@@ -69,6 +75,19 @@ public class DlqPublisher {
    */
   public DlqRecord publish(
       ConsumerRecord<String, byte[]> rejected, ErrorCode errorCode, String errorMessage) {
+    return publish(rejected, errorCode, errorMessage, CONSUMER);
+  }
+
+  /**
+   * As above with an explicit consumer name: {@link #CONSUMER} for the materializer, {@code
+   * reconciliation} for the BC-0309 consumer. The name is the {@code dlq.consumer} header and the
+   * {@code consumer} tag of {@code beacon_dlq_published_total}.
+   */
+  public DlqRecord publish(
+      ConsumerRecord<String, byte[]> rejected,
+      ErrorCode errorCode,
+      String errorMessage,
+      String consumer) {
     DlqRecord record =
         DlqRecord.builder()
             .originalTopic(rejected.topic())
@@ -78,7 +97,7 @@ public class DlqPublisher {
             .originalOffset(rejected.offset())
             .originalHeaders(headersOf(rejected))
             .error(errorCode, errorMessage)
-            .consumer(CONSUMER)
+            .consumer(consumer)
             .failedAt(Instant.now())
             .build();
     return publish(record);
@@ -106,7 +125,7 @@ public class DlqPublisher {
       throw new DlqPublishException(record, e);
     }
     Counter.builder(PUBLISHED)
-        .tag(CONSUMER_TAG, CONSUMER)
+        .tag(CONSUMER_TAG, record.consumer())
         .tag(ERROR_CODE_TAG, record.errorCode())
         .description("stream-dlq.v1 records written by the api")
         .register(registry)

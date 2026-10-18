@@ -18,9 +18,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * BC-0101/BC-0107/BC-0109/BC-0113/BC-0110/BC-0111/BC-0123/BC-0123c/BC-0305: every Flyway migration
- * applies on an empty Postgres 17 as beacon_migrate, the runtime role beacon_app gets DML and
- * nothing more (and no UPDATE or DELETE on the append-only ledger and audit tables), the
+ * BC-0101/BC-0107/BC-0109/BC-0113/BC-0110/BC-0111/BC-0123/BC-0123c/BC-0305/BC-0309: every Flyway
+ * migration applies on an empty Postgres 17 as beacon_migrate, the runtime role beacon_app gets DML
+ * and nothing more (and no UPDATE or DELETE on the append-only ledger and audit tables), the
  * constraints from planning/06 sections 1, 6 and 7 hold, and the golden schema document
  * docs/db/schema-v1.md matches pg_dump of the live database.
  */
@@ -38,7 +38,8 @@ class MigrationIT extends AbstractPostgresIT {
           Map.entry("6", "V6__decisions.sql"),
           Map.entry("7", "V7__attempt_revisions_append_only.sql"),
           Map.entry("8", "V8__account_creations.sql"),
-          Map.entry("9", "V9__feature_snapshots_stream.sql"));
+          Map.entry("9", "V9__feature_snapshots_stream.sql"),
+          Map.entry("10", "V10__reconciliation.sql"));
 
   private static final List<String> ALL_TABLES =
       List.of(
@@ -59,7 +60,8 @@ class MigrationIT extends AbstractPostgresIT {
           "ranking_policies",
           "recommendation_decisions",
           "recommendation_exposures",
-          "account_creations");
+          "account_creations",
+          "reconciliation_events");
 
   private static final UUID PROVENANCE_ID = UUID.fromString("00000000-0000-7000-8000-000000000001");
   private static final String BOARD_ID = "migration-it-board";
@@ -76,7 +78,7 @@ class MigrationIT extends AbstractPostgresIT {
   }
 
   @Test
-  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionNine() {
+  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionTen() {
     List<Map<String, Object>> rows =
         jdbc()
             .queryForList(
@@ -86,7 +88,7 @@ class MigrationIT extends AbstractPostgresIT {
     assertThat(rows)
         .extracting(row -> Map.entry(row.get("version").toString(), row.get("script").toString()))
         .containsExactlyElementsOf(MIGRATIONS);
-    assertThat(rows.getLast().get("version").toString()).isEqualTo("9");
+    assertThat(rows.getLast().get("version").toString()).isEqualTo("10");
   }
 
   @Test
@@ -334,6 +336,120 @@ class MigrationIT extends AbstractPostgresIT {
             offset);
   }
 
+  /**
+   * BC-0309 (V10): the open-rows partial index and the user index exist, the app role keeps full
+   * DML, and erasing the user cascades to the rows. (Each expected constraint error aborts the test
+   * transaction, so the unique and CHECK violations have their own tests below.)
+   */
+  @Test
+  @Transactional
+  void reconciliationEventsAreIndexedAndCascadeOnUserDelete() {
+    assertThat(indexDefinition("reconciliation_events_event_id_key"))
+        .contains("UNIQUE INDEX")
+        .contains("(event_id)");
+    assertThat(indexDefinition("reconciliation_events_open_idx"))
+        .contains("ON public.reconciliation_events USING btree (received_at)")
+        .contains("WHERE (resolved_at IS NULL)");
+    assertThat(indexDefinition("reconciliation_events_user_idx"))
+        .contains("ON public.reconciliation_events USING btree (user_id)");
+    assertThat(privilegesOf("reconciliation_events"))
+        .containsExactly("DELETE", "INSERT", "SELECT", "UPDATE");
+    UUID userId = insertSnapshotUser("00000000-0000-7000-8000-0000000000b2", "reconciliation-1");
+    UUID eventId = UUID.fromString("00000000-0000-7000-8000-0000000000b3");
+    insertReconciliation(userId, eventId, "LATE_BEYOND_WINDOW");
+    assertThat(jdbc().update("delete from users where id = ?", userId)).isEqualTo(1);
+    assertThat(
+            jdbc()
+                .queryForObject(
+                    "select count(*) from reconciliation_events where user_id = ?",
+                    Integer.class,
+                    userId))
+        .isZero();
+  }
+
+  /**
+   * BC-0309 (V10): one reconciliation row per event_id; a redelivery is the unique violation the
+   * consumer turns into ON CONFLICT (event_id) DO NOTHING.
+   */
+  @Test
+  @Transactional
+  void reconciliationEventsAreUniquePerEventId() {
+    UUID userId = insertSnapshotUser("00000000-0000-7000-8000-0000000000bb", "reconciliation-5");
+    UUID eventId = UUID.fromString("00000000-0000-7000-8000-0000000000bc");
+    insertReconciliation(userId, eventId, "LATE_BEYOND_WINDOW");
+    assertThatThrownBy(() -> insertReconciliation(userId, eventId, "LATE_BEYOND_WINDOW"))
+        .isInstanceOf(DuplicateKeyException.class)
+        .hasMessageContaining("reconciliation_events_event_id_key");
+  }
+
+  /** BC-0309 (V10): a closed row must carry a terminal resolution, its cutoff and checksum. */
+  @Test
+  @Transactional
+  void reconciliationEventsRejectResolvedRowWithoutTerminalResolution() {
+    UUID userId = insertSnapshotUser("00000000-0000-7000-8000-0000000000b4", "reconciliation-2");
+    UUID eventId = UUID.fromString("00000000-0000-7000-8000-0000000000b5");
+    insertReconciliation(userId, eventId, "LATE_BEYOND_WINDOW");
+    assertThatThrownBy(
+            () ->
+                jdbc()
+                    .update(
+                        "update reconciliation_events set resolved_at = now()"
+                            + " where event_id = ?",
+                        eventId))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("reconciliation_events_resolution_state_check");
+  }
+
+  /** BC-0309 (V10): ERROR is recorded on an open row (resolved_at stays NULL) and is retried. */
+  @Test
+  @Transactional
+  void reconciliationEventsAllowErrorOnOpenRowOnly() {
+    UUID userId = insertSnapshotUser("00000000-0000-7000-8000-0000000000b6", "reconciliation-3");
+    UUID eventId = UUID.fromString("00000000-0000-7000-8000-0000000000b7");
+    insertReconciliation(userId, eventId, "LATE_BEYOND_WINDOW");
+    assertThat(
+            jdbc()
+                .update(
+                    "update reconciliation_events set resolution = 'ERROR' where event_id = ?",
+                    eventId))
+        .isEqualTo(1);
+    assertThatThrownBy(
+            () ->
+                jdbc()
+                    .update(
+                        "update reconciliation_events set resolved_at = now(),"
+                            + " resolved_cutoff_w = now(), resolved_checksum = ?"
+                            + " where event_id = ?",
+                        "0".repeat(64),
+                        eventId))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("reconciliation_events_resolution_state_check");
+  }
+
+  /** BC-0309 (V10): the reason is a closed set. */
+  @Test
+  @Transactional
+  void reconciliationEventsRejectUnknownReason() {
+    UUID userId = insertSnapshotUser("00000000-0000-7000-8000-0000000000b8", "reconciliation-4");
+    UUID eventId = UUID.fromString("00000000-0000-7000-8000-0000000000b9");
+    assertThatThrownBy(() -> insertReconciliation(userId, eventId, "LATE"))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("reconciliation_events_reason_check");
+  }
+
+  private void insertReconciliation(UUID userId, UUID eventId, String reason) {
+    jdbc()
+        .update(
+            "insert into reconciliation_events (id, user_id, attempt_id, attempt_revision,"
+                + " event_id, event_type, occurred_at, source_watermark, reason, original_json,"
+                + " source_partition, source_offset) values (gen_random_uuid(), ?, ?, 1, ?,"
+                + " 'ATTEMPT_RECORDED', now() - interval '3 days', now(), ?, '{}'::jsonb, 0, 0)",
+            userId,
+            UUID.fromString("00000000-0000-7000-8000-0000000000ba"),
+            eventId,
+            reason);
+  }
+
   @Test
   @Transactional
   void attemptsCountCheckRejectsZero() {
@@ -365,7 +481,8 @@ class MigrationIT extends AbstractPostgresIT {
         .contains("CREATE TABLE public.ranking_policies")
         .contains("CREATE TABLE public.recommendation_decisions")
         .contains("CREATE TABLE public.recommendation_exposures")
-        .contains("CREATE TABLE public.account_creations");
+        .contains("CREATE TABLE public.account_creations")
+        .contains("CREATE TABLE public.reconciliation_events");
     if (SchemaGolden.shouldUpdate()) {
       SchemaGolden.writeDoc(live);
       return;

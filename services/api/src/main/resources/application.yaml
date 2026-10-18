@@ -102,6 +102,13 @@ beacon:
       # stream-dlq.v1 and are acknowledged.
       max-poll-records: 100
       retry-backoff: 1s
+    reconciliation:
+      # BC-0309 (ReconciliationConfig): one consumer thread on stream-reconciliation.v1 (group
+      # beacon-reconciliation), manual ack after the insert into reconciliation_events commits;
+      # a redelivered event_id is a no-op. Invalid payloads go to stream-dlq.v1 and are
+      # acknowledged. `make reconcile` repairs the open rows.
+      max-poll-records: 100
+      retry-backoff: 1s
 logging:
   structured:
     format:

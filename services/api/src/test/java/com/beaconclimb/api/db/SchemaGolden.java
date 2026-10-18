@@ -32,9 +32,9 @@ final class SchemaGolden {
       `services/api/src/main/resources/db/migration` (currently `V1__identity_catalog_provenance.sql`,
       `V2__sessions.sql`, `V3__attempts_outbox.sql`, `V4__feature_snapshots.sql`,
       `V5__ranking_policies.sql`, `V6__decisions.sql`, `V7__attempt_revisions_append_only.sql`,
-      `V8__account_creations.sql` and `V9__feature_snapshots_stream.sql`) applied to Postgres 17 in
-      Testcontainers. Privileges (the V6, V7 and V8 REVOKEs) are not part of the dump; MigrationIT
-      asserts them directly.
+      `V8__account_creations.sql`, `V9__feature_snapshots_stream.sql` and `V10__reconciliation.sql`)
+      applied to Postgres 17 in Testcontainers. Privileges (the V6, V7 and V8 REVOKEs) are not part
+      of the dump; MigrationIT asserts them directly.
       Do not edit by hand.
       Regenerate with `UPDATE_SCHEMA_DOC=1 ./gradlew :api:test --tests '*MigrationIT*'`; the same
       test fails when this file drifts from the live schema. Tables: PRD 6.1, ADR-0002, ADR-0003, ADR-0004, ADR-0005.

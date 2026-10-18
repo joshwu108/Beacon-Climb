@@ -86,8 +86,9 @@ with `BEACON_FLYWAY_ENABLED=false` and without `BEACON_MIGRATE_DB_PASSWORD`, so 
 process that serves requests never holds the schema-owner credentials (BC-0123 F6b,
 TM-24/TM-27). There is no fallback password: Postgres refuses an empty one for
 `beacon_migrate` (`MigrateProfileIT`), so an unset `.env` value can only fail, never
-silently migrate. `make import` and `make recompute-features` run the jar on the host with
-the full `.env`, so they still migrate on their own if the schema is behind.
+silently migrate. `make import`, `make recompute-features` and `make reconcile` (BC-0309, the
+repair job for late-event rows in `reconciliation_events`) run the jar on the host with the
+full `.env`, so they still migrate on their own if the schema is behind.
 
 nginx also sets `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options: DENY`,
 `Permissions-Policy` and a strict CSP (`script-src 'self'`, no inline scripts; the Vite
