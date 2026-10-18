@@ -218,7 +218,7 @@ The two scratch programs are in `/private/tmp/claude-501/-Users-joshuawu-Beacon-
 | F5 global snapshot quota | fixed: per-user daily decision quota (429) in addition to the store cap; per-IP/day account-creation cap (BC-0123c: `beacon.auth.register-per-ip-per-day`, default 20, counted in SQL on V8 `account_creations`, 429 + Retry-After to midnight UTC, `AuthRegistrationCapIT`) | 842c137, this commit |
 | F6 app role privileges | fixed: V7 makes attempt_revisions append-only; one-shot compose `migrate` service (BC-0123c F6b: api jar under the `migrate` profile, same hardening, only holder of BEACON_MIGRATE_DB_PASSWORD; api runs with BEACON_FLYWAY_ENABLED=false and no migrate password, `MigrateProfileIT`) | 842c137, this commit |
 | F7 guard coverage | fixed: more extensions + SQLite header sniff | c2d5dfa |
-| F8 dev-only vitest/tinypool advisories | open: upgrade vitest ≥ 4.1.11 deferred (prod audit clean) | — |
+| F8 dev-only vitest/tinypool advisories | fixed: vitest 3.2.4 → 4.1.11 (published 2026-08-18; @vitest/* 4.1.11, tinypool 1.1.1 dropped); custom jsdom environment moved to vitest/runtime + viteEnvironment; root `pnpm audit` and `pnpm audit --audit-level high`: no known vulnerabilities (was 3 critical, 2 moderate) | this commit |
 | F9 CI hardening | fixed: every workflow `uses:` pinned to a full commit SHA with the version in a trailing comment (resolved with `git ls-remote --tags`, 2026-10-18); `pnpm audit --audit-level high` added to the web job. Gap: no Java dependency scan in CI because OWASP dependency-check needs the NVD feed (network + API key) and cannot run offline | c2d5dfa, this commit |
 | F10 gitleaks allowlist | fixed: path-scoped | c2d5dfa |
 | F11 parallel login limit | fixed: atomic reservation | 842c137 |

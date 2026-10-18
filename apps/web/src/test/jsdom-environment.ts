@@ -1,4 +1,4 @@
-import { builtinEnvironments, type Environment } from 'vitest/environments';
+import { builtinEnvironments, type Environment } from 'vitest/runtime';
 
 /**
  * jsdom environment that keeps Node's AbortController/AbortSignal.
@@ -11,7 +11,7 @@ import { builtinEnvironments, type Environment } from 'vitest/environments';
  */
 const environment: Environment = {
   name: 'jsdom-node-abort',
-  transformMode: 'web',
+  viteEnvironment: 'client',
   async setup(global, options) {
     const nodeAbortController = global.AbortController;
     const nodeAbortSignal = global.AbortSignal;
