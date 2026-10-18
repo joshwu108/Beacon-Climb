@@ -3,3 +3,5 @@ dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_P
 rootProject.name = "beacon-climb"
 include(":api")
 project(":api").projectDir = file("services/api")
+include(":stream")
+project(":stream").projectDir = file("services/stream")

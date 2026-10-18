@@ -1,0 +1,234 @@
+T0=2026-10-18T04:10:23Z T1=2026-10-18T05:10:23Z
+
+##### 06:10:23Z 0. toolchain
+docker 29.2.1
+Docker Compose version v5.0.2
+images: flink:2.2.1-java21 apache/kafka:4.3.1 
+02aebb3
+
+##### 06:10:23Z 1. compose up --wait (the COMPOSE_STREAM command behind make stream-up; the api jar is the existing services/api/build/libs/api-0.1.0.jar because :api Gradle tasks belong to another session tonight)
+docker compose --env-file .env -f infra/compose/docker-compose.yml -f infra/compose/kafka.yml -f infra/compose/flink.yml --profile core --profile stream up -d --wait
+ Container compose-web-1 Starting 
+ Container compose-jobmanager-1 Healthy 
+ Container compose-taskmanager-1 Starting 
+ Container compose-taskmanager-1 Started 
+ Container compose-web-1 Started 
+ Container compose-kafka-init-1 Waiting 
+ Container compose-jobmanager-1 Waiting 
+ Container compose-api-1 Waiting 
+ Container compose-decisions-init-1 Waiting 
+ Container compose-migrate-1 Waiting 
+ Container compose-flink-init-1 Waiting 
+ Container compose-taskmanager-1 Waiting 
+ Container compose-kafka-1 Waiting 
+ Container compose-postgres-1 Waiting 
+ Container compose-web-1 Waiting 
+ Container compose-migrate-1 Exited 
+ Container compose-jobmanager-1 Healthy 
+ Container compose-api-1 Healthy 
+ Container compose-kafka-init-1 Exited 
+ Container compose-postgres-1 Healthy 
+ Container compose-flink-init-1 Exited 
+ Container compose-decisions-init-1 Exited 
+ Container compose-kafka-1 Healthy 
+ Container compose-web-1 Healthy 
+ Container compose-taskmanager-1 Healthy 
+NAME                    STATUS                    PORTS
+compose-api-1           Up 11 seconds (healthy)   127.0.0.1:8080->8080/tcp
+compose-jobmanager-1    Up 11 seconds (healthy)   127.0.0.1:8081->8081/tcp
+compose-kafka-1         Up 24 seconds (healthy)   127.0.0.1:9094->9094/tcp
+compose-postgres-1      Up 24 seconds (healthy)   127.0.0.1:5432->5432/tcp
+compose-taskmanager-1   Up 5 seconds (healthy)    6123/tcp, 8081/tcp
+compose-web-1           Up 5 seconds (healthy)    127.0.0.1:3000->8080/tcp
+
+##### 06:10:48Z 1b. what is already on the topics (the stack is shared with the concurrent BC-0301 proof; nothing is deleted)
+attempts.v1 records before this proof: 9
+climber-features.v1 records before this proof: 6
+checkpoint volume owner after flink-init: 9999:9999 /checkpoints
+
+##### 06:11:08Z 2. topics (kafka-init created them with --if-not-exists; recreated above with identical settings)
+Topic: stream-dlq.v1	TopicId: N6LoSsWuRnSbx-lR4FXOYQ	PartitionCount: 6	ReplicationFactor: 1	Configs: min.insync.replicas=1,retention.ms=2592000000
+Topic: climber-features.v1	TopicId: 1F2mT-K2QJ6ElDZlv5Iodw	PartitionCount: 6	ReplicationFactor: 1	Configs: min.insync.replicas=1,cleanup.policy=compact
+Topic: __consumer_offsets	TopicId: LAN-Wn8nS4Cd1Sa1nzWejQ	PartitionCount: 50	ReplicationFactor: 1	Configs: compression.type=producer,min.insync.replicas=1,cleanup.policy=compact,segment.bytes=104857600
+Topic: attempts.v1	TopicId: gaVnt2vtTbudLNhVurlwZw	PartitionCount: 6	ReplicationFactor: 1	Configs: min.insync.replicas=1,retention.ms=604800000
+Topic: stream-reconciliation.v1	TopicId: HKmzJwHjSlWCovJrlXzacg	PartitionCount: 6	ReplicationFactor: 1	Configs: min.insync.replicas=1,retention.ms=2592000000
+
+##### 06:11:09Z 3. make stream-submit
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+docker compose --env-file .env -f infra/compose/docker-compose.yml -f infra/compose/kafka.yml -f infra/compose/flink.yml --profile core --profile stream exec jobmanager flink run -d /opt/beacon/libs/stream.jar
+WARNING: Unknown module: jdk.compiler specified to --add-exports
+WARNING: Unknown module: jdk.compiler specified to --add-exports
+WARNING: Unknown module: jdk.compiler specified to --add-exports
+WARNING: Unknown module: jdk.compiler specified to --add-exports
+WARNING: Unknown module: jdk.compiler specified to --add-exports
+Job has been submitted with JobID 2ae3bea28220082b946b83cee9d8a73c
+WARNING: Unknown module: jdk.compiler specified to --add-exports
+Waiting for response...
+------------------ Running/Restarting Jobs -------------------
+18.10.2026 06:11:12 : 2ae3bea28220082b946b83cee9d8a73c : beacon-climb-features (RUNNING)
+--------------------------------------------------------------
+No scheduled jobs.
+job id: 2ae3bea28220082b946b83cee9d8a73c
+{
+  "name": "beacon-climb-features",
+  "state": "RUNNING",
+  "vertices": [
+    {
+      "name": "Source: attempts.v1 -> parse-attempts -> (occurred-at-watermarks, invalid-until-bc-0302: Writer)",
+      "status": "RUNNING",
+      "parallelism": 1
+    },
+    {
+      "name": "placeholder-features -> (sink-climber-features-v1: Writer -> sink-climber-features-v1: Committer, sink-stream-reconciliation-v1: Writer -> sink-stream-reconciliation-v1: Committer)",
+      "status": "RUNNING",
+      "parallelism": 1
+    }
+  ]
+}
+
+##### 06:11:22Z 4. produce 3 attempts.v1 events (recorded r1, corrected r2, retracted r3; key = user_id)
+018f0000-0000-7000-8000-0000000000bb|{"schema_version":1,"event_id":"018f0000-0000-7000-8000-000000000005","event_type":"ATTEMPT_RECORDED","user_id":"018f0000-0000-7000-8000-0000000000bb","attempt_id":"018f0000-0000-7000-8000-000000000002","attempt_revision":1,"route_variant_id":"synthetic-route-001:35","occurred_at":"2026-10-18T04:10:23Z","ingested_at":"2026-10-18T04:10:23Z","attributes":{"sent":true,"attempts_count":2,"status":"ACTIVE","grade_numeric":5.5},"trace_id":"synthetic-trace-1","producer":"api"}
+018f0000-0000-7000-8000-0000000000bb|{"schema_version":1,"event_id":"018f0000-0000-7000-8000-000000000005","event_type":"ATTEMPT_CORRECTED","user_id":"018f0000-0000-7000-8000-0000000000bb","attempt_id":"018f0000-0000-7000-8000-000000000002","attempt_revision":2,"route_variant_id":"synthetic-route-001:35","occurred_at":"2026-10-18T04:10:23Z","ingested_at":"2026-10-18T04:10:23Z","attributes":{"sent":false,"attempts_count":2,"status":"ACTIVE","grade_numeric":null},"trace_id":"synthetic-trace-1","producer":"api"}
+018f0000-0000-7000-8000-0000000000bb|{"schema_version":1,"event_id":"018f0000-0000-7000-8000-000000000005","event_type":"ATTEMPT_RETRACTED","user_id":"018f0000-0000-7000-8000-0000000000bb","attempt_id":"018f0000-0000-7000-8000-000000000002","attempt_revision":3,"route_variant_id":"synthetic-route-001:35","occurred_at":"2026-10-18T04:10:23Z","ingested_at":"2026-10-18T04:10:23Z","attributes":{"sent":false,"attempts_count":2,"status":"RETRACTED"},"trace_id":"synthetic-trace-1","producer":"api"}
+Warning: --property is deprecated and will be removed in a future version. Use --reader-property instead.
+(producer exit 0)
+
+##### 06:11:23Z 5. consume climber-features.v1 --from-beginning; records keyed by the proof user (expect 3)
+feature records for 018f0000-0000-7000-8000-0000000000bb: 3
+Partition:3	NO_HEADERS	018f0000-0000-7000-8000-0000000000bb	{"schema_version":1,"event_id":"01a14da2-e37f-7ed7-bb17-833845bf2c18","user_id":"018f0000-0000-7000-8000-0000000000bb","feature_schema_version":"climber-features.v1","feature_as_of":"2026-10-18T04:10:23Z","source_watermark":"2026-10-18T04:10:23Z","provenance_checksum":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","aggregates":{"attempts_7d":0,"attempts_30d":0,"attempts_90d":0,"sends_7d":0,"sends_30d":0,"sends_90d":0,"send_rate_by_grade_band_90d":{},"recent_variant_ids":[],"last_session_at":null,"max_sent_grade_numeric_90d":null,"distinct_sessions_30d":0},"produced_at":"2026-10-18T06:11:23.134805175Z","producer":"stream"}
+Partition:3	NO_HEADERS	018f0000-0000-7000-8000-0000000000bb	{"schema_version":1,"event_id":"01a14da2-e387-7bd0-a315-6a7dc792c55a","user_id":"018f0000-0000-7000-8000-0000000000bb","feature_schema_version":"climber-features.v1","feature_as_of":"2026-10-18T04:10:23Z","source_watermark":"2026-10-18T04:10:23Z","provenance_checksum":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","aggregates":{"attempts_7d":0,"attempts_30d":0,"attempts_90d":0,"sends_7d":0,"sends_30d":0,"sends_90d":0,"send_rate_by_grade_band_90d":{},"recent_variant_ids":[],"last_session_at":null,"max_sent_grade_numeric_90d":null,"distinct_sessions_30d":0},"produced_at":"2026-10-18T06:11:23.143952591Z","producer":"stream"}
+Partition:3	NO_HEADERS	018f0000-0000-7000-8000-0000000000bb	{"schema_version":1,"event_id":"01a14da2-e388-760f-9481-2d67db37740f","user_id":"018f0000-0000-7000-8000-0000000000bb","feature_schema_version":"climber-features.v1","feature_as_of":"2026-10-18T04:10:23Z","source_watermark":"2026-10-18T04:10:23Z","provenance_checksum":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","aggregates":{"attempts_7d":0,"attempts_30d":0,"attempts_90d":0,"sends_7d":0,"sends_30d":0,"sends_90d":0,"send_rate_by_grade_band_90d":{},"recent_variant_ids":[],"last_session_at":null,"max_sent_grade_numeric_90d":null,"distinct_sessions_30d":0},"produced_at":"2026-10-18T06:11:23.144293050Z","producer":"stream"}
+(other keys on the topic: 6)
+
+##### 06:11:52Z 6. checkpoints (REST) and the checkpoint volume
+{
+  "counts": {
+    "restored": 0,
+    "total": 5,
+    "in_progress": 0,
+    "completed": 5,
+    "failed": 0
+  },
+  "latest_completed": {
+    "id": 5,
+    "status": "COMPLETED",
+    "external_path": "file:/checkpoints/2ae3bea28220082b946b83cee9d8a73c/chk-5",
+    "trigger_timestamp": 1792303915881
+  },
+  "latest_restored": null
+}
+/checkpoints:
+2ae3bea28220082b946b83cee9d8a73c
+dc709d4d160247c50dac16e997dc0592
+
+/checkpoints/2ae3bea28220082b946b83cee9d8a73c:
+chk-5
+shared
+taskowned
+
+/checkpoints/2ae3bea28220082b946b83cee9d8a73c/chk-5:
+_metadata
+
+/checkpoints/2ae3bea28220082b946b83cee9d8a73c/shared:
+
+/checkpoints/2ae3bea28220082b946b83cee9d8a73c/taskowned:
+
+/checkpoints/dc709d4d160247c50dac16e997dc0592:
+chk-11
+shared
+taskowned
+committed consumer-group offsets (beacon-stream):
+GROUP TOPIC PARTITION CURRENT-OFFSET LOG-END-OFFSET LAG
+beacon-stream attempts.v1 0 7 7 0
+beacon-stream attempts.v1 3 3 3 0
+beacon-stream attempts.v1 5 1 1 0
+
+##### 06:12:06Z 7. restart taskmanager, then wait until the job has RESTORED from a checkpoint and is RUNNING again
+completed checkpoints before restart: 5
+ Container compose-taskmanager-1 Restarting 
+ Container compose-taskmanager-1 Started 
+t+3s job state: RESTARTING restored_from_checkpoint: none
+t+6s job state: RESTARTING restored_from_checkpoint: none
+t+9s job state: RUNNING restored_from_checkpoint: 6
+{
+  "state": "RUNNING",
+  "vertices": [
+    {
+      "name": "Source: attempts.v1 -> parse-attempts -> (occurred-at-waterm",
+      "status": "RUNNING"
+    },
+    {
+      "name": "placeholder-features -> (sink-climber-features-v1: Writer ->",
+      "status": "RUNNING"
+    }
+  ]
+}
+{
+  "counts": {
+    "restored": 1,
+    "total": 7,
+    "in_progress": 0,
+    "completed": 7,
+    "failed": 0
+  },
+  "latest_restored": {
+    "id": 6,
+    "restore_timestamp": 1792303931319,
+    "external_path": "file:/checkpoints/2ae3bea28220082b946b83cee9d8a73c/chk-6"
+  }
+}
+{
+  "history_entries": 1,
+  "first": {
+    "exceptionName": "org.apache.flink.util.FlinkExpectedException",
+    "taskName": "placeholder-features -> (sink-climber-features-v1: Writer ->",
+    "timestamp": 1792303926299
+  }
+}
+
+##### 06:12:12Z 8. produce 1 more event (new attempt id) after the restart, then count ALL feature records
+018f0000-0000-7000-8000-0000000000bb|{"schema_version":1,"event_id":"018f0000-0000-7000-8000-000000000011","event_type":"ATTEMPT_RECORDED","user_id":"018f0000-0000-7000-8000-0000000000bb","attempt_id":"018f0000-0000-7000-8000-000000000012","attempt_revision":1,"route_variant_id":"synthetic-route-001:35","occurred_at":"2026-10-18T05:10:23Z","ingested_at":"2026-10-18T05:10:23Z","attributes":{"sent":true,"attempts_count":2,"status":"ACTIVE","grade_numeric":5.5},"trace_id":"synthetic-trace-1","producer":"api"}
+Warning: --property is deprecated and will be removed in a future version. Use --reader-property instead.
+feature records for 018f0000-0000-7000-8000-0000000000bb after the restart (expect 4 = 3 + 1, no reprocessing): 4
+Partition:3	NO_HEADERS	018f0000-0000-7000-8000-0000000000bb	{"schema_version":1,"event_id":"01a14da2-e37f-7ed7-bb17-833845bf2c18","user_id":"018f0000-0000-7000-8000-0000000000bb","feature_schema_version":"climber-features.v1","feature_as_of":"2026-10-18T04:10:23Z","source_watermark":"2026-10-18T04:10:23Z","provenance_checksum":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","aggregates":{"attempts_7d":0,"attempts_30d":0,"attempts_90d":0,"sends_7d":0,"sends_30d":0,"sends_90d":0,"send_rate_by_grade_band_90d":{},"recent_variant_ids":[],"last_session_at":null,"max_sent_grade_numeric_90d":null,"distinct_sessions_30d":0},"produced_at":"2026-10-18T06:11:23.134805175Z","producer":"stream"}
+Partition:3	NO_HEADERS	018f0000-0000-7000-8000-0000000000bb	{"schema_version":1,"event_id":"01a14da2-e387-7bd0-a315-6a7dc792c55a","user_id":"018f0000-0000-7000-8000-0000000000bb","feature_schema_version":"climber-features.v1","feature_as_of":"2026-10-18T04:10:23Z","source_watermark":"2026-10-18T04:10:23Z","provenance_checksum":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","aggregates":{"attempts_7d":0,"attempts_30d":0,"attempts_90d":0,"sends_7d":0,"sends_30d":0,"sends_90d":0,"send_rate_by_grade_band_90d":{},"recent_variant_ids":[],"last_session_at":null,"max_sent_grade_numeric_90d":null,"distinct_sessions_30d":0},"produced_at":"2026-10-18T06:11:23.143952591Z","producer":"stream"}
+Partition:3	NO_HEADERS	018f0000-0000-7000-8000-0000000000bb	{"schema_version":1,"event_id":"01a14da2-e388-760f-9481-2d67db37740f","user_id":"018f0000-0000-7000-8000-0000000000bb","feature_schema_version":"climber-features.v1","feature_as_of":"2026-10-18T04:10:23Z","source_watermark":"2026-10-18T04:10:23Z","provenance_checksum":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","aggregates":{"attempts_7d":0,"attempts_30d":0,"attempts_90d":0,"sends_7d":0,"sends_30d":0,"sends_90d":0,"send_rate_by_grade_band_90d":{},"recent_variant_ids":[],"last_session_at":null,"max_sent_grade_numeric_90d":null,"distinct_sessions_30d":0},"produced_at":"2026-10-18T06:11:23.144293050Z","producer":"stream"}
+Partition:3	NO_HEADERS	018f0000-0000-7000-8000-0000000000bb	{"schema_version":1,"event_id":"01a14da3-a83b-719a-a623-889230a4980f","user_id":"018f0000-0000-7000-8000-0000000000bb","feature_schema_version":"climber-features.v1","feature_as_of":"2026-10-18T05:10:23Z","source_watermark":"2026-10-18T05:10:23Z","provenance_checksum":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","aggregates":{"attempts_7d":0,"attempts_30d":0,"attempts_90d":0,"sends_7d":0,"sends_30d":0,"sends_90d":0,"send_rate_by_grade_band_90d":{},"recent_variant_ids":[],"last_session_at":null,"max_sent_grade_numeric_90d":null,"distinct_sessions_30d":0},"produced_at":"2026-10-18T06:12:13.498779253Z","producer":"stream"}
+attempts.v1 records for 018f0000-0000-7000-8000-0000000000bb from beginning: 4
+{
+  "counts": {
+    "restored": 1,
+    "total": 11,
+    "in_progress": 0,
+    "completed": 11,
+    "failed": 0
+  },
+  "latest_completed_id": 11,
+  "latest_restored_id": 6
+}
+GROUP TOPIC PARTITION CURRENT-OFFSET LOG-END-OFFSET LAG
+beacon-stream attempts.v1 0 7 7 0
+beacon-stream attempts.v1 3 4 4 0
+beacon-stream attempts.v1 5 1 1 0
+
+##### 06:12:58Z 9. reconciliation topic (expected 0 for this user: every event was within the 24 h window)
+stream-reconciliation.v1 records for the proof user: 0
+
+##### 06:13:10Z 10. docker stats --no-stream
+NAME                    MEM USAGE / LIMIT   MEM %     CPU %
+compose-web-1           8.531MiB / 128MiB   6.67%     0.00%
+compose-taskmanager-1   642.8MiB / 1.5GiB   41.85%    5.81%
+compose-api-1           299.8MiB / 1GiB     29.27%    0.38%
+compose-jobmanager-1    566.2MiB / 768MiB   73.72%    4.01%
+compose-postgres-1      35.41MiB / 512MiB   6.92%     2.12%
+compose-kafka-1         382.2MiB / 1GiB     37.32%    3.23%
+
+##### 06:13:12Z 11. make stream-down
+ Container compose-kafka-1 Stopping 
+ Container compose-kafka-1 Stopped 
+ Container compose-kafka-1 Removing 
+ Container compose-kafka-1 Removed 
+ Network compose_default Removing 
+ Network compose_default Removed 
+compose containers left: 0
+done 06:13:15Z

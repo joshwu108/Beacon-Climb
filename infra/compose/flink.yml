@@ -1,0 +1,142 @@
+# BC-0303: Flink session cluster for the `stream` profile (ADR-0004: Flink 2.2.1 +
+# flink-connector-kafka 5.0.0-2.2 against the Kafka 4.3.1 KRaft broker in kafka.yml). Used only
+# through the Makefile stream-* targets together with docker-compose.yml and kafka.yml.
+# Memory budget (whole Docker VM ~7.6 GB): jobmanager 768m, taskmanager 1.5g container limits
+# with Flink's own process sizes 640m / 1280m below them, 2 task slots, parallelism 1.
+# Hardening as in docker-compose.yml: REST/UI on 127.0.0.1 only, no-new-privileges, no
+# capabilities, json-file logs. The entrypoint rewrites /opt/flink/conf/config.yaml from
+# FLINK_PROPERTIES, so the root filesystem stays writable (no read_only here).
+# The fat jar (services/stream/build/libs/stream.jar, `./gradlew :stream:fatJar`) is mounted
+# read-only into the jobmanager like the api jar; `make stream-submit` runs `flink run` on it.
+# Checkpoints go to the shared named volume `flink-checkpoints` (file:///checkpoints) which both
+# roles mount, so a restarted taskmanager can restore from the jobmanager's last checkpoint.
+services:
+  # One-shot: the named volume is created root-owned, so hand /checkpoints to the flink uid
+  # (9999) before either role starts, exactly like decisions-init for the api. Fix #1 of the
+  # compose proof: without it the CheckpointCoordinator fails with "Failed to create directory
+  # for shared state: file:/checkpoints/<job>/shared" and the job never leaves INITIALIZING.
+  flink-init:
+    image: alpine:3.21
+    profiles: [stream]
+    user: "0:0"
+    network_mode: none
+    read_only: true
+    command: ["chown", "9999:9999", "/checkpoints"]
+    volumes:
+      - flink-checkpoints:/checkpoints
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    mem_limit: 32m
+    cpus: 0.25
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "1"
+  jobmanager:
+    image: flink:2.2.1-java21
+    profiles: [stream]
+    command: jobmanager
+    environment:
+      BEACON_STREAM_BOOTSTRAPSERVERS: kafka:9092
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: jobmanager
+        jobmanager.memory.process.size: 640m
+        jobmanager.memory.heap.size: 256m
+        jobmanager.memory.off-heap.size: 128m
+        jobmanager.memory.jvm-metaspace.size: 128m
+        jobmanager.memory.jvm-overhead.min: 128m
+        jobmanager.memory.jvm-overhead.max: 128m
+        taskmanager.memory.process.size: 1280m
+        taskmanager.numberOfTaskSlots: 2
+        parallelism.default: 1
+        execution.checkpointing.dir: file:///checkpoints
+        execution.checkpointing.interval: 10s
+        execution.checkpointing.externalized-checkpoint-retention: RETAIN_ON_CANCELLATION
+        restart-strategy.type: fixed-delay
+        restart-strategy.fixed-delay.attempts: 100
+        restart-strategy.fixed-delay.delay: 5s
+        rest.bind-address: 0.0.0.0
+    ports:
+      - "127.0.0.1:8081:8081"
+    volumes:
+      - flink-checkpoints:/checkpoints
+      - ../../services/stream/build/libs:/opt/beacon/libs:ro
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      flink-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bash",
+          "-c",
+          "exec 3<>/dev/tcp/127.0.0.1/8081 && printf 'GET /overview HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q ' 200 ' <&3",
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 768m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  taskmanager:
+    image: flink:2.2.1-java21
+    profiles: [stream]
+    command: taskmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: jobmanager
+        taskmanager.memory.process.size: 1280m
+        taskmanager.memory.managed.fraction: 0.1
+        taskmanager.memory.jvm-metaspace.size: 192m
+        taskmanager.numberOfTaskSlots: 2
+        parallelism.default: 1
+        execution.checkpointing.dir: file:///checkpoints
+    volumes:
+      - flink-checkpoints:/checkpoints
+    depends_on:
+      jobmanager:
+        condition: service_healthy
+      flink-init:
+        condition: service_completed_successfully
+    healthcheck:
+      # Healthy once this taskmanager has registered its slots with the jobmanager.
+      test:
+        [
+          "CMD",
+          "bash",
+          "-c",
+          "exec 3<>/dev/tcp/jobmanager/8081 && printf 'GET /taskmanagers HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q 'slotsNumber' <&3",
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 1536m
+    cpus: 1.5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  flink-checkpoints:

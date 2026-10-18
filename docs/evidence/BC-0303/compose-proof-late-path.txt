@@ -1,0 +1,251 @@
+
+##### 06:04:10Z 0. toolchain
+docker 29.2.1
+Docker Compose version v5.0.2
+images: flink:2.2.1-java21 apache/kafka:4.3.1 
+02aebb3
+
+##### 06:04:10Z 1. compose up --wait (the COMPOSE_STREAM command behind make stream-up; the api jar is the existing services/api/build/libs/api-0.1.0.jar because :api Gradle tasks belong to another session tonight)
+docker compose --env-file .env -f infra/compose/docker-compose.yml -f infra/compose/kafka.yml -f infra/compose/flink.yml --profile core --profile stream up -d --wait
+ Container compose-web-1 Starting 
+ Container compose-jobmanager-1 Healthy 
+ Container compose-taskmanager-1 Starting 
+ Container compose-taskmanager-1 Started 
+ Container compose-web-1 Started 
+ Container compose-web-1 Waiting 
+ Container compose-migrate-1 Waiting 
+ Container compose-decisions-init-1 Waiting 
+ Container compose-flink-init-1 Waiting 
+ Container compose-kafka-init-1 Waiting 
+ Container compose-api-1 Waiting 
+ Container compose-kafka-1 Waiting 
+ Container compose-postgres-1 Waiting 
+ Container compose-jobmanager-1 Waiting 
+ Container compose-taskmanager-1 Waiting 
+ Container compose-kafka-init-1 Exited 
+ Container compose-flink-init-1 Exited 
+ Container compose-migrate-1 Exited 
+ Container compose-postgres-1 Healthy 
+ Container compose-kafka-1 Healthy 
+ Container compose-decisions-init-1 Exited 
+ Container compose-api-1 Healthy 
+ Container compose-jobmanager-1 Healthy 
+ Container compose-web-1 Healthy 
+ Container compose-taskmanager-1 Healthy 
+NAME                    STATUS                    PORTS
+compose-api-1           Up 11 seconds (healthy)   127.0.0.1:8080->8080/tcp
+compose-jobmanager-1    Up 11 seconds (healthy)   127.0.0.1:8081->8081/tcp
+compose-kafka-1         Up 24 seconds (healthy)   127.0.0.1:9094->9094/tcp
+compose-postgres-1      Up 24 seconds (healthy)   127.0.0.1:5432->5432/tcp
+compose-taskmanager-1   Up 5 seconds (healthy)    6123/tcp, 8081/tcp
+compose-web-1           Up 5 seconds (healthy)    127.0.0.1:3000->8080/tcp
+
+##### 06:04:35Z 1b. what is already on the topics (the stack is shared with the concurrent BC-0301 proof; nothing is deleted)
+attempts.v1 records before this proof: 5
+climber-features.v1 records before this proof: 1
+checkpoint volume owner after flink-init: 9999:9999 /checkpoints
+
+##### 06:04:53Z 2. topics (kafka-init created them with --if-not-exists; recreated above with identical settings)
+Topic: stream-dlq.v1	TopicId: N6LoSsWuRnSbx-lR4FXOYQ	PartitionCount: 6	ReplicationFactor: 1	Configs: min.insync.replicas=1,retention.ms=2592000000
+Topic: climber-features.v1	TopicId: 1F2mT-K2QJ6ElDZlv5Iodw	PartitionCount: 6	ReplicationFactor: 1	Configs: min.insync.replicas=1,cleanup.policy=compact
+Topic: __consumer_offsets	TopicId: LAN-Wn8nS4Cd1Sa1nzWejQ	PartitionCount: 50	ReplicationFactor: 1	Configs: compression.type=producer,min.insync.replicas=1,cleanup.policy=compact,segment.bytes=104857600
+Topic: attempts.v1	TopicId: gaVnt2vtTbudLNhVurlwZw	PartitionCount: 6	ReplicationFactor: 1	Configs: min.insync.replicas=1,retention.ms=604800000
+Topic: stream-reconciliation.v1	TopicId: HKmzJwHjSlWCovJrlXzacg	PartitionCount: 6	ReplicationFactor: 1	Configs: min.insync.replicas=1,retention.ms=2592000000
+
+##### 06:04:54Z 3. make stream-submit
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+docker compose --env-file .env -f infra/compose/docker-compose.yml -f infra/compose/kafka.yml -f infra/compose/flink.yml --profile core --profile stream exec jobmanager flink run -d /opt/beacon/libs/stream.jar
+WARNING: Unknown module: jdk.compiler specified to --add-exports
+WARNING: Unknown module: jdk.compiler specified to --add-exports
+WARNING: Unknown module: jdk.compiler specified to --add-exports
+WARNING: Unknown module: jdk.compiler specified to --add-exports
+WARNING: Unknown module: jdk.compiler specified to --add-exports
+Job has been submitted with JobID dc709d4d160247c50dac16e997dc0592
+WARNING: Unknown module: jdk.compiler specified to --add-exports
+Waiting for response...
+------------------ Running/Restarting Jobs -------------------
+18.10.2026 06:04:58 : dc709d4d160247c50dac16e997dc0592 : beacon-climb-features (RUNNING)
+--------------------------------------------------------------
+No scheduled jobs.
+job id: dc709d4d160247c50dac16e997dc0592
+{
+  "name": "beacon-climb-features",
+  "state": "RUNNING",
+  "vertices": [
+    {
+      "name": "Source: attempts.v1 -> parse-attempts -> (occurred-at-watermarks, invalid-until-bc-0302: Writer)",
+      "status": "RUNNING",
+      "parallelism": 1
+    },
+    {
+      "name": "placeholder-features -> (sink-climber-features-v1: Writer -> sink-climber-features-v1: Committer, sink-stream-reconciliation-v1: Writer -> sink-stream-reconciliation-v1: Committer)",
+      "status": "RUNNING",
+      "parallelism": 1
+    }
+  ]
+}
+
+##### 06:05:07Z 4. produce 3 attempts.v1 events (recorded r1, corrected r2, retracted r3; key = user_id)
+018f0000-0000-7000-8000-0000000000aa|{"schema_version":1,"event_id":"018f0000-0000-7000-8000-000000000005","event_type":"ATTEMPT_RECORDED","user_id":"018f0000-0000-7000-8000-0000000000aa","attempt_id":"018f0000-0000-7000-8000-000000000002","attempt_revision":1,"route_variant_id":"synthetic-route-001:35","occurred_at":"2026-10-14T14:00:00Z","ingested_at":"2026-10-14T14:00:00Z","attributes":{"sent":true,"attempts_count":2,"status":"ACTIVE","grade_numeric":5.5},"trace_id":"synthetic-trace-1","producer":"api"}
+018f0000-0000-7000-8000-0000000000aa|{"schema_version":1,"event_id":"018f0000-0000-7000-8000-000000000005","event_type":"ATTEMPT_CORRECTED","user_id":"018f0000-0000-7000-8000-0000000000aa","attempt_id":"018f0000-0000-7000-8000-000000000002","attempt_revision":2,"route_variant_id":"synthetic-route-001:35","occurred_at":"2026-10-14T14:00:00Z","ingested_at":"2026-10-14T14:00:00Z","attributes":{"sent":false,"attempts_count":2,"status":"ACTIVE","grade_numeric":null},"trace_id":"synthetic-trace-1","producer":"api"}
+018f0000-0000-7000-8000-0000000000aa|{"schema_version":1,"event_id":"018f0000-0000-7000-8000-000000000005","event_type":"ATTEMPT_RETRACTED","user_id":"018f0000-0000-7000-8000-0000000000aa","attempt_id":"018f0000-0000-7000-8000-000000000002","attempt_revision":3,"route_variant_id":"synthetic-route-001:35","occurred_at":"2026-10-14T14:00:00Z","ingested_at":"2026-10-14T14:00:00Z","attributes":{"sent":false,"attempts_count":2,"status":"RETRACTED"},"trace_id":"synthetic-trace-1","producer":"api"}
+Warning: --property is deprecated and will be removed in a future version. Use --reader-property instead.
+(producer exit 0)
+
+##### 06:05:08Z 5. consume climber-features.v1 --from-beginning; records keyed by the proof user (expect 3)
+feature records for 018f0000-0000-7000-8000-0000000000aa: 0
+(other keys on the topic: 5)
+
+##### 06:05:38Z 6. checkpoints (REST) and the checkpoint volume
+{
+  "counts": {
+    "restored": 0,
+    "total": 6,
+    "in_progress": 0,
+    "completed": 6,
+    "failed": 0
+  },
+  "latest_completed": {
+    "id": 6,
+    "status": "COMPLETED",
+    "external_path": "file:/checkpoints/dc709d4d160247c50dac16e997dc0592/chk-6",
+    "trigger_timestamp": 1792303550029
+  },
+  "latest_restored": null
+}
+/checkpoints:
+dc709d4d160247c50dac16e997dc0592
+
+/checkpoints/dc709d4d160247c50dac16e997dc0592:
+chk-6
+shared
+taskowned
+
+/checkpoints/dc709d4d160247c50dac16e997dc0592/chk-6:
+_metadata
+
+/checkpoints/dc709d4d160247c50dac16e997dc0592/shared:
+
+/checkpoints/dc709d4d160247c50dac16e997dc0592/taskowned:
+committed consumer-group offsets (beacon-stream):
+GROUP TOPIC PARTITION CURRENT-OFFSET LOG-END-OFFSET LAG
+beacon-stream attempts.v1 0 6 6 0
+beacon-stream attempts.v1 5 1 1 0
+
+##### 06:05:51Z 7. restart taskmanager
+ Container compose-taskmanager-1 Restarting 
+ Container compose-taskmanager-1 Started 
+t+3s job state: RUNNING
+{
+  "state": "RUNNING",
+  "vertices": [
+    {
+      "name": "Source: attempts.v1 -> parse-attempts -> (occurred-at-watermarks, invalid-until-bc-0302: Writer)",
+      "status": "RUNNING"
+    },
+    {
+      "name": "placeholder-features -> (sink-climber-features-v1: Writer -> sink-climber-features-v1: Committer, sink-stream-reconciliation-v1: Writer -> sink-stream-reconciliation-v1: Committer)",
+      "status": "RUNNING"
+    }
+  ]
+}
+{
+  "counts": {
+    "restored": 0,
+    "total": 6,
+    "in_progress": 0,
+    "completed": 6,
+    "failed": 0
+  },
+  "latest_restored": null,
+  "restart_counts": {
+    "restored": 0,
+    "total": 6,
+    "in_progress": 0,
+    "completed": 6,
+    "failed": 0
+  }
+}
+{
+  "root_exception": "null",
+  "history_entries": 0
+}
+
+##### 06:05:51Z 8. produce 1 more event (new attempt id) after the restart, then count ALL feature records
+018f0000-0000-7000-8000-0000000000aa|{"schema_version":1,"event_id":"018f0000-0000-7000-8000-000000000011","event_type":"ATTEMPT_RECORDED","user_id":"018f0000-0000-7000-8000-0000000000aa","attempt_id":"018f0000-0000-7000-8000-000000000012","attempt_revision":1,"route_variant_id":"synthetic-route-001:35","occurred_at":"2026-10-14T15:00:00Z","ingested_at":"2026-10-14T14:00:00Z","attributes":{"sent":true,"attempts_count":2,"status":"ACTIVE","grade_numeric":5.5},"trace_id":"synthetic-trace-1","producer":"api"}
+Warning: --property is deprecated and will be removed in a future version. Use --reader-property instead.
+feature records for 018f0000-0000-7000-8000-0000000000aa after the restart (expect 4 = 3 + 1, no reprocessing): 1
+Partition:0	NO_HEADERS	018f0000-0000-7000-8000-0000000000aa	{"schema_version":1,"event_id":"01a14d9d-eaab-7544-86fd-c9ce0623844d","user_id":"018f0000-0000-7000-8000-0000000000aa","feature_schema_version":"climber-features.v1","feature_as_of":"2026-10-14T15:00:00Z","source_watermark":"2026-10-14T15:00:00Z","provenance_checksum":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","aggregates":{"attempts_7d":0,"attempts_30d":0,"attempts_90d":0,"sends_7d":0,"sends_30d":0,"sends_90d":0,"send_rate_by_grade_band_90d":{},"recent_variant_ids":[],"last_session_at":null,"max_sent_grade_numeric_90d":null,"distinct_sessions_30d":0},"produced_at":"2026-10-18T06:05:57.289969218Z","producer":"stream"}
+attempts.v1 records for 018f0000-0000-7000-8000-0000000000aa from beginning: 4
+{
+  "counts": {
+    "restored": 1,
+    "total": 10,
+    "in_progress": 0,
+    "completed": 10,
+    "failed": 0
+  },
+  "latest_completed_id": 10,
+  "latest_restored_id": 6
+}
+GROUP TOPIC PARTITION CURRENT-OFFSET LOG-END-OFFSET LAG
+beacon-stream attempts.v1 0 7 7 0
+beacon-stream attempts.v1 5 1 1 0
+
+##### 06:06:37Z 9. reconciliation topic (expected empty: no late events were produced)
+stream-reconciliation.v1 records for the proof user: 3
+
+##### 06:06:49Z 10. docker stats --no-stream
+NAME                    MEM USAGE / LIMIT   MEM %     CPU %
+compose-web-1           8.449MiB / 128MiB   6.60%     0.00%
+compose-taskmanager-1   638.3MiB / 1.5GiB   41.56%    3.41%
+compose-api-1           341.7MiB / 1GiB     33.37%    0.43%
+compose-jobmanager-1    569.4MiB / 768MiB   74.14%    1.47%
+compose-postgres-1      36.2MiB / 512MiB    7.07%     1.76%
+compose-kafka-1         376.8MiB / 1GiB     36.79%    1.48%
+ Container compose-web-1 Stopping 
+ Container compose-taskmanager-1 Stopping 
+ Container compose-web-1 Stopped 
+ Container compose-web-1 Removing 
+ Container compose-web-1 Removed 
+ Container compose-api-1 Stopping 
+ Container compose-taskmanager-1 Stopped 
+ Container compose-taskmanager-1 Removing 
+ Container compose-taskmanager-1 Removed 
+ Container compose-jobmanager-1 Stopping 
+ Container compose-api-1 Stopped 
+ Container compose-api-1 Removing 
+ Container compose-api-1 Removed 
+ Container compose-decisions-init-1 Stopping 
+ Container compose-migrate-1 Stopping 
+ Container compose-migrate-1 Stopped 
+ Container compose-migrate-1 Removing 
+ Container compose-decisions-init-1 Stopped 
+ Container compose-decisions-init-1 Removing 
+ Container compose-decisions-init-1 Removed 
+ Container compose-migrate-1 Removed 
+ Container compose-postgres-1 Stopping 
+ Container compose-postgres-1 Stopped 
+ Container compose-postgres-1 Removing 
+ Container compose-postgres-1 Removed 
+ Container compose-jobmanager-1 Stopped 
+ Container compose-jobmanager-1 Removing 
+ Container compose-jobmanager-1 Removed 
+ Container compose-flink-init-1 Stopping 
+ Container compose-kafka-init-1 Stopping 
+ Container compose-flink-init-1 Stopped 
+ Container compose-flink-init-1 Removing 
+ Container compose-kafka-init-1 Stopped 
+ Container compose-kafka-init-1 Removing 
+ Container compose-flink-init-1 Removed 
+ Container compose-kafka-init-1 Removed 
+ Container compose-kafka-1 Stopping 
+ Container compose-kafka-1 Stopped 
+ Container compose-kafka-1 Removing 
+ Container compose-kafka-1 Removed 
+ Network compose_default Removing 
+ Network compose_default Removed 
+
+##### 06:06:54Z 11. stack left up (shared with the concurrent BC-0301 proof); docker compose --env-file .env -f infra/compose/docker-compose.yml -f infra/compose/kafka.yml -f infra/compose/flink.yml --profile core --profile stream down is run separately once both proofs are done
+NAME      STATUS
+done 06:06:54Z

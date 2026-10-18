@@ -1,0 +1,23 @@
+BC-0303 pinned artifact coordinates (verified 2026-10-18 with `curl -sI` on repo1.maven.org, HTTP 200 on the jar URL)
+
+Flink runtime/provided (compileOnly + testImplementation; bundled in flink-dist-2.2.1.jar inside flink:2.2.1-java21):
+  org.apache.flink:flink-streaming-java:2.2.1   https://repo1.maven.org/maven2/org/apache/flink/flink-streaming-java/2.2.1/flink-streaming-java-2.2.1.jar
+  org.apache.flink:flink-clients:2.2.1          https://repo1.maven.org/maven2/org/apache/flink/flink-clients/2.2.1/flink-clients-2.2.1.jar
+  org.apache.flink:flink-connector-base:2.2.1   https://repo1.maven.org/maven2/org/apache/flink/flink-connector-base/2.2.1/flink-connector-base-2.2.1.jar
+    (flink-dist-2.2.1.jar in the image contains 108 org/apache/flink/connector/base/ classes incl. SourceReaderBase, 704 streaming/api classes, 38 org/slf4j classes, 0 org/apache/kafka, 0 unshaded jackson; checked by copying the jar out of the image and `unzip -l`)
+Shipped in the fat jar (implementation):
+  org.apache.flink:flink-connector-kafka:5.0.0-2.2   https://repo1.maven.org/maven2/org/apache/flink/flink-connector-kafka/5.0.0-2.2/flink-connector-kafka-5.0.0-2.2.jar
+    (version string is 5.0.0-2.2, not 5.0.0; its parent pom declares kafka.version 4.2.0 and flink.version 2.1.0 with flink-* as provided; it drags com.fasterxml.jackson 2.18.2 + commons-lang3 3.18.0 transitively, which stay in the jar)
+  org.apache.kafka:kafka-clients:4.2.1               https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/4.2.1/kafka-clients-4.2.1.jar
+    (connector asks for 4.2.0; 4.2.1 is the patch the api already resolves through the Boot 4.1.1 BOM)
+  tools.jackson.core:jackson-databind:3.2.1          https://repo1.maven.org/maven2/tools/jackson/core/jackson-databind/3.2.1/ (Jackson 3, same major as the api; 3.2.1 is what networknt json-schema-validator 3.0.8 depends on)
+Tests only:
+  org.apache.flink:flink-test-utils:2.2.1            https://repo1.maven.org/maven2/org/apache/flink/flink-test-utils/2.2.1/flink-test-utils-2.2.1.jar (brings flink-runtime 2.2.1 + its tests jar, flink-test-utils-junit 2.2.1, log4j-slf4j-impl 2.24.3)
+  org.junit.jupiter:junit-jupiter:5.14.2             https://repo1.maven.org/maven2/org/junit/jupiter/junit-jupiter/5.14.2/junit-jupiter-5.14.2.jar
+  org.junit.platform:junit-platform-launcher:1.14.2  https://repo1.maven.org/maven2/org/junit/platform/junit-platform-launcher/1.14.2/junit-platform-launcher-1.14.2.jar
+  org.assertj:assertj-core:3.27.6                    https://repo1.maven.org/maven2/org/assertj/assertj-core/3.27.6/assertj-core-3.27.6.jar
+  com.networknt:json-schema-validator:3.0.8          https://repo1.maven.org/maven2/com/networknt/json-schema-validator/3.0.8/json-schema-validator-3.0.8.jar (same as services/api)
+Verified but NOT used:
+  org.apache.flink:flink-runtime:2.2.1 (+ -tests.jar), flink-streaming-java-2.2.1-tests.jar, flink-test-utils-junit:2.2.1, flink-connector-test-utils:2.2.1, flink-json:2.2.1 — all HTTP 200; the operator test harness is not needed by the BC-0303 tests (MiniCluster covers the chain), so none is pinned.
+Docker image: flink:2.2.1-java21 (Temurin 21.0.12.1, uid 9999 flink), pulled 2026-10-18.
+Gradle: 9.8.1 (gradle/wrapper); the fat jar is a plain Jar task (:stream:fatJar), no shadow plugin.

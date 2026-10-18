@@ -1,6 +1,9 @@
-.PHONY: dev down reset-db test test-api test-web test-ml lint fmt guards seed-demo import synthetic-board bench-catalog recompute-features test-e2e
+.PHONY: dev down reset-db test test-api test-web test-ml lint fmt guards seed-demo import synthetic-board bench-catalog recompute-features test-e2e stream-up stream-down outbox-status
 
 COMPOSE := docker compose --env-file .env -f infra/compose/docker-compose.yml --profile core
+# BC-0301/BC-0303: core plus the stream profile, merged over docker-compose.yml: kafka.yml
+# (kafka, kafka-init, the api override that enables the outbox publisher) and flink.yml.
+COMPOSE_STREAM := docker compose --env-file .env -f infra/compose/docker-compose.yml -f infra/compose/kafka.yml -f infra/compose/flink.yml --profile core --profile stream
 
 .env:
 	@echo "Missing .env: copy .env.example to .env and set every value (see comments)." >&2; exit 1
@@ -14,9 +17,27 @@ dev: .env
 down: .env
 	$(COMPOSE) down
 
-# Drops the Postgres volume so postgres/init.sql runs again on the next `make dev`.
+# Drops the Postgres volume so postgres/init.sql runs again on the next `make dev`. Uses the
+# stream file set so `kafkadata` goes too (an outbox reset without the broker log would leave
+# already-published events behind); harmless when the stream services were never started.
 reset-db: .env
-	$(COMPOSE) down -v
+	$(COMPOSE_STREAM) down -v
+
+# BC-0301: core + Kafka 4.3.1 (KRaft) + topic bootstrap (+ the Flink session cluster from
+# flink.yml, BC-0303), with the api recreated so its outbox publisher is enabled
+# (BEACON_STREAM_ENABLED=true comes from kafka.yml). Kafka host listener 127.0.0.1:9094.
+# `make dev` afterwards recreates the api with the publisher disabled again.
+stream-up: .env
+	./gradlew :api:bootJar
+	$(COMPOSE_STREAM) up -d --build --wait
+
+stream-down: .env
+	$(COMPOSE_STREAM) down
+
+# BC-0301: the reconciliation query over the outbox, run through psql in the postgres container
+# (the SQL twin of OutboxReconciliation and the beacon_outbox_* gauges on /prometheus).
+outbox-status: .env
+	$(COMPOSE) exec -T postgres psql -U beacon -d beacon -c "SELECT count(*) AS unpublished_rows, coalesce(extract(epoch FROM (now() - min(created_at))), 0)::int AS oldest_unpublished_age_s, count(*) FILTER (WHERE created_at < now() - interval '60 seconds') AS unpublished_over_60s FROM attempt_event_outbox WHERE published_at IS NULL;"
 
 test: test-api test-web test-ml
 
@@ -102,3 +123,23 @@ recompute-features: .env
 # the cwd off sys.path and so breaks `python -I -m datasets.synthetic.generate`.
 synthetic-board:
 	uv run --directory ml --no-project python -I datasets/synthetic/generate.py --seed 42 --routes 300 --out datasets/synthetic/fixtures/demo-board-v1.jsonl
+
+# BC-0303: Flink session cluster (infra/compose/flink.yml, part of COMPOSE_STREAM above) and the
+# feature job. `make stream-up` starts jobmanager + taskmanager with the rest of the stream
+# profile; the job itself is submitted separately so the fat jar build stays explicit.
+.PHONY: stream-submit stream-job-status stream-job-cancel
+
+# Builds the fat jar (mounted read-only into the jobmanager at /opt/beacon/libs, like the api
+# jar) and submits it detached. Re-running submits a second copy: cancel first (stream-job-cancel).
+stream-submit: .env
+	./gradlew :stream:fatJar
+	$(COMPOSE_STREAM) exec jobmanager flink run -d /opt/beacon/libs/stream.jar
+
+stream-job-status: .env
+	$(COMPOSE_STREAM) exec jobmanager flink list
+
+# Cancels every running job (JOB=<id> to cancel one). Checkpoints are retained on cancellation.
+stream-job-cancel: .env
+	@if [ -n "$(JOB)" ]; then $(COMPOSE_STREAM) exec jobmanager flink cancel $(JOB); \
+	else for id in $$($(COMPOSE_STREAM) exec jobmanager flink list -r 2>/dev/null | awk '/RUNNING/ {print $$4}'); do \
+	  $(COMPOSE_STREAM) exec jobmanager flink cancel $$id; done; fi
