@@ -3,6 +3,9 @@ package com.beaconclimb.api.features;
 import static com.beaconclimb.api.platform.jdbc.JdbcTypes.instant;
 import static com.beaconclimb.api.platform.jdbc.JdbcTypes.timestamp;
 
+import com.beaconclimb.features.AttemptFeatureRow;
+import com.beaconclimb.features.FeatureAggregates;
+import com.beaconclimb.features.FeatureComputer;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -71,6 +74,15 @@ public class FeatureRecomputeService {
     return outcome;
   }
 
+  /**
+   * The pure batch computation at {@code cutoffW} without touching {@code user_feature_snapshots}
+   * (BC-0306 parity oracle): the same query and the same shared computer as {@link #recompute},
+   * returned as an unstored SYNC-shaped snapshot. One read, no transaction, no log line.
+   */
+  public FeatureSnapshot compute(UUID userId, Instant cutoffW) {
+    return computed(userId, cutoffW, clock.instant().truncatedTo(ChronoUnit.MILLIS));
+  }
+
   /** Every account that is not erased, in id order, for {@code --recompute.user=all}. */
   public List<UUID> recomputableUserIds() {
     return jdbc.sql("SELECT id FROM users WHERE status <> 'DELETED' ORDER BY id")
@@ -79,6 +91,12 @@ public class FeatureRecomputeService {
   }
 
   private Outcome recomputeInTransaction(UUID userId, Instant cutoffW, Instant computedAt) {
+    FeatureSnapshot snapshot = computed(userId, cutoffW, computedAt);
+    boolean stored = snapshots.upsert(snapshot);
+    return new Outcome(snapshot, stored);
+  }
+
+  private FeatureSnapshot computed(UUID userId, Instant cutoffW, Instant computedAt) {
     List<AttemptFeatureRow> rows =
         jdbc.sql(SELECT_INCLUDED)
             .param("user_id", userId)
@@ -86,20 +104,17 @@ public class FeatureRecomputeService {
             .query(FeatureRecomputeService::row)
             .list();
     FeatureComputer.Result computed = FeatureComputer.compute(rows, cutoffW);
-    FeatureSnapshot snapshot =
-        new FeatureSnapshot(
-            userId,
-            FeatureAggregates.SCHEMA_VERSION,
-            cutoffW,
-            computed.featureAsOf(),
-            computed.aggregates(),
-            computed.checksum(),
-            FeatureSource.SYNC,
-            null,
-            null,
-            computedAt);
-    boolean stored = snapshots.upsert(snapshot);
-    return new Outcome(snapshot, stored);
+    return new FeatureSnapshot(
+        userId,
+        FeatureAggregates.SCHEMA_VERSION,
+        cutoffW,
+        computed.featureAsOf(),
+        computed.aggregates(),
+        computed.checksum(),
+        FeatureSource.SYNC,
+        null,
+        null,
+        computedAt);
   }
 
   private static AttemptFeatureRow row(ResultSet rs, int rowNum) throws SQLException {

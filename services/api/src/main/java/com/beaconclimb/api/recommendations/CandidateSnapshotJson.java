@@ -1,6 +1,5 @@
 package com.beaconclimb.api.recommendations;
 
-import com.beaconclimb.api.features.FeatureAggregates;
 import com.beaconclimb.api.identity.preferences.Goal;
 import com.beaconclimb.api.platform.web.Timestamps;
 import com.beaconclimb.api.ranking.Candidate;
@@ -10,6 +9,7 @@ import com.beaconclimb.api.ranking.RankResult;
 import com.beaconclimb.api.ranking.ScoreInputs;
 import com.beaconclimb.api.ranking.Scoring;
 import com.beaconclimb.api.ranking.UserContext;
+import com.beaconclimb.features.FeatureAggregates;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;

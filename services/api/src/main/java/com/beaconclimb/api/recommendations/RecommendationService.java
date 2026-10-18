@@ -4,9 +4,9 @@ import com.beaconclimb.api.catalog.CatalogQueryRepository.VariantRow;
 import com.beaconclimb.api.catalog.CatalogService;
 import com.beaconclimb.api.catalog.RouteVariantId;
 import com.beaconclimb.api.catalog.api.RouteVariantSummaryView;
-import com.beaconclimb.api.features.FeatureAggregates;
 import com.beaconclimb.api.features.FeatureProvenance;
 import com.beaconclimb.api.features.FeatureRecomputeService;
+import com.beaconclimb.api.features.FeatureSelection;
 import com.beaconclimb.api.features.FeatureSnapshot;
 import com.beaconclimb.api.features.FeatureSnapshotRepository;
 import com.beaconclimb.api.identity.ConsentGuard;
@@ -31,6 +31,7 @@ import com.beaconclimb.api.recommendations.CandidateRepository.CandidateRow;
 import com.beaconclimb.api.recommendations.DecisionLedgerRepository.LedgerEntry;
 import com.beaconclimb.api.recommendations.api.RecommendationResponse;
 import com.beaconclimb.api.recommendations.api.RecommendationView;
+import com.beaconclimb.features.FeatureAggregates;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
@@ -44,6 +45,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -58,11 +60,15 @@ import tools.jackson.databind.JsonNode;
  * and nothing else), the active policy (503 when none is registered). Then:
  *
  * <ol>
- *   <li>features: the user's climber-features.v1 snapshot, or a synchronous recompute at {@code W =
- *       now} when none exists. The row's {@link FeatureProvenance} (its {@code source} and {@code
- *       cutoff_w}) is reported as {@code features_source} / {@code features_cutoff_w} (BC-0310);
- *       tonight only SYNC rows exist, so the source is SYNC until the stream read path (part 2,
- *       after BC-0305) prefers a materialized STREAM row. {@code cold_start} is the ranker's
+ *   <li>features: the user's climber-features.v1 snapshot row chosen by the read rule of {@link
+ *       FeatureSelection} (BC-0310 part 2): the materialized STREAM row when the stream read path
+ *       is enabled and its {@code cutoff_w} is at least the SYNC row's, else the SYNC row with a
+ *       fallback reason; a synchronous recompute at {@code W = now} when neither exists. The chosen
+ *       row's {@link FeatureProvenance} (its {@code source} and {@code cutoff_w}) is reported as
+ *       {@code features_source} / {@code features_cutoff_w}, and the source and the fallback reason
+ *       are persisted on the ledger row (V11) so {@code getDecision} returns the real source.
+ *       {@code beacon.stream.enabled=false} always selects SYNC (reason STREAM_DISABLED), even when
+ *       a STREAM row is left over from an earlier stream run. {@code cold_start} is the ranker's
  *       verdict, which is true exactly when the snapshot included no ACTIVE attempt ({@code
  *       recent_variant_ids} empty and no graded send; equivalently {@code feature_as_of} null).
  *       {@code feature_as_of} in the response and the record is the snapshot's value, or {@code
@@ -99,6 +105,7 @@ public class RecommendationService {
   private final DecisionLedgerRepository ledger;
   private final TransactionTemplate tx;
   private final Clock clock;
+  private final boolean streamEnabled;
 
   public RecommendationService(
       ConsentGuard consent,
@@ -112,7 +119,8 @@ public class RecommendationService {
       DecisionRecordSchema schema,
       DecisionLedgerRepository ledger,
       TransactionTemplate tx,
-      Clock clock) {
+      Clock clock,
+      @Value("${beacon.stream.enabled:false}") boolean streamEnabled) {
     this.consent = consent;
     this.quota = quota;
     this.preferences = preferences;
@@ -125,6 +133,7 @@ public class RecommendationService {
     this.ledger = ledger;
     this.tx = tx;
     this.clock = clock;
+    this.streamEnabled = streamEnabled;
   }
 
   public RecommendationResponse recommend(UUID userId, RecommendationRequest body) {
@@ -140,10 +149,14 @@ public class RecommendationService {
     Policy policy = activePolicy();
     StoredPolicy storedPolicy =
         policies.find(policy.policyVersion()).orElseThrow(this::policyUnavailable);
-    FeatureSnapshot snapshot =
-        snapshots
-            .find(userId, FeatureAggregates.SCHEMA_VERSION)
-            .orElseGet(() -> features.recompute(userId, now).snapshot());
+    FeatureSelection selection =
+        FeatureSelection.select(
+                snapshots.findBoth(userId, FeatureAggregates.SCHEMA_VERSION), streamEnabled)
+            .orElseGet(
+                () ->
+                    FeatureSelection.recomputed(
+                        features.recompute(userId, now).snapshot(), streamEnabled));
+    FeatureSnapshot snapshot = selection.snapshot();
     List<CandidateRow> rows = candidates.candidates(board.boardId(), request.angleDeg(), now);
     Map<String, Instant> lastAttempts =
         candidates.lastAttemptedAt(userId, board.boardId(), request.angleDeg());
@@ -220,6 +233,8 @@ public class RecommendationService {
             snapshot.featureSchemaVersion(),
             snapshot.featureAsOf(),
             snapshot.cutoffW(),
+            snapshot.source(),
+            selection.fallbackReason(),
             digest,
             SnapshotStore.uri(digest),
             record.get("rng_seed").stringValue(),
@@ -231,12 +246,14 @@ public class RecommendationService {
     persist(entry, snapshotBytes, digest, result.ranked());
     log.info(
         "recommendation outcome=DECIDED user_id={} decision_id={} candidates={} served={}"
-            + " cold_start={}",
+            + " cold_start={} features_source={} features_fallback={}",
         userId,
         decisionId,
         pool.size(),
         result.ranked().size(),
-        result.coldStart());
+        result.coldStart(),
+        snapshot.source(),
+        selection.fallbackReason());
     return response(entry, FeatureProvenance.of(snapshot), result.ranked(), variants);
   }
 

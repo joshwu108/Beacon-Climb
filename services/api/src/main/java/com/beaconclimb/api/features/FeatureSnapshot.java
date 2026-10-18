@@ -1,5 +1,6 @@
 package com.beaconclimb.api.features;
 
+import com.beaconclimb.features.FeatureAggregates;
 import java.time.Instant;
 import java.util.UUID;
 

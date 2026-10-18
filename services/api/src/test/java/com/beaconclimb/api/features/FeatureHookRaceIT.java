@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.beaconclimb.api.ApiApplication;
 import com.beaconclimb.api.attempts.AttemptsTestSupport;
+import com.beaconclimb.features.FeatureAggregates;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;

@@ -3,6 +3,7 @@ package com.beaconclimb.api.features;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.beaconclimb.api.recommendations.RecommendationsTestSupport;
+import com.beaconclimb.features.FeatureAggregates;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;

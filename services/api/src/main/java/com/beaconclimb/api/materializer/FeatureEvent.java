@@ -1,6 +1,6 @@
 package com.beaconclimb.api.materializer;
 
-import com.beaconclimb.api.features.FeatureAggregates;
+import com.beaconclimb.features.FeatureAggregates;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.UUID;

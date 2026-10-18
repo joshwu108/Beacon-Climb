@@ -10,10 +10,10 @@ import java.util.Objects;
  * feature_as_of} stays the maximum {@code occurred_at} the row included, so {@code cutoffW >=
  * feature_as_of} whenever both are known.
  *
- * <p>This is the seam between the feature read and the response mapping: part 1 (BC-0310) fills it
- * from the single live row, which the attempts hook and the recompute write with source SYNC; part
- * 2 (after BC-0305) changes only where it is filled from, preferring the materialized STREAM row
- * when it is at least as fresh as the SYNC row.
+ * <p>This is the seam between the feature read and the response mapping: it is filled from the row
+ * {@link FeatureSelection} chose (BC-0310 part 2: the materialized STREAM row when the stream read
+ * path is enabled and the row is at least as fresh as the SYNC row, else SYNC) and persisted on the
+ * decision ledger (V11) so {@code getDecision} echoes it.
  */
 public record FeatureProvenance(FeatureSource source, Instant cutoffW) {
 

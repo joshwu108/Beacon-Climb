@@ -5,7 +5,6 @@ import com.beaconclimb.api.catalog.CatalogService;
 import com.beaconclimb.api.catalog.RouteVariantId;
 import com.beaconclimb.api.catalog.api.RouteVariantSummaryView;
 import com.beaconclimb.api.features.FeatureProvenance;
-import com.beaconclimb.api.features.FeatureSource;
 import com.beaconclimb.api.platform.json.Jcs;
 import com.beaconclimb.api.platform.web.ApiException;
 import com.beaconclimb.api.platform.web.ErrorCode;
@@ -35,9 +34,13 @@ import tools.jackson.databind.JsonNode;
  * written with the decision; the route summaries are the catalog's current rows, so a variant that
  * has since left the catalog is shown with its provider id as name and no grade.
  *
- * <p>{@code features_source} / {@code features_cutoff_w} (contract 1.2.0, BC-0310 part 1) are
- * derived at read time, see {@link #provenance}: the stored decision-record.v1 document ({@code
- * additionalProperties: false}) cannot carry them and no column was added tonight.
+ * <p>{@code features_source} / {@code features_cutoff_w} (contract 1.2.0, BC-0310) are read from
+ * the ledger columns {@code feature_source} (V11) and {@code feature_cutoff_w} (V6), see {@link
+ * #provenance}. The "fallback reason in the decision record" of BC-0310 part 2 is the ledger column
+ * {@code feature_fallback_reason} (NO_STREAM_ROW | STREAM_OLDER_THAN_SYNC | STREAM_DISABLED, null
+ * when the STREAM row was served): the stored decision-record.v1 document ({@code
+ * additionalProperties: false}) cannot carry it and the contract's {@code Decision} has no member
+ * for it, so it stays in the ledger until decision-record v2 (BC-0401) exposes it.
  */
 @Service
 public class DecisionService {
@@ -85,17 +88,12 @@ public class DecisionService {
   }
 
   /**
-   * Read-time derivation (BC-0310 part 1). Every decision written before the stream read path
-   * exists ranked on a SYNC snapshot, so the source is SYNC; the cutoff is the ledger's {@code
-   * feature_cutoff_w} column, which BC-0111 has written since V6, so it is omitted only when a row
-   * recorded none.
-   *
-   * <p>TODO(BC-0310 part 2, after BC-0305): persist the source per decision (a column with
-   * BC-0305's migration, or decision-record v2 under BC-0401) and read it here instead of assuming
-   * SYNC; otherwise a decision ranked on a STREAM row would be reported as SYNC.
+   * The persisted provenance (BC-0310 part 2): {@code feature_source} as written with the decision
+   * (a pre-V11 row reads as SYNC, which is what every such ranking read) and the ledger's {@code
+   * feature_cutoff_w} (V6), omitted only when a row recorded none.
    */
   private static FeatureProvenance provenance(StoredDecision decision) {
-    return new FeatureProvenance(FeatureSource.SYNC, decision.featureCutoffW());
+    return new FeatureProvenance(decision.featureSource(), decision.featureCutoffW());
   }
 
   private static RecommendationView view(ExposureRow exposure, RouteVariantSummaryView route) {

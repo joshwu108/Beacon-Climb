@@ -21,6 +21,8 @@ import com.beaconclimb.api.identity.ConsentRepository;
 import com.beaconclimb.api.identity.Uuid7;
 import com.beaconclimb.api.identity.api.ConsentDocument;
 import com.beaconclimb.api.platform.web.ApiException;
+import com.beaconclimb.features.FeatureAggregates;
+import com.beaconclimb.features.FeatureComputer;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;

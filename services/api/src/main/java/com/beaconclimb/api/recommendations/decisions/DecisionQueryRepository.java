@@ -3,6 +3,8 @@ package com.beaconclimb.api.recommendations.decisions;
 import static com.beaconclimb.api.platform.jdbc.JdbcTypes.instant;
 
 import com.beaconclimb.api.catalog.CatalogQueryRepository.VariantRow;
+import com.beaconclimb.api.features.FeatureFallbackReason;
+import com.beaconclimb.api.features.FeatureSource;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -28,7 +30,9 @@ public class DecisionQueryRepository {
   /**
    * The columns of one owned decision; {@code requestJson} and {@code recordJson} are JSON text.
    * {@code featureCutoffW} is the V6 column addressing the snapshot row the ranking read (null only
-   * if a writer recorded none).
+   * if a writer recorded none). {@code featureSource} is the V11 column (BC-0310 part 2): a NULL,
+   * i.e. a row written before V11, reads as SYNC because every such ranking read the single live
+   * SYNC row; {@code featureFallbackReason} is null for STREAM and for pre-V11 rows.
    */
   public record StoredDecision(
       UUID decisionId,
@@ -36,6 +40,8 @@ public class DecisionQueryRepository {
       String policyVersion,
       String modelVersion,
       Instant featureCutoffW,
+      FeatureSource featureSource,
+      FeatureFallbackReason featureFallbackReason,
       boolean coldStart,
       boolean fallbackUsed,
       String requestJson,
@@ -58,6 +64,7 @@ public class DecisionQueryRepository {
   public Optional<StoredDecision> findOwned(UUID userId, UUID decisionId) {
     return jdbc.sql(
             "SELECT decision_id, created_at, policy_version, model_version, feature_cutoff_w,"
+                + " feature_source, feature_fallback_reason,"
                 + " cold_start, fallback_used, request_json::text AS request_json,"
                 + " record_json::text AS record_json FROM recommendation_decisions"
                 + " WHERE user_id = :user_id AND decision_id = :id AND erased = false")
@@ -115,10 +122,20 @@ public class DecisionQueryRepository {
         rs.getString("policy_version"),
         rs.getString("model_version"),
         instant(rs, "feature_cutoff_w"),
+        featureSource(rs.getString("feature_source")),
+        fallbackReason(rs.getString("feature_fallback_reason")),
         rs.getBoolean("cold_start"),
         rs.getBoolean("fallback_used"),
         rs.getString("request_json"),
         rs.getString("record_json"));
+  }
+
+  private static FeatureSource featureSource(String stored) {
+    return stored == null ? FeatureSource.SYNC : FeatureSource.valueOf(stored);
+  }
+
+  private static FeatureFallbackReason fallbackReason(String stored) {
+    return stored == null ? null : FeatureFallbackReason.valueOf(stored);
   }
 
   private ExposureRow exposure(ResultSet rs, int rowNum) throws SQLException {

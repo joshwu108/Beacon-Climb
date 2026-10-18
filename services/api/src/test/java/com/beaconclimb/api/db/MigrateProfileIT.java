@@ -35,7 +35,7 @@ class MigrateProfileIT extends AbstractPostgresIT {
     assertThat(environment.getProperty("spring.flyway.enabled")).isEqualTo("true");
     assertThat(context.getBeansOfType(MigrateRunner.class)).hasSize(1);
     assertThat(flyway.info().pending()).isEmpty();
-    assertThat(flyway.info().current().getVersion().toString()).isEqualTo("10");
+    assertThat(flyway.info().current().getVersion().toString()).isEqualTo("11");
   }
 
   @Test
@@ -47,7 +47,8 @@ class MigrateProfileIT extends AbstractPostgresIT {
         .contains("migrated version=8 script=V8__account_creations.sql")
         .contains("migrated version=9 script=V9__feature_snapshots_stream.sql")
         .contains("migrated version=10 script=V10__reconciliation.sql")
-        .endsWith("migrations applied=10 pending=0");
+        .contains("migrated version=11 script=V11__decision_feature_provenance.sql")
+        .endsWith("migrations applied=11 pending=0");
   }
 
   /** An empty migrate password must fail loudly, never silently migrate (TM-27). */

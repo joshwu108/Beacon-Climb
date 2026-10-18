@@ -2,6 +2,7 @@ package com.beaconclimb.api.features;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.beaconclimb.features.FeatureComputer;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;

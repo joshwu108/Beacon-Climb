@@ -149,7 +149,8 @@ public abstract class RecommendationsTestSupport extends AttemptsTestSupport {
     return jdbc.sql(
             "SELECT decision_id, user_id, session_id, policy_version, policy_code_digest,"
                 + " model_version, feature_snapshot_user_id, feature_schema_version,"
-                + " feature_as_of, feature_cutoff_w, candidate_set_digest, candidate_snapshot_uri,"
+                + " feature_as_of, feature_cutoff_w, feature_source, feature_fallback_reason,"
+                + " candidate_set_digest, candidate_snapshot_uri,"
                 + " rng_seed, environment_digest, request_json::text AS request_json,"
                 + " record_json::text AS record_json, cold_start, fallback_used, erased"
                 + " FROM recommendation_decisions WHERE decision_id = :id")

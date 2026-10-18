@@ -3,7 +3,6 @@ package com.beaconclimb.api.materializer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.beaconclimb.api.features.FeatureAggregates;
 import com.beaconclimb.api.features.FeatureRecomputeService;
 import com.beaconclimb.api.features.FeatureSnapshot;
 import com.beaconclimb.api.features.FeatureSnapshotRepository;
@@ -11,6 +10,7 @@ import com.beaconclimb.api.features.FeatureSource;
 import com.beaconclimb.api.materializer.MaterializerService.Outcome;
 import com.beaconclimb.api.materializer.MaterializerService.Result;
 import com.beaconclimb.api.platform.json.Jcs;
+import com.beaconclimb.features.FeatureAggregates;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;

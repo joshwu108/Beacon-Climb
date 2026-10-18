@@ -18,10 +18,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * BC-0101/BC-0107/BC-0109/BC-0113/BC-0110/BC-0111/BC-0123/BC-0123c/BC-0305/BC-0309: every Flyway
- * migration applies on an empty Postgres 17 as beacon_migrate, the runtime role beacon_app gets DML
- * and nothing more (and no UPDATE or DELETE on the append-only ledger and audit tables), the
- * constraints from planning/06 sections 1, 6 and 7 hold, and the golden schema document
+ * BC-0101/BC-0107/BC-0109/BC-0113/BC-0110/BC-0111/BC-0123/BC-0123c/BC-0305/BC-0309/BC-0310: every
+ * Flyway migration applies on an empty Postgres 17 as beacon_migrate, the runtime role beacon_app
+ * gets DML and nothing more (and no UPDATE or DELETE on the append-only ledger and audit tables),
+ * the constraints from planning/06 sections 1, 6 and 7 hold, and the golden schema document
  * docs/db/schema-v1.md matches pg_dump of the live database.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
@@ -39,7 +39,8 @@ class MigrationIT extends AbstractPostgresIT {
           Map.entry("7", "V7__attempt_revisions_append_only.sql"),
           Map.entry("8", "V8__account_creations.sql"),
           Map.entry("9", "V9__feature_snapshots_stream.sql"),
-          Map.entry("10", "V10__reconciliation.sql"));
+          Map.entry("10", "V10__reconciliation.sql"),
+          Map.entry("11", "V11__decision_feature_provenance.sql"));
 
   private static final List<String> ALL_TABLES =
       List.of(
@@ -78,7 +79,7 @@ class MigrationIT extends AbstractPostgresIT {
   }
 
   @Test
-  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionTen() {
+  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionEleven() {
     List<Map<String, Object>> rows =
         jdbc()
             .queryForList(
@@ -88,7 +89,7 @@ class MigrationIT extends AbstractPostgresIT {
     assertThat(rows)
         .extracting(row -> Map.entry(row.get("version").toString(), row.get("script").toString()))
         .containsExactlyElementsOf(MIGRATIONS);
-    assertThat(rows.getLast().get("version").toString()).isEqualTo("10");
+    assertThat(rows.getLast().get("version").toString()).isEqualTo("11");
   }
 
   @Test
@@ -241,6 +242,47 @@ class MigrationIT extends AbstractPostgresIT {
             "recommendation_decisions:SELECT",
             "recommendation_exposures:INSERT",
             "recommendation_exposures:SELECT");
+  }
+
+  /**
+   * BC-0310 part 2 (V11): the ledger's feature provenance columns are nullable text under closed
+   * CHECKs, a fallback reason is only allowed beside SYNC, and the app role is still denied UPDATE
+   * and DELETE (ALTER TABLE keeps the V6 grants).
+   */
+  @Test
+  void decisionLedgerFeatureProvenanceColumnsAreNullableUnderClosedChecks() {
+    List<Map<String, Object>> columns =
+        jdbc()
+            .queryForList(
+                "select column_name, data_type, is_nullable from information_schema.columns"
+                    + " where table_name = 'recommendation_decisions'"
+                    + " and column_name in ('feature_source', 'feature_fallback_reason')"
+                    + " order by column_name");
+    assertThat(columns)
+        .extracting(
+            row ->
+                row.get("column_name") + ":" + row.get("data_type") + ":" + row.get("is_nullable"))
+        .containsExactly("feature_fallback_reason:text:YES", "feature_source:text:YES");
+    assertThat(constraintDefinition("recommendation_decisions_feature_source_check"))
+        .contains("'SYNC'")
+        .contains("'STREAM'");
+    assertThat(constraintDefinition("recommendation_decisions_feature_fallback_reason_check"))
+        .contains("'NO_STREAM_ROW'")
+        .contains("'STREAM_OLDER_THAN_SYNC'")
+        .contains("'STREAM_DISABLED'");
+    assertThat(
+            constraintDefinition("recommendation_decisions_feature_fallback_only_for_sync_check"))
+        .contains("feature_fallback_reason IS NULL")
+        .contains("'SYNC'");
+    assertThat(privilegesOf("recommendation_decisions")).containsExactly("INSERT", "SELECT");
+  }
+
+  private String constraintDefinition(String name) {
+    return jdbc()
+        .queryForObject(
+            "select pg_get_constraintdef(oid) from pg_constraint where conname = ?",
+            String.class,
+            name);
   }
 
   /** BC-0123 F6 (V7): the audit trail is append-only for the API role; policies stay writable. */

@@ -49,10 +49,11 @@ class DecisionEndpointIT extends RecommendationsTestSupport {
             "fallback_used")) {
       assertThat(decision.get(member)).as(member).isEqualTo(posted.get(member));
     }
-    // BC-0310 part 1: the read path derives the source (SYNC) and reads the cutoff from the
-    // ledger's feature_cutoff_w column; both echo what the POST served.
+    // BC-0310 part 2: the read path returns the persisted feature_source (V11) and the ledger's
+    // feature_cutoff_w; this context has the stream read path disabled, so both say SYNC.
     assertThat(decision.get("features_source").asString()).isEqualTo("SYNC");
     assertThat(decision.get("features_cutoff_w").asString()).isNotBlank();
+    assertThat(decisionRow(UUID.fromString(decisionId)).get("feature_source")).isEqualTo("SYNC");
     assertThat(decision.get("created_at").asString()).isNotBlank();
     assertThat(response.getBody())
         .doesNotContain("candidate_snapshot_uri")
@@ -60,6 +61,30 @@ class DecisionEndpointIT extends RecommendationsTestSupport {
         .doesNotContain("data/decisions")
         .doesNotContain("user_features")
         .doesNotContain("rng_seed");
+  }
+
+  /** BC-0310 part 2: a ledger row written before V11 (NULL columns) reads as SYNC. */
+  @Test
+  void preV11RowWithoutPersistedSourceReadsAsSync() {
+    Account account = registerReady("BEGINNER");
+    JsonNode posted =
+        recommendOk(
+            account.token(), recommendationBody("TECHNIQUE", 2, UUID.randomUUID(), List.of()));
+    UUID decisionId = UUID.fromString(posted.get("decision_id").asString());
+    assertThat(
+            migrateClient()
+                .sql(
+                    "UPDATE recommendation_decisions SET feature_source = NULL,"
+                        + " feature_fallback_reason = NULL WHERE decision_id = :id")
+                .param("id", decisionId)
+                .update())
+        .isEqualTo(1);
+
+    ResponseEntity<String> response = get(DECISIONS + decisionId, account.token());
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    ContractSchemas.assertConforms("Decision", response.getBody());
+    assertThat(tree(response.getBody()).get("features_source").asString()).isEqualTo("SYNC");
   }
 
   @Test
@@ -102,15 +127,17 @@ class DecisionEndpointIT extends RecommendationsTestSupport {
    * The app role cannot UPDATE the ledger (TM-24), so the erasure flag is set as the owner role.
    */
   private void markErased(UUID decisionId) {
-    org.springframework.jdbc.core.simple.JdbcClient migrate =
-        org.springframework.jdbc.core.simple.JdbcClient.create(
-            new org.springframework.jdbc.datasource.DriverManagerDataSource(
-                POSTGRES.getJdbcUrl(), "beacon_migrate", MIGRATE_PASSWORD));
     assertThat(
-            migrate
+            migrateClient()
                 .sql("UPDATE recommendation_decisions SET erased = true WHERE decision_id = :id")
                 .param("id", decisionId)
                 .update())
         .isEqualTo(1);
+  }
+
+  private static org.springframework.jdbc.core.simple.JdbcClient migrateClient() {
+    return org.springframework.jdbc.core.simple.JdbcClient.create(
+        new org.springframework.jdbc.datasource.DriverManagerDataSource(
+            POSTGRES.getJdbcUrl(), "beacon_migrate", MIGRATE_PASSWORD));
   }
 }

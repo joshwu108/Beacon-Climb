@@ -4,6 +4,7 @@ import static com.beaconclimb.api.platform.jdbc.JdbcTypes.instant;
 import static com.beaconclimb.api.platform.jdbc.JdbcTypes.timestamp;
 
 import com.beaconclimb.api.platform.json.Jcs;
+import com.beaconclimb.features.FeatureAggregates;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -29,8 +30,9 @@ import org.springframework.stereotype.Repository;
  * #lockStream} reads the stored row {@code FOR UPDATE} so the materializer decides apply /
  * duplicate / stale / conflict under the row lock; {@link #upsertStream} then writes, re-checking
  * in SQL that the stored offset is lower for the same partition (defence in depth, the decision is
- * the service's). {@link #find} keeps returning the SYNC row: the recommendation read rule changes
- * in BC-0310 part 2, which will build on {@link #findBoth}.
+ * the service's). {@link #find} returns the SYNC row; the recommendation read rule (BC-0310 part 2,
+ * {@link FeatureSelection}) reads {@link #findBoth} and prefers the STREAM row when the stream read
+ * path is enabled and its {@code cutoff_w} is at least the SYNC row's.
  */
 @Repository
 public class FeatureSnapshotRepository {
@@ -113,6 +115,24 @@ public class FeatureSnapshotRepository {
     return new Both(
         rows.stream().filter(r -> r.source() == FeatureSource.SYNC).findFirst(),
         rows.stream().filter(r -> r.source() == FeatureSource.STREAM).findFirst());
+  }
+
+  /**
+   * The stored {@code aggregates_json} of one row as Postgres renders it (jsonb re-normalises
+   * whitespace and key order on storage, so callers canonicalise before comparing). The parity
+   * oracle (BC-0306) compares this text, never a re-serialised {@link FeatureAggregates}, with the
+   * batch computer's canonical output.
+   */
+  public Optional<String> findAggregatesText(
+      UUID userId, int featureSchemaVersion, FeatureSource source) {
+    return jdbc.sql(
+            "SELECT aggregates_json::text FROM user_feature_snapshots WHERE user_id = :user_id"
+                + " AND feature_schema_version = :version AND source = :source")
+        .param("user_id", userId)
+        .param("version", featureSchemaVersion)
+        .param("source", source.name())
+        .query(String.class)
+        .optional();
   }
 
   /**

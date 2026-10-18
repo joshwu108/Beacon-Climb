@@ -1,0 +1,22 @@
+# BC-0306: `--spring.profiles.active=parity` turns the jar into the batch parity oracle CLI
+# (`make test-parity [USER=<uuid>|all] [OUT=<path>]`, scripts/parity/parity.sh). Same host-JVM
+# pattern as the recompute profile: no web server, Kafka stays off. Unlike recompute, Flyway is
+# OFF: the oracle only reads (users, user_feature_snapshots, the attempts join of the recompute
+# query) as the runtime role, needs no migration password, and must never write to any table.
+# Run it against a migrated stack (`make dev` / `make stream-up`); a missing schema is exit 2.
+spring:
+  main:
+    web-application-type: none
+    banner-mode: off
+  flyway:
+    enabled: false
+logging:
+  level:
+    root: WARN
+    com.beaconclimb.api.parity: INFO
+  structured:
+    format:
+      # The CLI is read by a person; an empty format restores the plain pattern.
+      console: ""
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %5p %logger{0} - %m%n"

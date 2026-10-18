@@ -226,3 +226,11 @@ observability-down: .env
 observability-check:
 	$(if $(filter 0,$(STREAM)),BEACON_OBS_STREAM=0,) bash test/observability/metrics-presence.sh
 
+# BC-0306: `make test-parity [USER=<uuid>|all] [OUT=docs/evidence/BC-0306/parity-<timestamp>.json]`
+# runs the batch parity oracle of ADR-0004 (scripts/parity/parity.sh, api jar profile `parity`,
+# host JVM against 127.0.0.1:5432, SELECT only, no Flyway) over every non-erased user with a
+# STREAM row (or the given one): batch recompute at W = the row's cutoff_w vs the materialized
+# aggregates and checksum. Writes the JSON report to OUT (counts only in the summary; synthetic_/
+# e2e_/demo users only, otherwise refuses with exit 2) and prints one `parity summary ...` line.
+# Exit codes: 0 every compared user EQUAL, 1 any DIFF or SAME_W_MISMATCH, 2 usage/refusal/error.
+# USER is only honoured when given on the make command line (the login shell exports USER).

@@ -30,6 +30,11 @@ dependencies {
     // stream-dlq.v1 schemas, EventValidator, DlqRecord, RedriveRecord). The attempt write path,
     // the DlqPublisher and the redrive CLI all judge conformance through it.
     implementation(project(":events"))
+    // BC-0304 follow-up (BC-0306): the ONE climber-features.v1 implementation (FeatureComputer,
+    // FeatureAggregates, GradeBandBuckets, AttemptFeatureRow) shared with the Flink job. The api
+    // copies were deleted; the SQL recompute, the materializer and the parity oracle all fold rows
+    // through com.beaconclimb.features.
+    implementation(project(":features"))
     // BC-0122: token-bucket rate limiting (ADR-0005). Core only; no Spring integration needed.
     implementation("com.bucket4j:bucket4j_jdk17-core:8.21.0")
     // BC-0301: the transactional-outbox publisher (com.beaconclimb.api.outbox). Only the core
@@ -48,6 +53,8 @@ dependencies {
     // BC-0301: shared apache/kafka:4.3.1 KRaft container (KafkaTestContainer) and bounded waits.
     testImplementation("org.testcontainers:testcontainers-kafka")
     testImplementation("org.awaitility:awaitility")
+    // BC-0306: GoldenFixturesApiTest replays the 16 shared golden fixtures through the SQL path.
+    testImplementation(testFixtures(project(":features")))
     testImplementation("net.jqwik:jqwik:1.9.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

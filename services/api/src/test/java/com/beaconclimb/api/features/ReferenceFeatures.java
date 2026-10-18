@@ -1,6 +1,7 @@
 package com.beaconclimb.api.features;
 
 import com.beaconclimb.api.platform.json.Jcs;
+import com.beaconclimb.features.FeatureComputer;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;

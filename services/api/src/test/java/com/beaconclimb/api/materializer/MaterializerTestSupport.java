@@ -4,8 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.beaconclimb.api.ApiApplication;
 import com.beaconclimb.api.attempts.AttemptsTestSupport;
-import com.beaconclimb.api.features.FeatureAggregates;
-import com.beaconclimb.api.features.FeatureAggregates.BandCounts;
 import com.beaconclimb.api.features.FeatureSnapshot;
 import com.beaconclimb.api.features.FeatureSnapshotRepository;
 import com.beaconclimb.api.materializer.MaterializerService.Result;
@@ -15,6 +13,8 @@ import com.beaconclimb.events.EventSchemas;
 import com.beaconclimb.events.EventValidator;
 import com.beaconclimb.events.ValidationResult;
 import com.beaconclimb.events.ValidationResult.Valid;
+import com.beaconclimb.features.FeatureAggregates;
+import com.beaconclimb.features.FeatureAggregates.BandCounts;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;

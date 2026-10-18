@@ -32,7 +32,8 @@ final class SchemaGolden {
       `services/api/src/main/resources/db/migration` (currently `V1__identity_catalog_provenance.sql`,
       `V2__sessions.sql`, `V3__attempts_outbox.sql`, `V4__feature_snapshots.sql`,
       `V5__ranking_policies.sql`, `V6__decisions.sql`, `V7__attempt_revisions_append_only.sql`,
-      `V8__account_creations.sql`, `V9__feature_snapshots_stream.sql` and `V10__reconciliation.sql`)
+      `V8__account_creations.sql`, `V9__feature_snapshots_stream.sql`, `V10__reconciliation.sql`
+      and `V11__decision_feature_provenance.sql`)
       applied to Postgres 17 in Testcontainers. Privileges (the V6, V7 and V8 REVOKEs) are not part
       of the dump; MigrationIT asserts them directly.
       Do not edit by hand.

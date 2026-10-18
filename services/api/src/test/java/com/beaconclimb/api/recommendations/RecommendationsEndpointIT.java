@@ -2,6 +2,8 @@ package com.beaconclimb.api.recommendations;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.beaconclimb.api.features.FeatureSnapshotRepository;
+import com.beaconclimb.api.features.StreamSnapshot;
 import com.beaconclimb.api.identity.ContractSchemas;
 import com.beaconclimb.api.platform.web.ErrorCode;
 import com.beaconclimb.api.platform.web.ErrorEnvelope;
@@ -14,6 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import tools.jackson.databind.JsonNode;
@@ -27,6 +30,8 @@ import tools.jackson.databind.JsonNode;
 class RecommendationsEndpointIT extends RecommendationsTestSupport {
 
   private static final Instant T = Instant.parse("2026-10-14T14:00:00Z");
+
+  @Autowired FeatureSnapshotRepository snapshots;
 
   @BeforeEach
   void pinClock() {
@@ -215,6 +220,53 @@ class RecommendationsEndpointIT extends RecommendationsTestSupport {
     assertThat(row.get("cold_start")).isEqualTo(false);
     assertThat(row.get("feature_as_of")).isNotNull();
     assertThat(row.get("feature_cutoff_w")).isNotNull();
+    // BC-0310 part 2 (V11): this context runs with beacon.stream.enabled=false (the default), so
+    // the persisted source is SYNC with the reason STREAM_DISABLED, whatever rows exist.
+    assertThat(row.get("feature_source")).isEqualTo("SYNC");
+    assertThat(row.get("feature_fallback_reason")).isEqualTo("STREAM_DISABLED");
+  }
+
+  /**
+   * BC-0310 part 2: with the stream read path disabled a leftover STREAM row, even a fresher one,
+   * is never served ("disabled means SYNC always", FeatureSelection); the response and the ledger
+   * say SYNC / STREAM_DISABLED and getDecision echoes SYNC.
+   */
+  @Test
+  void leftoverStreamRowIsIgnoredWhileTheStreamReadPathIsDisabled() {
+    Account account = registerReady("INTERMEDIATE");
+    attemptAt(account, candidateIds().get(0), T.minus(Duration.ofHours(2)));
+    Instant fresher = T.plus(Duration.ofMinutes(1));
+    assertThat(
+            snapshots.upsertStream(
+                new StreamSnapshot(
+                    account.userId(),
+                    fresher,
+                    fresher,
+                    "{\"attempts_30d\":0,\"attempts_7d\":0,\"attempts_90d\":0,"
+                        + "\"distinct_sessions_30d\":0,\"last_session_at\":null,"
+                        + "\"max_sent_grade_numeric_90d\":null,\"recent_variant_ids\":[],"
+                        + "\"send_rate_by_grade_band_90d\":{},\"sends_30d\":0,\"sends_7d\":0,"
+                        + "\"sends_90d\":0}",
+                    "0".repeat(64),
+                    0,
+                    1L,
+                    T)))
+        .isTrue();
+
+    JsonNode response =
+        recommendOk(
+            account.token(), recommendationBody("TECHNIQUE", 5, UUID.randomUUID(), List.of()));
+
+    assertThat(response.get("features_source").asString()).isEqualTo("SYNC");
+    assertThat(response.get("features_cutoff_w").asString()).isEqualTo("2026-10-14T14:00:00Z");
+    assertThat(response.get("cold_start").asBoolean()).isFalse();
+    Map<String, Object> row = decisionRow(UUID.fromString(response.get("decision_id").asString()));
+    assertThat(row.get("feature_source")).isEqualTo("SYNC");
+    assertThat(row.get("feature_fallback_reason")).isEqualTo("STREAM_DISABLED");
+    ResponseEntity<String> stored =
+        get(DECISIONS + response.get("decision_id").asString(), account.token());
+    assertThat(stored.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(tree(stored.getBody()).get("features_source").asString()).isEqualTo("SYNC");
   }
 
   @Test

@@ -1,9 +1,9 @@
 package com.beaconclimb.api.reconciliation;
 
-import com.beaconclimb.api.features.FeatureAggregates;
 import com.beaconclimb.api.features.FeatureRecomputeService;
 import com.beaconclimb.api.features.FeatureSnapshot;
 import com.beaconclimb.api.features.FeatureSnapshotRepository;
+import com.beaconclimb.features.FeatureAggregates;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;

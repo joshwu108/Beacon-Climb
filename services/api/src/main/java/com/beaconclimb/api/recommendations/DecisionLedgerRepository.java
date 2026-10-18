@@ -2,6 +2,8 @@ package com.beaconclimb.api.recommendations;
 
 import static com.beaconclimb.api.platform.jdbc.JdbcTypes.timestamp;
 
+import com.beaconclimb.api.features.FeatureFallbackReason;
+import com.beaconclimb.api.features.FeatureSource;
 import com.beaconclimb.api.ranking.Ranked;
 import com.beaconclimb.api.ranking.ReasonCode;
 import java.time.Instant;
@@ -19,7 +21,12 @@ import tools.jackson.databind.json.JsonMapper;
 @Repository
 public class DecisionLedgerRepository {
 
-  /** The scalar projection of one decision record plus the two JSON documents. */
+  /**
+   * The scalar projection of one decision record plus the two JSON documents. {@code featureSource}
+   * / {@code featureFallbackReason} (V11, BC-0310 part 2) say which snapshot row the ranking read
+   * and, for SYNC, why the STREAM row was not used; they are not part of {@code recordJson}
+   * (decision-record.v1 is closed).
+   */
   public record LedgerEntry(
       UUID decisionId,
       UUID userId,
@@ -32,6 +39,8 @@ public class DecisionLedgerRepository {
       int featureSchemaVersion,
       Instant featureAsOf,
       Instant featureCutoffW,
+      FeatureSource featureSource,
+      FeatureFallbackReason featureFallbackReason,
       String candidateSetDigest,
       String candidateSnapshotUri,
       String rngSeed,
@@ -53,12 +62,14 @@ public class DecisionLedgerRepository {
     jdbc.sql(
             "INSERT INTO recommendation_decisions (decision_id, user_id, session_id, requested_at,"
                 + " policy_version, policy_code_digest, model_version, feature_snapshot_user_id,"
-                + " feature_schema_version, feature_as_of, feature_cutoff_w, candidate_set_digest,"
+                + " feature_schema_version, feature_as_of, feature_cutoff_w, feature_source,"
+                + " feature_fallback_reason, candidate_set_digest,"
                 + " candidate_snapshot_uri, rng_seed, environment_digest, request_json,"
                 + " record_json, cold_start, fallback_used, erased, created_at)"
                 + " VALUES (:id, :user_id, :session_id, :requested_at, :policy_version,"
                 + " :policy_code_digest, :model_version, :feature_user_id, :feature_schema,"
-                + " :feature_as_of, :feature_cutoff_w, :candidate_set_digest, :snapshot_uri,"
+                + " :feature_as_of, :feature_cutoff_w, :feature_source, :feature_fallback_reason,"
+                + " :candidate_set_digest, :snapshot_uri,"
                 + " :rng_seed, :environment_digest, CAST(:request AS jsonb),"
                 + " CAST(:record AS jsonb), :cold_start, :fallback_used, false, :requested_at)")
         .param("id", entry.decisionId())
@@ -72,6 +83,10 @@ public class DecisionLedgerRepository {
         .param("feature_schema", entry.featureSchemaVersion())
         .param("feature_as_of", timestamp(entry.featureAsOf()))
         .param("feature_cutoff_w", timestamp(entry.featureCutoffW()))
+        .param("feature_source", entry.featureSource().name())
+        .param(
+            "feature_fallback_reason",
+            entry.featureFallbackReason() == null ? null : entry.featureFallbackReason().name())
         .param("candidate_set_digest", entry.candidateSetDigest())
         .param("snapshot_uri", entry.candidateSnapshotUri())
         .param("rng_seed", entry.rngSeed())

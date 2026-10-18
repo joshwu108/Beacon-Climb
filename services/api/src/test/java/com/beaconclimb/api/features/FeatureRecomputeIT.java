@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.beaconclimb.api.attempts.AttemptsTestSupport;
 import com.beaconclimb.api.catalog.CatalogSeed;
-import com.beaconclimb.api.features.FeatureAggregates.BandCounts;
 import com.beaconclimb.api.platform.json.Jcs;
+import com.beaconclimb.features.FeatureAggregates;
+import com.beaconclimb.features.FeatureAggregates.BandCounts;
+import com.beaconclimb.features.GradeBandBuckets;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;

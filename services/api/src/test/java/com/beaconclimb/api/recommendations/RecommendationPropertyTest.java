@@ -142,7 +142,8 @@ class RecommendationPropertyTest {
             new DecisionRecordSchema(),
             ledger,
             tx,
-            clock);
+            clock,
+            false);
     visible =
         new HashSet<>(
             jdbc.sql(
