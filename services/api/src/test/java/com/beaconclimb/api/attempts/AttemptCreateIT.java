@@ -390,7 +390,7 @@ class AttemptCreateIT extends AttemptsTestSupport {
       JsonNode body =
           json.readTree(Files.readString(EXAMPLES.resolve(name), StandardCharsets.UTF_8))
               .get("body");
-      assertThat(body.get("route_variant_id").asString()).isEqualTo("synthetic-route-001:35");
+      assertThat(body.get("route_variant_id").asString()).isEqualTo("synthetic-route-001:40");
     }
   }
 }

@@ -230,17 +230,21 @@ class PreferencesEndpointIT extends IdentityTestSupport {
   }
 
   /**
-   * The shipped request fixture asks for 35 degrees, which the shipped demo board does not offer,
-   * so replaying it against real data is the contract's UNSUPPORTED_ANGLE rather than the 200 of
-   * response.json. Recorded here so the mismatch is visible to the contract owner.
+   * The shipped request fixture asks for 40 degrees, one of the demo board's angles since BC-0005c,
+   * so replaying it against the seeded synthetic board is the 200 of response.json (the live replay
+   * is test/e2e/contract-examples.spec.ts). Before BC-0005c it asked for 35 and got
+   * UNSUPPORTED_ANGLE; this pins the agreement between the fixture and the shipped board.
    */
   @Test
-  void fixtureRequestAngleIsNotOnTheDemoBoard() throws IOException {
+  void fixtureRequestAngleIsOnTheDemoBoard() throws IOException {
     String token = register(uniqueUsername()).token();
 
     ResponseEntity<String> live = put(PATH, fixture("request.json").get("body").toString(), token);
 
-    assertError(live, HttpStatus.UNPROCESSABLE_CONTENT, ErrorCode.UNSUPPORTED_ANGLE);
+    assertThat(live.getStatusCode()).isEqualTo(HttpStatus.OK);
+    JsonNode expected = fixture("response.json").get("body");
+    assertThat(tree(live.getBody()).get("angle_deg")).isEqualTo(expected.get("angle_deg"));
+    assertThat(tree(live.getBody()).get("board_id")).isEqualTo(expected.get("board_id"));
   }
 
   private String body(String boardId, int angle, String band, List<String> goals) {
