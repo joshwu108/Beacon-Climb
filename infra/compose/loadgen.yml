@@ -1,0 +1,22 @@
+# BC-0311: compose override for SYNTHETIC load runs (scripts/loadgen). Merged last by
+# `make loadgen-stack`; never loaded by `make dev` or `make stream-up`, so the demo keeps the
+# ADR-0005 limits. Only the api service's environment changes: Spring relaxed binding maps
+# BEACON_HTTP_WRITELIMITPERMINUTE to beacon.http.write-limit-per-minute and so on
+# (HttpProperties, AuthProperties, DecisionsProperties). A report produced against this stack
+# must say so; loadgen.py records these variables from `docker inspect` in summary.txt.
+# Running `make dev` afterwards recreates the api without them.
+services:
+  api:
+    environment:
+      # per authenticated user, POST/PUT/PATCH/DELETE under /v1/ (default 60/min, burst = rate):
+      # attempts AND recommendation polls count, so 100 events/s over 50 users (120/min/user
+      # plus polls) needs this.
+      BEACON_HTTP_WRITELIMITPERMINUTE: "100000"
+      # per client address for register/session (defaults 30/min, burst 5).
+      BEACON_HTTP_PUBLICWRITELIMITPERMINUTE: "100000"
+      BEACON_HTTP_PUBLICBURST: "1000"
+      # accounts one client address may create per UTC day (default 20).
+      BEACON_AUTH_REGISTERPERIPPERDAY: "100000"
+      # decision records one user may write per UTC day (default 500); every recommendation
+      # poll writes one.
+      BEACON_DECISIONS_MAXPERUSERPERDAY: "100000"

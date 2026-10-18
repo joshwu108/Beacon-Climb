@@ -160,3 +160,28 @@ stream-job-cancel: .env
 	@if [ -n "$(JOB)" ]; then $(COMPOSE_STREAM) exec jobmanager flink cancel $(JOB); \
 	else for id in $$($(COMPOSE_STREAM) exec jobmanager flink list -r 2>/dev/null | awk '/RUNNING/ {print $$4}'); do \
 	  $(COMPOSE_STREAM) exec jobmanager flink cancel $$id; done; fi
+
+# BC-0311: SYNTHETIC load generator and freshness measurement (scripts/loadgen, docs/benchmarks).
+# `make loadgen USERS=20 RATE=10 DURATION=60 [OUT=reports/loadgen/x] [EVIDENCE=path]` runs
+# loadgen.py against the running stack (reports/ is gitignored); `make freshness
+# EVENTS=<events.jsonl> [OUT=dir]` recomputes summary.json/summary.txt from a stored run.
+# `make loadgen-stack [STREAM=0]` is `make stream-up` (or `make dev` with STREAM=0) with
+# infra/compose/loadgen.yml merged last, which raises the api's per-user/per-IP write limits for
+# a load run; a report measured on it must say so (loadgen.py records the api environment).
+.PHONY: loadgen freshness loadgen-stack
+
+COMPOSE_LOADGEN := docker compose --env-file .env -f infra/compose/docker-compose.yml \
+  $(if $(filter 0,$(STREAM)),,-f infra/compose/kafka.yml -f infra/compose/flink.yml) \
+  -f infra/compose/loadgen.yml --profile core $(if $(filter 0,$(STREAM)),,--profile stream)
+
+loadgen-stack: .env
+	./gradlew :api:bootJar
+	$(COMPOSE_LOADGEN) up -d --build --wait
+
+loadgen:
+	python3 -I scripts/loadgen/loadgen.py --users $(or $(USERS),10) --rate $(or $(RATE),5) --duration $(or $(DURATION),30) \
+	  $(if $(OUT),--out $(OUT),) $(if $(EVIDENCE),--evidence-copy $(EVIDENCE),)
+
+freshness:
+	@test -n "$(EVENTS)" || { echo "usage: make freshness EVENTS=<events.jsonl> [OUT=dir]" >&2; exit 2; }
+	python3 -I scripts/loadgen/freshness.py $(EVENTS) $(if $(OUT),--out $(OUT),)
