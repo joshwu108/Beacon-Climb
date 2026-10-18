@@ -1,5 +1,11 @@
-# planning artifacts stay local (user request 2026-10-14)
+# planning artifacts stay local (user request 2026-10-14): plans, backlog, briefs,
+# handoffs, night logs and kickoff prompts, wherever an agent happens to write them
 planning/
+plans/
+handoffs/
+NIGHT-*.md
+*-overnight-prompt*.md
+.night-stop-count-*
 
 # raw / derived licensed data never committed
 data/
