@@ -19,7 +19,7 @@ const SESSION = JSON.stringify({
   expiresAt: '2999-01-01T00:00:00Z',
 });
 const FIXTURE_ID = '018f0000-0000-7000-8000-000000000002';
-const FORM = '/attempts/new?route_variant_id=synthetic-route-002%3A35';
+const FORM = '/attempts/new?route_variant_id=synthetic-route-002%3A40';
 
 const historyRows = (page: Page) =>
   page.getByRole('region', { name: 'History' }).getByRole('listitem');

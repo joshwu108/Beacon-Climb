@@ -75,7 +75,7 @@ test('a returning user who signs in skips straight to /explore', async ({
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page).toHaveURL(/\/explore$/);
   await expect(
-    page.getByRole('heading', { level: 2, name: 'Routes at 35 degrees' }),
+    page.getByRole('heading', { level: 2, name: 'Routes at 40 degrees' }),
   ).toBeVisible();
 });
 

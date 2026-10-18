@@ -138,7 +138,7 @@ test('explore rows are Tab stops and Enter opens the route detail', async ({
     .first();
   await tabTo(page, firstRow);
   const href = await firstRow.getAttribute('href');
-  expect(href).toMatch(/^\/explore\/synthetic-route-\d+%3A35$/);
+  expect(href).toMatch(/^\/explore\/synthetic-route-\d+%3A40$/);
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(new RegExp(`${href}$`));
   await expect(

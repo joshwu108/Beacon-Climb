@@ -27,4 +27,6 @@
 
 Fixture-only adjustments in 1.1.0: `getRoute` placements and `listBoards` holds now share a NORMALIZED 1x1 frame; `initial_grade_band` fixtures use `BEGINNER`; consent fixtures carry the SHA-256 of the fixture consent text.
 
+Fixture-only, 2026-10-18 (BC-0005c, no schema change): the examples now match the committed synthetic demo board (`ml/datasets/synthetic/fixtures/demo-board-v1.jsonl`, `board_id synthetic-demo-1`, which `make seed-demo` imports): `listBoards.available_angles` is `[20, 30, 40, 45, 50]` (was `[20, 35, 45]`; the board has no 35), every `angle_deg: 35` is `40` and every `synthetic-route-00N:35` id is `synthetic-route-00N:40` (the `synthetic-route-00N` provider ids stay illustrative). `registerUser` and `createSession` responses carry `expires_at: 2036-10-15T14:00:00Z` instead of a date that has passed. `test/e2e/contract-examples.spec.ts` replays the `putPreferences`, `createRecommendations` (plus their `request-422`) and `getDecision` request fixtures against the seeded compose stack, so the fixtures stay replayable.
+
 **1.0.0** — initial 2026-10-14 contract. Human review and CONTRACT-v1 tag are pending; agents must not tag. The same applies to CONTRACT-v1.1.

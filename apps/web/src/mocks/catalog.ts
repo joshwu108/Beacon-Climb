@@ -26,7 +26,7 @@ const FIXTURE_SUMMARY: RouteVariantSummary = listRoutes.body
   .items[0] as RouteVariantSummary;
 const FIXTURE_ROUTE: RouteVariant = getRoute.body as RouteVariant;
 
-/** Routes generated per available angle (the fixture route counts as one at 35). */
+/** Routes generated per available angle (the fixture route counts as one at 40). */
 export const ROUTES_PER_ANGLE = 20;
 export const DEFAULT_PAGE_LIMIT = 20;
 export const MAX_PAGE_LIMIT = 100;
@@ -71,7 +71,7 @@ const placementsFor = (seed: number): Placement[] => {
 
 /**
  * Route `n` set at `angle`. Ids follow the fixture convention `<route>:<angle>`, so
- * route 001 exists at every available angle and `001:35` is the committed fixture.
+ * route 001 exists at every available angle and `001:40` is the committed fixture.
  * `seed` differs per angle so grades and counts are not identical across angles.
  */
 const generateVariant = (

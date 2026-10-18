@@ -234,6 +234,9 @@ make test-e2e                   # refuses with "run make dev && make seed-demo f
   --config ../../test/e2e/playwright.config.ts`); there is no second `node_modules`.
 - Users are `e2e_<timestamp>_<project><random>`, so the suite passes again on the same
   database without `make reset-db`. The seeded `demo` account is only read (`demo-login.spec.ts`).
+- `contract-examples.spec.ts` (BC-0005c) replays the `contracts/examples` request fixtures for
+  `putPreferences`, `createRecommendations` (2xx and `request-422`) and `getDecision` through
+  the API with a fresh user, so a fixture that drifts from the seeded demo board fails here.
 - Artifacts (gitignored): `test/e2e/test-results/<spec>-<project>/` holds `trace.zip` and
   `video.webm` for every test (trace and video are always on) plus screenshots on failure;
   `test/e2e/playwright-report/index.html` is the HTML report

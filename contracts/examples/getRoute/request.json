@@ -1,7 +1,7 @@
 {
   "method": "GET",
   "path_params": {
-    "route_variant_id": "synthetic-route-001:35"
+    "route_variant_id": "synthetic-route-001:40"
   },
   "path": "/v1/routes/{route_variant_id}"
 }

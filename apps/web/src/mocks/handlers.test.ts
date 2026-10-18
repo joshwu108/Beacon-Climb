@@ -38,7 +38,7 @@ describe('mock handlers', () => {
       ...registerFixture.body,
       expires_at: expect.any(String),
     });
-    // The fixture's fixed expires_at has passed; the mock issues a live session.
+    // The fixture's expires_at is fixed (and once in the past); the mock issues a live session.
     expect(Date.parse(issued.expires_at)).toBeGreaterThan(Date.now());
     const second = await fetch(`${BASE}/v1/auth/register`, {
       method: 'POST',
@@ -97,7 +97,7 @@ describe('mock handlers', () => {
 
   it('listRoutes serves the generated catalog with a next_cursor and honours filters', async () => {
     const first = await fetch(
-      `${BASE}/v1/routes?board_id=synthetic-demo-1&angle_deg=35&limit=10`,
+      `${BASE}/v1/routes?board_id=synthetic-demo-1&angle_deg=40&limit=10`,
       { headers: AUTH },
     );
     expect(first.status).toBe(200);
@@ -106,10 +106,10 @@ describe('mock handlers', () => {
       next_cursor: string | null;
     };
     expect(page1.items).toHaveLength(10);
-    expect(page1.items.every((i) => i.angle_deg === 35)).toBe(true);
+    expect(page1.items.every((i) => i.angle_deg === 40)).toBe(true);
     expect(page1.next_cursor).not.toBeNull();
     const second = await fetch(
-      `${BASE}/v1/routes?board_id=synthetic-demo-1&angle_deg=35&limit=10&cursor=${page1.next_cursor}`,
+      `${BASE}/v1/routes?board_id=synthetic-demo-1&angle_deg=40&limit=10&cursor=${page1.next_cursor}`,
       { headers: AUTH },
     );
     const page2 = (await second.json()) as typeof page1;
@@ -131,7 +131,7 @@ describe('mock handlers', () => {
     await expect(cursor.json()).resolves.toMatchObject({
       code: 'INVALID_CURSOR',
     });
-    const angle = await fetch(`${BASE}/v1/routes?angle_deg=50`, {
+    const angle = await fetch(`${BASE}/v1/routes?angle_deg=35`, {
       headers: AUTH,
     });
     await expect(angle.json()).resolves.toMatchObject({
@@ -147,12 +147,12 @@ describe('mock handlers', () => {
   });
 
   it('getRoute serves generated variants with placements', async () => {
-    const res = await fetch(`${BASE}/v1/routes/synthetic-route-002:35`, {
+    const res = await fetch(`${BASE}/v1/routes/synthetic-route-002:40`, {
       headers: AUTH,
     });
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toMatchObject({
-      route_variant_id: 'synthetic-route-002:35',
+      route_variant_id: 'synthetic-route-002:40',
       placements: expect.arrayContaining([
         expect.objectContaining({ role: 'START' }),
       ]),
@@ -179,7 +179,7 @@ describe('mock handlers', () => {
     });
     const bad = await put({
       board_id: 'synthetic-demo-1',
-      angle_deg: 50,
+      angle_deg: 35,
       initial_grade_band: 'NOVICE',
       goals: [],
     });
@@ -194,7 +194,7 @@ describe('mock handlers', () => {
     const me = () =>
       fetch(`${BASE}/v1/me`, { headers: AUTH }).then((r) => r.json());
     await expect(me()).resolves.toMatchObject({
-      preferences: { angle_deg: 35 },
+      preferences: { angle_deg: 40 },
     });
     await fetch(`${BASE}/v1/auth/register`, {
       method: 'POST',
@@ -246,7 +246,7 @@ describe('mock handlers', () => {
     await expect(me()).resolves.toMatchObject({
       user_id: '018f0000-0000-7000-8000-000000000001',
       username: 'demo',
-      preferences: { angle_deg: 35 },
+      preferences: { angle_deg: 40 },
     });
   });
 });
@@ -259,7 +259,7 @@ describe('mock handlers: attempts and recommendations (BC-0117/BC-0118)', () => 
       body: JSON.stringify(body),
     });
   const newBody = {
-    route_variant_id: 'synthetic-route-002:35',
+    route_variant_id: 'synthetic-route-002:40',
     occurred_at: '2026-10-14T16:00:00Z',
     attempts_count: 1,
     sent: false,
@@ -398,7 +398,7 @@ describe('mock handlers: attempts and recommendations (BC-0117/BC-0118)', () => 
       });
     const fixtureRequest = {
       board_id: 'synthetic-demo-1',
-      angle_deg: 35,
+      angle_deg: 40,
       goal: 'TECHNIQUE',
       max_routes: 4,
       session_id: '018f0000-0000-7000-8000-000000000004',
@@ -416,7 +416,7 @@ describe('mock handlers: attempts and recommendations (BC-0117/BC-0118)', () => 
       (await recommend({ ...fixtureRequest, max_routes: 21 })).status,
     ).toBe(422);
     await expect(
-      recommend({ ...fixtureRequest, angle_deg: 50 }).then((r) => r.json()),
+      recommend({ ...fixtureRequest, angle_deg: 35 }).then((r) => r.json()),
     ).resolves.toMatchObject({ code: 'UNSUPPORTED_ANGLE' });
     await expect(
       recommend({ ...fixtureRequest, board_id: 'other' }).then((r) => r.json()),

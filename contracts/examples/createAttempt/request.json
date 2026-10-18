@@ -5,7 +5,7 @@
     "Idempotency-Key": "demo-attempt-1"
   },
   "body": {
-    "route_variant_id": "synthetic-route-001:35",
+    "route_variant_id": "synthetic-route-001:40",
     "occurred_at": "2026-10-14T14:00:00Z",
     "attempts_count": 2,
     "sent": true

@@ -29,7 +29,7 @@ describe('synthetic catalog', () => {
     expect(findVariant(getRouteFixture.body.route_variant_id)).toEqual(
       getRouteFixture.body,
     );
-    const page = queryCatalog({ angleDeg: 35, limit: 100 });
+    const page = queryCatalog({ angleDeg: 40, limit: 100 });
     expect(page.kind === 'ok' && page.items).toContainEqual(
       listRoutesFixture.body.items[0],
     );
@@ -58,7 +58,7 @@ describe('synthetic catalog', () => {
     const seen: string[] = [];
     let cursor: string | undefined;
     for (let guard = 0; guard < 10; guard += 1) {
-      const page = queryCatalog({ angleDeg: 35, limit: 7, cursor });
+      const page = queryCatalog({ angleDeg: 40, limit: 7, cursor });
       expect(page.kind).toBe('ok');
       if (page.kind !== 'ok') return;
       seen.push(...page.items.map((i) => i.route_variant_id));
@@ -97,7 +97,7 @@ describe('synthetic catalog', () => {
     expect(cursor).toMatch(/^[A-Za-z0-9_-]+$/);
     expect(decodeCursor(cursor)).toEqual({
       grade: 17,
-      routeVariantId: 'synthetic-route-001:35',
+      routeVariantId: 'synthetic-route-001:40',
     });
     expect(decodeCursor('***')).toBeNull();
     expect(decodeCursor(btoa('no-separator'))).toBeNull();

@@ -8,7 +8,7 @@
     "created_at": "2026-10-14T14:01:00Z",
     "request": {
       "board_id": "synthetic-demo-1",
-      "angle_deg": 35,
+      "angle_deg": 40,
       "goal": "TECHNIQUE",
       "max_routes": 4,
       "session_id": "018f0000-0000-7000-8000-000000000004",
@@ -20,11 +20,11 @@
     "cold_start": true,
     "recommendations": [
       {
-        "route_variant_id": "synthetic-route-001:35",
+        "route_variant_id": "synthetic-route-001:40",
         "route": {
-          "route_variant_id": "synthetic-route-001:35",
+          "route_variant_id": "synthetic-route-001:40",
           "board_id": "synthetic-demo-1",
-          "angle_deg": 35,
+          "angle_deg": 40,
           "name": "Synthetic Traverse 1",
           "grade_numeric": 17,
           "grade_label": "V2",

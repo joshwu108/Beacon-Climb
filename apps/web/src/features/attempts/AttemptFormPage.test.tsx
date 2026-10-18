@@ -12,7 +12,7 @@ import { tokenStore } from '../auth/token-store';
 import { draftStore } from './draft-store';
 
 const FUTURE = '2999-01-01T00:00:00Z';
-const ROUTE = 'synthetic-route-002:35';
+const ROUTE = 'synthetic-route-002:40';
 const PATH = `/attempts/new?route_variant_id=${encodeURIComponent(ROUTE)}`;
 
 const signIn = (): void =>

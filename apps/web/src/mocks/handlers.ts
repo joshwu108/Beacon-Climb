@@ -88,9 +88,9 @@ const fixture = (f: Fixture): Response => {
 };
 
 /**
- * Auth responses: the committed fixtures carry a fixed `expires_at` that is now in the
- * past, and the token store treats such a session as expired, so the mock issues a token
- * that lasts an hour from issue. Everything else in the fixture is served as committed.
+ * Auth responses: the committed fixtures carry a fixed `expires_at` (once a date that had
+ * passed, which the token store treats as an expired session), so the mock issues a token
+ * that lasts an hour from issue instead. Everything else in the fixture is served as committed.
  */
 const MOCK_SESSION_TTL_MS = 60 * 60 * 1000;
 const sessionFixture = (f: Fixture): Response =>

@@ -29,7 +29,7 @@ describe('DecisionPage', () => {
       name: 'About this list',
     });
     expect(within(about).getByText('Technique, up to 4 routes')).toBeVisible();
-    expect(within(about).getByText('synthetic-demo-1 at 35°')).toBeVisible();
+    expect(within(about).getByText('synthetic-demo-1 at 40°')).toBeVisible();
     expect(within(about).getByText('heuristic-v1')).toBeVisible();
     expect(
       within(about).getByText('none (no learned model in use)'),
@@ -69,7 +69,7 @@ describe('DecisionPage', () => {
       within(first).getByRole('link', { name: 'Log an attempt' }),
     ).toHaveAttribute(
       'href',
-      '/attempts/new?route_variant_id=synthetic-route-001%3A35',
+      '/attempts/new?route_variant_id=synthetic-route-001%3A40',
     );
     await expectNoBlockingViolations(container);
   });

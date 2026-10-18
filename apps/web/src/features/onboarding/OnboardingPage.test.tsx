@@ -78,7 +78,7 @@ describe('onboarding flow', () => {
       screen
         .getAllByRole('radio', { name: /°/ })
         .map((r) => r.getAttribute('value')),
-    ).toEqual(['20', '35', '45']);
+    ).toEqual(['20', '30', '40', '45', '50']);
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Choose an angle.',
@@ -245,7 +245,7 @@ describe('onboarding flow', () => {
       'true',
     );
     // Choosing another angle clears it.
-    await user.click(screen.getByRole('radio', { name: '35°' }));
+    await user.click(screen.getByRole('radio', { name: '40°' }));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 

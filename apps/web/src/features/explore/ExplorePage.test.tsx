@@ -69,13 +69,13 @@ describe('ExplorePage', () => {
     ).toHaveAttribute('role', 'status');
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Routes at 35 degrees' }),
+      screen.getByRole('heading', { level: 2, name: 'Routes at 40 degrees' }),
     ).toBeVisible();
     // Never an incompatible request: board and angle from preferences, page size 10.
     expect(requests).toHaveLength(1);
     expect(Object.fromEntries(requests[0]!.searchParams)).toEqual({
       board_id: 'synthetic-demo-1',
-      angle_deg: '35',
+      angle_deg: '40',
       limit: '10',
     });
     const rows = routeRows();
@@ -90,11 +90,11 @@ describe('ExplorePage', () => {
     expect(within(fixtureRow!).getByText('Low evidence')).toBeVisible();
     expect(within(fixtureRow!).getByRole('link')).toHaveAttribute(
       'href',
-      '/explore/synthetic-route-001%3A35',
+      '/explore/synthetic-route-001%3A40',
     );
     // Angle choices come from the board; the current one is checked.
     const search = screen.getByRole('search', { name: 'Route filters' });
-    expect(within(search).getByRole('radio', { name: '35°' })).toBeChecked();
+    expect(within(search).getByRole('radio', { name: '40°' })).toBeChecked();
     await expectNoBlockingViolations(container);
   });
 
@@ -111,7 +111,7 @@ describe('ExplorePage', () => {
     expect(
       screen.queryByRole('button', { name: 'Load more routes' }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText('End of the index for 35 degrees.')).toBeVisible();
+    expect(screen.getByText('End of the index for 40 degrees.')).toBeVisible();
     const ids = routeRows().map((row) =>
       within(row).getByRole('link').getAttribute('href'),
     );
@@ -189,7 +189,7 @@ describe('ExplorePage', () => {
     renderApp('/explore?grade_min=99&grade_max=100');
     expect(await screen.findByText('No routes match.')).toBeVisible();
     expect(
-      screen.getByText(/no routes match these filters at 35 degrees/i),
+      screen.getByText(/no routes match these filters at 40 degrees/i),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Clear filters' })).toBeVisible();
   });

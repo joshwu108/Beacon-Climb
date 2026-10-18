@@ -18,7 +18,7 @@
     },
     "preferences": {
       "board_id": "synthetic-demo-1",
-      "angle_deg": 35,
+      "angle_deg": 40,
       "initial_grade_band": "BEGINNER",
       "goals": [
         "TECHNIQUE"

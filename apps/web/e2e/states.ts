@@ -16,9 +16,9 @@ export const SESSION = JSON.stringify({
 
 export const FIXED_SESSION_ID = '018f0000-0000-7000-8000-00000000e2e1';
 export const FIXTURE_DECISION_ID = '018f0000-0000-7000-8000-000000000003';
-export const FIXTURE_ROUTE_PATH = '/explore/synthetic-route-001%3A35';
+export const FIXTURE_ROUTE_PATH = '/explore/synthetic-route-001%3A40';
 export const ATTEMPT_FORM_PATH =
-  '/attempts/new?route_variant_id=synthetic-route-002%3A35';
+  '/attempts/new?route_variant_id=synthetic-route-002%3A40';
 export const SESSION_PATH = `/session?session_id=${FIXED_SESSION_ID}&goal=TECHNIQUE&routes=4`;
 /** Fixed "now" for the attempt form so its default `occurred_at` is stable in baselines. */
 export const FIXED_NOW = '2026-10-15T12:00:00Z';
@@ -133,7 +133,7 @@ const SEEDED_DRAFT = {
   /** The GET /v1/me fixture user: drafts of other owners are never shown (BC-0123 F4). */
   owner_user_id: '018f0000-0000-7000-8000-000000000001',
   body: {
-    route_variant_id: 'synthetic-route-003:35',
+    route_variant_id: 'synthetic-route-003:40',
     occurred_at: '2026-10-15T09:30:00Z',
     attempts_count: 2,
     sent: false,

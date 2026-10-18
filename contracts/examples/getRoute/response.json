@@ -4,9 +4,9 @@
     "X-Request-Id": "fixture-request-1"
   },
   "body": {
-    "route_variant_id": "synthetic-route-001:35",
+    "route_variant_id": "synthetic-route-001:40",
     "board_id": "synthetic-demo-1",
-    "angle_deg": 35,
+    "angle_deg": 40,
     "name": "Synthetic Traverse 1",
     "grade_numeric": 17,
     "grade_label": "V2",
