@@ -28,6 +28,9 @@ dependencies {
     compileOnly("org.apache.flink:flink-clients:$flinkVersion")
     compileOnly("org.apache.flink:flink-connector-base:$flinkVersion")
     compileOnly("org.slf4j:slf4j-api:2.0.17")
+    // BC-0302: the shared validation library (schemas, EventValidator, DlqRecord); it brings
+    // json-schema-validator 3.0.8 and jackson-databind 3.2.1 into the fat jar.
+    implementation(project(":events"))
     implementation("org.apache.flink:flink-connector-kafka:$flinkKafkaConnectorVersion")
     implementation("org.apache.kafka:kafka-clients:$kafkaClientsVersion")
     implementation("tools.jackson.core:jackson-databind:$jacksonVersion")
@@ -38,20 +41,14 @@ dependencies {
     testImplementation("org.apache.flink:flink-test-utils:$flinkVersion")
     testImplementation("org.junit.jupiter:junit-jupiter:5.14.2")
     testImplementation("org.assertj:assertj-core:3.27.6")
-    // JSON Schema 2020-12 validator, same artifact and version as services/api (BC-0105/0109).
-    testImplementation("com.networknt:json-schema-validator:3.0.8")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.14.2")
 }
 
 spotless { java { googleJavaFormat("1.28.0") } }
 
-// The contract schemas and the committed example events are copied into the test jar at build
-// time from contracts/events so the files are not duplicated in git (same pattern as services/api).
+// The committed example events are copied into the test jar at build time from contracts/events so
+// the files are not duplicated in git (the schemas themselves come with the :events jar).
 tasks.named<ProcessResources>("processTestResources") {
-    from("../../contracts/events") {
-        include("attempts.v1.schema.json", "climber-features.v1.schema.json")
-        into("contracts/events")
-    }
     from("../../contracts/events/examples") {
         include("valid-attempt-*.json", "invalid-attempt-*.json")
         into("contracts/events/examples")

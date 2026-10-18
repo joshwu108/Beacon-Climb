@@ -1,0 +1,19 @@
+# BC-0302: `--spring.profiles.active=redrive` turns the jar into the DLQ redrive / status CLI
+# (`make dlq-redrive EVENTS=<ids>|ALL [DRY_RUN=1] [TOPIC=...]`, `make dlq-status`). The context is
+# DlqRedriveApplication alone: no auto-configuration, so no datasource, Flyway, web server or
+# outbox publisher; Postgres is never touched. Kafka comes from beacon.stream.bootstrap-servers
+# (BEACON_STREAM_BOOTSTRAPSERVERS, default 127.0.0.1:9094 = the compose host listener).
+spring:
+  main:
+    web-application-type: none
+    banner-mode: off
+logging:
+  level:
+    root: WARN
+    com.beaconclimb.api.dlq: INFO
+  structured:
+    format:
+      # The CLI is read by a person; an empty format restores the plain pattern.
+      console: ""
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %5p %logger{0} - %m%n"

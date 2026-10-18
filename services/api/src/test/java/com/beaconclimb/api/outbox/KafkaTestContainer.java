@@ -3,6 +3,7 @@ package com.beaconclimb.api.outbox;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
@@ -27,8 +29,8 @@ import org.testcontainers.kafka.KafkaContainer;
 /**
  * Shared single-node KRaft broker for the stream tests (BC-0301), the Kafka twin of {@link
  * com.beaconclimb.api.AbstractPostgresIT}: the compose image {@code apache/kafka:4.3.1}, topic
- * auto-creation off and {@code attempts.v1} created with the compose partition count, started once
- * per JVM and stopped by Ryuk. {@link #pause()} / {@link #unpause()} freeze the broker process
+ * auto-creation off and the four contract topics created with the compose partition count, started
+ * once per JVM and stopped by Ryuk. {@link #pause()} / {@link #unpause()} freeze the broker process
  * through the Docker API (the port mapping survives, unlike a stop/start), which is how the fault
  * test simulates an outage.
  */
@@ -36,6 +38,11 @@ public final class KafkaTestContainer {
 
   public static final String IMAGE = "apache/kafka:4.3.1";
   public static final String ATTEMPTS_TOPIC = "attempts.v1";
+  public static final String FEATURES_TOPIC = "climber-features.v1";
+  public static final String DLQ_TOPIC = "stream-dlq.v1";
+  public static final String RECONCILIATION_TOPIC = "stream-reconciliation.v1";
+  public static final List<String> TOPICS =
+      List.of(ATTEMPTS_TOPIC, FEATURES_TOPIC, DLQ_TOPIC, RECONCILIATION_TOPIC);
   public static final int PARTITIONS = 6;
   public static final KafkaContainer KAFKA;
 
@@ -47,7 +54,7 @@ public final class KafkaTestContainer {
             .withEnv("KAFKA_AUTO_CREATE_TOPICS_ENABLE", "false")
             .withEnv("KAFKA_HEAP_OPTS", "-Xmx512m -Xms256m");
     KAFKA.start();
-    createAttemptsTopic();
+    createTopics();
   }
 
   private KafkaTestContainer() {}
@@ -109,22 +116,54 @@ public final class KafkaTestContainer {
     return seen;
   }
 
-  private static void createAttemptsTopic() {
+  /**
+   * Everything currently on {@code topic}, every partition from its beginning up to the end offsets
+   * observed before the first poll (deterministic: no quiet-period guessing). Records are ordered
+   * by partition then offset.
+   */
+  public static List<ConsumerRecord<String, byte[]>> readToEnd(String topic) {
+    Properties config = new Properties();
+    config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
+    config.put(ConsumerConfig.GROUP_ID_CONFIG, "read-to-end-" + UUID.randomUUID());
+    config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+    config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    config.put(
+        ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+    List<ConsumerRecord<String, byte[]>> seen = new ArrayList<>();
+    try (KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(config)) {
+      List<TopicPartition> partitions =
+          consumer.partitionsFor(topic).stream()
+              .map(p -> new TopicPartition(topic, p.partition()))
+              .toList();
+      consumer.assign(partitions);
+      consumer.seekToBeginning(partitions);
+      Map<TopicPartition, Long> end = consumer.endOffsets(partitions);
+      while (end.entrySet().stream().anyMatch(e -> consumer.position(e.getKey()) < e.getValue())) {
+        consumer.poll(POLL).forEach(seen::add);
+      }
+    }
+    seen.sort(
+        Comparator.comparingInt((ConsumerRecord<String, byte[]> r) -> r.partition())
+            .thenComparingLong(ConsumerRecord::offset));
+    return seen;
+  }
+
+  private static void createTopics() {
     try (Admin admin =
         Admin.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers()))) {
       admin
-          .createTopics(List.of(new NewTopic(ATTEMPTS_TOPIC, PARTITIONS, (short) 1)))
+          .createTopics(TOPICS.stream().map(t -> new NewTopic(t, PARTITIONS, (short) 1)).toList())
           .all()
           .get(60, TimeUnit.SECONDS);
     } catch (ExecutionException e) {
       if (!(e.getCause() instanceof TopicExistsException)) {
-        throw new IllegalStateException("cannot create " + ATTEMPTS_TOPIC, e.getCause());
+        throw new IllegalStateException("cannot create the contract topics", e.getCause());
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new IllegalStateException("interrupted creating " + ATTEMPTS_TOPIC, e);
+      throw new IllegalStateException("interrupted creating the contract topics", e);
     } catch (TimeoutException e) {
-      throw new IllegalStateException("timed out creating " + ATTEMPTS_TOPIC, e);
+      throw new IllegalStateException("timed out creating the contract topics", e);
     }
   }
 }

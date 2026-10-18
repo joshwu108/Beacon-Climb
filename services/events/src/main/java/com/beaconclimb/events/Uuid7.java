@@ -1,13 +1,12 @@
-package com.beaconclimb.stream;
+package com.beaconclimb.events;
 
 import java.security.SecureRandom;
 import java.util.UUID;
 
 /**
- * UUIDv7 (RFC 9562) for climber-features.v1 {@code event_id}: 48-bit Unix millisecond timestamp,
- * version 7, 12 random bits, RFC variant and 62 random bits. Same layout as the api's {@code
- * com.beaconclimb.api.identity.Uuid7}; duplicated rather than shared until the {@code
- * services/events-contract} module (BC-0302) exists.
+ * UUIDv7 (RFC 9562): 48-bit Unix millisecond timestamp, version 7, 12 random bits, RFC variant and
+ * 62 random bits. The {@code event_id} generator for records built by this library and by the
+ * stream job (the api keeps its own copy in {@code com.beaconclimb.api.identity}).
  */
 public final class Uuid7 {
 
@@ -22,7 +21,7 @@ public final class Uuid7 {
     return at(System.currentTimeMillis());
   }
 
-  static UUID at(long epochMillis) {
+  public static UUID at(long epochMillis) {
     long randomA = RANDOM.nextLong() & 0x0FFFL;
     long msb = (epochMillis << 16) | VERSION_7 | randomA;
     long lsb = (RANDOM.nextLong() & VARIANT_MASK) | VARIANT_RFC;

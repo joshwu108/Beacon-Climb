@@ -1,5 +1,7 @@
 package com.beaconclimb.stream;
 
+import com.beaconclimb.events.DlqRecord;
+import java.time.Instant;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.streaming.api.functions.ProcessFunction;
@@ -9,20 +11,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Turns raw Kafka bytes into {@link AttemptEvent}s. Bytes that are not a conforming attempts.v1
- * event go to {@link #INVALID} untouched (BC-0302 wires that side output to stream-dlq.v1); until
- * then they are counted and logged, never dropped silently.
+ * Turns source records into {@link AttemptEvent}s. A record the shared validator rejects goes to
+ * {@link #INVALID} as a ready-to-send stream-dlq.v1 record (BC-0302): the ORIGINAL bytes base64 in
+ * the value, the original key as the key, the source coordinates and the attempt number in the
+ * headers ({@link com.beaconclimb.events.DlqHeaders}). Nothing is dropped silently; the log line
+ * carries the error code and message (never the bytes, which may hold the very field that was
+ * rejected).
  */
-public final class ParseAttempts extends ProcessFunction<byte[], AttemptEvent> {
+public final class ParseAttempts extends ProcessFunction<SourceRecord, AttemptEvent> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ParseAttempts.class);
   private static final long serialVersionUID = 1L;
 
-  public static final OutputTag<byte[]> INVALID =
-      new OutputTag<>("invalid-attempts", TypeInformation.of(byte[].class));
+  public static final String CONSUMER = "stream";
+  public static final OutputTag<KeyedBytes> INVALID =
+      new OutputTag<>("invalid-attempts", TypeInformation.of(KeyedBytes.class));
+
+  private final String sourceTopic;
 
   private transient Counter parsed;
   private transient Counter invalid;
+
+  public ParseAttempts(String sourceTopic) {
+    this.sourceTopic = sourceTopic;
+  }
 
   @Override
   public void open(org.apache.flink.api.common.functions.OpenContext openContext) {
@@ -31,17 +43,39 @@ public final class ParseAttempts extends ProcessFunction<byte[], AttemptEvent> {
   }
 
   @Override
-  public void processElement(byte[] raw, Context ctx, Collector<AttemptEvent> out) {
+  public void processElement(SourceRecord record, Context ctx, Collector<AttemptEvent> out) {
     AttemptEvent event;
     try {
-      event = AttemptEventParser.parse(raw);
+      event = AttemptEventParser.parse(record.value());
     } catch (AttemptEventParser.ParseException e) {
       invalid.inc();
-      LOG.warn("attempts.v1 record rejected ({} bytes): {}", raw.length, e.getMessage());
-      ctx.output(INVALID, raw);
+      DlqRecord dlq = toDlq(record, e);
+      LOG.warn(
+          "attempts.v1 record rejected partition={} offset={} error_code={} attempt={} dlq_event_id={}: {}",
+          record.partition(),
+          record.offset(),
+          dlq.errorCode(),
+          dlq.attempt(),
+          dlq.eventId(),
+          e.getMessage());
+      ctx.output(INVALID, new KeyedBytes(dlq.originalKey(), dlq.json(), dlq.headers()));
       return;
     }
     parsed.inc();
     out.collect(event);
+  }
+
+  private DlqRecord toDlq(SourceRecord record, AttemptEventParser.ParseException e) {
+    return DlqRecord.builder()
+        .originalTopic(sourceTopic)
+        .originalKey(record.key())
+        .originalValue(record.value())
+        .originalPartition(record.partition() < 0 ? null : record.partition())
+        .originalOffset(record.offset() < 0 ? null : record.offset())
+        .originalHeaders(record.headers())
+        .error(e.errorCode(), e.getMessage())
+        .consumer(CONSUMER)
+        .failedAt(Instant.now())
+        .build();
   }
 }

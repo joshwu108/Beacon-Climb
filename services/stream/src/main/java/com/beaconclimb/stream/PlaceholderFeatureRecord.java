@@ -1,5 +1,6 @@
 package com.beaconclimb.stream;
 
+import com.beaconclimb.events.Uuid7;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

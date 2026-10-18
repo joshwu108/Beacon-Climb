@@ -1,157 +1,84 @@
 package com.beaconclimb.stream;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
+import com.beaconclimb.events.ErrorCode;
+import com.beaconclimb.events.EventSchemas;
+import com.beaconclimb.events.EventValidator;
+import com.beaconclimb.events.ValidationResult.Invalid;
+import com.beaconclimb.events.ValidationResult.Valid;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.Map;
-import java.util.Set;
-import tools.jackson.core.StreamReadFeature;
-import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Structural parse of {@code attempts.v1} bytes into an {@link AttemptEvent}. This is the BC-0303
- * stand-in for the shared schema validator (BC-0302): it enforces the closed {@code attributes}
- * allowlist (C-01, TM-11) and the required members, and rejects anything else with a {@link
- * ParseException}. Full JSON Schema validation replaces this once BC-0302 lands.
+ * {@code attempts.v1} bytes to a typed {@link AttemptEvent}. The decision whether the bytes conform
+ * belongs to the shared {@link EventValidator} (BC-0302): this class only lifts the already
+ * validated document into the record the operators work with, and reports a rejection as a {@link
+ * ParseException} carrying the validator's {@link ErrorCode} and message.
  */
 public final class AttemptEventParser {
 
   /** The bytes are not a conforming attempts.v1 event; the message names the first problem. */
   public static final class ParseException extends RuntimeException {
-    public ParseException(String message) {
+    private final ErrorCode errorCode;
+
+    public ParseException(ErrorCode errorCode, String message) {
       super(message);
+      this.errorCode = errorCode;
     }
 
-    public ParseException(String message, Throwable cause) {
-      super(message, cause);
+    public ErrorCode errorCode() {
+      return errorCode;
     }
   }
 
-  static final Set<String> TOP_LEVEL_KEYS =
-      Set.of(
-          "schema_version",
-          "event_id",
-          "event_type",
-          "user_id",
-          "attempt_id",
-          "attempt_revision",
-          "route_variant_id",
-          "occurred_at",
-          "ingested_at",
-          "attributes",
-          "trace_id",
-          "producer");
-  static final Set<String> REQUIRED_TOP_LEVEL_KEYS = TOP_LEVEL_KEYS;
-
-  /** The closed allowlist of attempts.v1.schema.json plus the optional grade_numeric. */
-  static final Set<String> ATTRIBUTE_KEYS =
-      Set.of(
-          "sent",
-          "attempts_count",
-          "completion_fraction",
-          "perceived_effort",
-          "status",
-          "grade_numeric");
-
-  static final Set<String> REQUIRED_ATTRIBUTE_KEYS = Set.of("sent", "attempts_count", "status");
-  static final Set<String> EVENT_TYPES =
-      Set.of("ATTEMPT_RECORDED", "ATTEMPT_CORRECTED", "ATTEMPT_RETRACTED");
-  static final Set<String> STATUSES = Set.of("ACTIVE", "RETRACTED");
-
-  private static final JsonMapper MAPPER =
-      JsonMapper.builder()
-          .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
-          .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
-          .build();
+  /** One compiled schema set per JVM (per Flink user classloader); the validator is thread-safe. */
+  private static final EventValidator VALIDATOR = new EventValidator();
 
   private AttemptEventParser() {}
 
+  public static EventValidator validator() {
+    return VALIDATOR;
+  }
+
   public static AttemptEvent parse(byte[] raw) {
-    JsonNode root;
-    try {
-      root = MAPPER.readTree(new String(raw, StandardCharsets.UTF_8));
-    } catch (RuntimeException e) {
-      throw new ParseException("not a JSON document: " + e.getMessage(), e);
-    }
-    if (root == null || !root.isObject()) {
-      throw new ParseException("event must be a JSON object");
-    }
-    rejectUnknownKeys(root, TOP_LEVEL_KEYS, "event");
-    requireKeys(root, REQUIRED_TOP_LEVEL_KEYS, "event");
-    if (!root.get("schema_version").isNumber() || root.get("schema_version").asInt() != 1) {
-      throw new ParseException("schema_version must be 1");
-    }
+    return switch (VALIDATOR.validate(EventSchemas.ATTEMPTS, raw)) {
+      case Valid valid -> fromValidated(valid.payload(), raw);
+      case Invalid invalid -> throw new ParseException(invalid.errorCode(), invalid.message());
+    };
+  }
+
+  /** Typed view of a document the validator already accepted. */
+  static AttemptEvent fromValidated(JsonNode root, byte[] raw) {
     JsonNode attributes = root.get("attributes");
-    if (!attributes.isObject()) {
-      throw new ParseException("attributes must be an object");
-    }
-    rejectUnknownKeys(attributes, ATTRIBUTE_KEYS, "attributes");
-    requireKeys(attributes, REQUIRED_ATTRIBUTE_KEYS, "attributes");
-    String eventType = text(root, "event_type");
-    if (!EVENT_TYPES.contains(eventType)) {
-      throw new ParseException("event_type '" + eventType + "' is not an attempts.v1 event type");
-    }
-    String status = text(attributes, "status");
-    if (!STATUSES.contains(status)) {
-      throw new ParseException("attributes.status '" + status + "' is not ACTIVE or RETRACTED");
-    }
-    JsonNode revision = root.get("attempt_revision");
-    if (!revision.isIntegralNumber() || revision.asInt() < 1) {
-      throw new ParseException("attempt_revision must be an integer >= 1");
-    }
-    JsonNode sent = attributes.get("sent");
-    if (!sent.isBoolean()) {
-      throw new ParseException("attributes.sent must be a boolean");
-    }
     JsonNode grade = attributes.get("grade_numeric");
-    if (grade != null && !grade.isNull() && !grade.isNumber()) {
-      throw new ParseException("attributes.grade_numeric must be a number or null");
-    }
     return new AttemptEvent(
-        text(root, "event_id"),
-        eventType,
-        text(root, "user_id"),
-        text(root, "attempt_id"),
-        revision.asInt(),
-        text(root, "route_variant_id"),
-        instantMillis(text(root, "occurred_at")),
-        sent.asBoolean(),
-        status,
+        root.get("event_id").asString(),
+        root.get("event_type").asString(),
+        root.get("user_id").asString(),
+        root.get("attempt_id").asString(),
+        root.get("attempt_revision").asInt(),
+        root.get("route_variant_id").asString(),
+        instantMillis(root.get("occurred_at").asString()),
+        attributes.get("sent").asBoolean(),
+        attributes.get("status").asString(),
         grade == null || grade.isNull() ? null : grade.asDouble(),
         raw);
   }
 
-  private static void rejectUnknownKeys(JsonNode node, Set<String> allowed, String where) {
-    for (Map.Entry<String, JsonNode> entry : node.properties()) {
-      if (!allowed.contains(entry.getKey())) {
-        throw new ParseException("unknown " + where + " key '" + entry.getKey() + "'");
-      }
-    }
-  }
-
-  private static void requireKeys(JsonNode node, Set<String> required, String where) {
-    for (String key : required) {
-      if (node.get(key) == null) {
-        throw new ParseException("missing " + where + " key '" + key + "'");
-      }
-    }
-  }
-
-  private static String text(JsonNode node, String key) {
-    JsonNode value = node.get(key);
-    if (value == null || !value.isString() || value.asString().isEmpty()) {
-      throw new ParseException(key + " must be a non-empty string");
-    }
-    return value.asString();
-  }
-
+  /**
+   * The schema's {@code date-time} format is RFC 3339, which admits offsets and leap seconds that
+   * {@code Instant.parse} does not; an offset is honoured, anything Java cannot represent is a
+   * schema violation rather than a job failure.
+   */
   private static long instantMillis(String text) {
     try {
-      return Instant.parse(text).toEpochMilli();
+      return OffsetDateTime.parse(text, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+          .toInstant()
+          .toEpochMilli();
     } catch (DateTimeParseException e) {
-      throw new ParseException("occurred_at '" + text + "' is not an RFC 3339 date-time", e);
+      throw new ParseException(
+          ErrorCode.SCHEMA_VIOLATION, "/occurred_at: not a representable RFC 3339 date-time");
     }
   }
 }

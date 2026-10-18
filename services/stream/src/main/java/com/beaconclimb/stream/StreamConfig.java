@@ -14,6 +14,7 @@ public record StreamConfig(
     String attemptsTopic,
     String featuresTopic,
     String reconciliationTopic,
+    String dlqTopic,
     String groupId,
     String checkpointDir,
     Duration checkpointInterval,
@@ -30,6 +31,7 @@ public record StreamConfig(
   static final String ATTEMPTS_TOPIC = "attempts.v1";
   static final String FEATURES_TOPIC = "climber-features.v1";
   static final String RECONCILIATION_TOPIC = "stream-reconciliation.v1";
+  static final String DLQ_TOPIC = "stream-dlq.v1";
   static final String GROUP_ID = "beacon-stream";
   static final String DEFAULT_CHECKPOINT_DIR = "file:///checkpoints";
   static final Duration CHECKPOINT_INTERVAL = Duration.ofSeconds(10);
@@ -50,6 +52,7 @@ public record StreamConfig(
         ATTEMPTS_TOPIC,
         FEATURES_TOPIC,
         RECONCILIATION_TOPIC,
+        DLQ_TOPIC,
         GROUP_ID,
         checkpointDir.isEmpty() ? DEFAULT_CHECKPOINT_DIR : checkpointDir,
         CHECKPOINT_INTERVAL,

@@ -1,4 +1,4 @@
-.PHONY: dev down reset-db test test-api test-web test-ml lint fmt guards seed-demo import synthetic-board bench-catalog recompute-features test-e2e stream-up stream-down outbox-status
+.PHONY: dev down reset-db test test-api test-web test-ml lint fmt guards seed-demo import synthetic-board bench-catalog recompute-features test-e2e stream-up stream-down outbox-status dlq-status dlq-redrive
 
 COMPOSE := docker compose --env-file .env -f infra/compose/docker-compose.yml --profile core
 # BC-0301/BC-0303: core plus the stream profile, merged over docker-compose.yml: kafka.yml
@@ -117,6 +117,23 @@ recompute-features: .env
 	"$${JAVA_HOME:+$$JAVA_HOME/bin/}java" -jar services/api/build/libs/api-0.1.0.jar \
 	  --spring.profiles.active=recompute --recompute.user=$(if $(filter command line,$(origin USER)),$(USER),all) \
 	  $(if $(W),--recompute.w=$(W),)
+
+# BC-0302: DLQ operator targets (docs/runbooks/dlq.md). Both run the api jar's `redrive` profile
+# on the host JVM against the compose Kafka host listener (127.0.0.1:9094, override with
+# BEACON_STREAM_BOOTSTRAPSERVERS); that profile has no datasource, so Postgres is never touched.
+# `dlq-status` prints the record count and the last 20 records (event_id, error_code, attempt).
+# `dlq-redrive EVENTS=<id,id>|ALL [DRY_RUN=1] [TOPIC=stream-dlq.v1]` republishes the ORIGINAL
+# bytes of each selected DLQ record to its original topic with dlq.attempt = previous + 1 and
+# dlq.redriven_from = the DLQ event_id, one `redrive event_id=... result=...` audit line each.
+# Exit codes: 0 every selected record published (or dry run), 1 something was skipped, 2 usage.
+dlq-status: .env
+	./gradlew :api:bootJar
+	bash scripts/dlq-redrive.sh --list $(if $(TOPIC),--topic $(TOPIC),)
+
+dlq-redrive: .env
+	@test -n "$(EVENTS)" || { echo "usage: make dlq-redrive EVENTS=<id,id,...>|ALL [DRY_RUN=1] [TOPIC=stream-dlq.v1]" >&2; exit 2; }
+	./gradlew :api:bootJar
+	bash scripts/dlq-redrive.sh --events "$(EVENTS)" $(if $(DRY_RUN),--dry-run,) $(if $(TOPIC),--topic $(TOPIC),)
 
 # BC-0104: regenerate the SYNTHETIC demo catalog fixture (deterministic for the seed; the
 # committed file must not change). Run as a script with -I because -I implies -P, which keeps

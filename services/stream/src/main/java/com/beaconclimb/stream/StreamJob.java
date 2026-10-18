@@ -9,21 +9,19 @@ import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
-import org.apache.flink.connector.kafka.source.reader.deserializer.KafkaRecordDeserializationSchema;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.sink.v2.DiscardingSink;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
-import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Entry point of the Beacon Climb feature job (BC-0303 skeleton, ADR-0004): attempts.v1 in,
- * climber-features.v1 and stream-reconciliation.v1 out, at-least-once end to end. Checkpoints every
- * 10 s to {@code file:///checkpoints} (a compose volume), retained on cancellation; the restart
- * strategy is fixed-delay so a TaskManager restart resumes from the last checkpoint and the
- * committed Kafka offsets travel inside it (the source commits on checkpoint completion).
+ * climber-features.v1, stream-reconciliation.v1 and stream-dlq.v1 (BC-0302) out, at-least-once end
+ * to end. Checkpoints every 10 s to {@code file:///checkpoints} (a compose volume), retained on
+ * cancellation; the restart strategy is fixed-delay so a TaskManager restart resumes from the last
+ * checkpoint and the committed Kafka offsets travel inside it (the source commits on checkpoint
+ * completion).
  */
 public final class StreamJob {
 
@@ -39,12 +37,13 @@ public final class StreamJob {
     env.setParallelism(config.parallelism());
     build(env, config);
     LOG.info(
-        "submitting {} bootstrap={} source={} sinks={},{} checkpoints={} parallelism={}",
+        "submitting {} bootstrap={} source={} sinks={},{},{} checkpoints={} parallelism={}",
         JOB_NAME,
         config.bootstrapServers(),
         config.attemptsTopic(),
         config.featuresTopic(),
         config.reconciliationTopic(),
+        config.dlqTopic(),
         config.checkpointDir(),
         config.parallelism());
     env.execute(JOB_NAME);
@@ -70,8 +69,8 @@ public final class StreamJob {
   // flink-connector-kafka 5.0.0-2.2 still takes it; the connector has no replacement overload.
   @SuppressWarnings("deprecation")
   static void build(StreamExecutionEnvironment env, StreamConfig config) {
-    KafkaSource<byte[]> source =
-        KafkaSource.<byte[]>builder()
+    KafkaSource<SourceRecord> source =
+        KafkaSource.<SourceRecord>builder()
             .setBootstrapServers(config.bootstrapServers())
             .setTopics(config.attemptsTopic())
             .setGroupId(config.groupId())
@@ -79,15 +78,15 @@ public final class StreamJob {
             // the last completed checkpoint (and restored from it on recovery).
             .setStartingOffsets(OffsetsInitializer.committedOffsets(OffsetResetStrategy.EARLIEST))
             .setProperty("partition.discovery.interval.ms", "60000")
-            .setDeserializer(
-                KafkaRecordDeserializationSchema.valueOnly(ByteArrayDeserializer.class))
+            .setDeserializer(new SourceRecordDeserializationSchema())
             .build();
     // The source watermark strategy is noWatermarks(): event time is assigned after parsing
     // (StreamTopology), because the raw bytes carry no timestamp Flink can read.
-    DataStream<byte[]> raw =
+    DataStream<SourceRecord> raw =
         env.fromSource(source, WatermarkStrategy.noWatermarks(), "attempts.v1")
             .uid("source-attempts-v1");
-    StreamTopology.Outputs outputs = StreamTopology.wire(raw, StreamTopology.watermarks());
+    StreamTopology.Outputs outputs =
+        StreamTopology.wire(raw, StreamTopology.watermarks(), config.attemptsTopic());
     outputs
         .features()
         .sinkTo(sink(config.bootstrapServers(), config.featuresTopic()))
@@ -98,12 +97,13 @@ public final class StreamJob {
         .sinkTo(sink(config.bootstrapServers(), config.reconciliationTopic()))
         .name("sink-stream-reconciliation-v1")
         .uid("sink-stream-reconciliation-v1");
-    // BC-0302 replaces this with the stream-dlq.v1 sink; ParseAttempts already logs and counts.
+    // BC-0302: records the shared validator rejects, as stream-dlq.v1 records keyed by the
+    // original key, with the DLQ headers (ParseAttempts). Same at-least-once sink as the others.
     outputs
         .invalid()
-        .sinkTo(new DiscardingSink<>())
-        .name("invalid-until-bc-0302")
-        .uid("invalid-until-bc-0302");
+        .sinkTo(sink(config.bootstrapServers(), config.dlqTopic()))
+        .name("sink-stream-dlq-v1")
+        .uid("sink-stream-dlq-v1");
   }
 
   static KafkaSink<KeyedBytes> sink(String bootstrapServers, String topic) {

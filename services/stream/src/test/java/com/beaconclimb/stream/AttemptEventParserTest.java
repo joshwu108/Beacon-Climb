@@ -3,6 +3,7 @@ package com.beaconclimb.stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.beaconclimb.events.ErrorCode;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import org.junit.jupiter.api.DisplayName;
@@ -60,54 +61,89 @@ class AttemptEventParserTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"notes", "note", "Notes", "comment", "free_text", "grade"})
-  @DisplayName("an attribute outside the closed allowlist is a parse error (C-01, TM-11)")
+  @ValueSource(strings = {"note", "Notes", "comment", "free_text", "grade"})
+  @DisplayName(
+      "an attribute outside the closed allowlist is UNKNOWN_ATTRIBUTE, decided by the shared validator (C-01, TM-11)")
   void rejectsUnknownAttribute(String key) {
     ObjectNode event = ExampleEvents.example("valid-attempt-recorded");
     ((ObjectNode) event.get("attributes")).put(key, "anything");
 
     assertThatThrownBy(() -> AttemptEventParser.parse(ExampleEvents.bytes(event)))
         .isInstanceOf(AttemptEventParser.ParseException.class)
-        .hasMessageContaining("unknown attributes key '" + key + "'");
+        .hasMessageContaining(key)
+        .extracting(e -> ((AttemptEventParser.ParseException) e).errorCode())
+        .isEqualTo(ErrorCode.UNKNOWN_ATTRIBUTE);
   }
 
   @Test
-  @DisplayName("an unknown top-level member is a parse error")
+  @DisplayName("notes at any depth is NOTES_PRESENT and the message never quotes the note")
+  void rejectsNotes() {
+    byte[] raw = ExampleEvents.bytes(ExampleEvents.example("invalid-attempt-notes"));
+
+    assertThatThrownBy(() -> AttemptEventParser.parse(raw))
+        .isInstanceOf(AttemptEventParser.ParseException.class)
+        .hasMessageContaining("/attributes/notes")
+        .hasMessageNotContaining("private note")
+        .extracting(e -> ((AttemptEventParser.ParseException) e).errorCode())
+        .isEqualTo(ErrorCode.NOTES_PRESENT);
+  }
+
+  @Test
+  @DisplayName("an unknown top-level member is a schema violation")
   void rejectsUnknownTopLevelKey() {
     ObjectNode event = ExampleEvents.example("valid-attempt-recorded");
     event.put("extra", 1);
 
     assertThatThrownBy(() -> AttemptEventParser.parse(ExampleEvents.bytes(event)))
         .isInstanceOf(AttemptEventParser.ParseException.class)
-        .hasMessageContaining("unknown event key 'extra'");
+        .hasMessageContaining("extra")
+        .extracting(e -> ((AttemptEventParser.ParseException) e).errorCode())
+        .isEqualTo(ErrorCode.SCHEMA_VIOLATION);
   }
 
   @Test
   @DisplayName(
-      "the committed invalid examples (missing revision, notes, bad timestamp) are rejected")
+      "the committed invalid examples (missing revision, bad timestamp, string grade) are SCHEMA_VIOLATION")
   void rejectsCommittedInvalidExamples() {
     for (String name :
         new String[] {
           "invalid-attempt-missing-revision",
-          "invalid-attempt-notes",
-          "invalid-attempt-bad-timestamp"
+          "invalid-attempt-bad-timestamp",
+          "invalid-attempt-grade-numeric-string"
         }) {
       byte[] raw = ExampleEvents.bytes(ExampleEvents.example(name));
       assertThatThrownBy(() -> AttemptEventParser.parse(raw))
           .as(name)
-          .isInstanceOf(AttemptEventParser.ParseException.class);
+          .isInstanceOf(AttemptEventParser.ParseException.class)
+          .extracting(e -> ((AttemptEventParser.ParseException) e).errorCode())
+          .isEqualTo(ErrorCode.SCHEMA_VIOLATION);
     }
   }
 
   @Test
   @DisplayName(
-      "non-JSON bytes and non-object documents are parse errors, never exceptions of another kind")
+      "non-JSON bytes are NOT_JSON and non-object documents SCHEMA_VIOLATION, never another exception")
   void rejectsGarbage() {
     assertThatThrownBy(() -> AttemptEventParser.parse("not json".getBytes(StandardCharsets.UTF_8)))
-        .isInstanceOf(AttemptEventParser.ParseException.class);
+        .isInstanceOf(AttemptEventParser.ParseException.class)
+        .extracting(e -> ((AttemptEventParser.ParseException) e).errorCode())
+        .isEqualTo(ErrorCode.NOT_JSON);
     assertThatThrownBy(() -> AttemptEventParser.parse("[1,2]".getBytes(StandardCharsets.UTF_8)))
         .isInstanceOf(AttemptEventParser.ParseException.class)
-        .hasMessageContaining("JSON object");
+        .extracting(e -> ((AttemptEventParser.ParseException) e).errorCode())
+        .isEqualTo(ErrorCode.SCHEMA_VIOLATION);
+  }
+
+  @Test
+  @DisplayName("an RFC 3339 offset in occurred_at is honoured (the schema admits it)")
+  void honoursOffsets() {
+    ObjectNode event = ExampleEvents.example("valid-attempt-recorded");
+    event.put("occurred_at", "2026-10-14T16:00:00+02:00");
+
+    AttemptEvent parsed = AttemptEventParser.parse(ExampleEvents.bytes(event));
+
+    assertThat(parsed.occurredAtMillis())
+        .isEqualTo(Instant.parse("2026-10-14T14:00:00Z").toEpochMilli());
   }
 
   @Test

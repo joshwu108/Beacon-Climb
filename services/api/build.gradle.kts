@@ -26,6 +26,10 @@ dependencies {
     // JSON Schema 2020-12 validator (Jackson 3 based, matching Boot 4.1): catalog line validation
     // in the importer (BC-0105) and contract conformance in tests.
     implementation("com.networknt:json-schema-validator:3.0.8")
+    // BC-0302: the shared event validation library (attempts.v1 / climber-features.v1 /
+    // stream-dlq.v1 schemas, EventValidator, DlqRecord, RedriveRecord). The attempt write path,
+    // the DlqPublisher and the redrive CLI all judge conformance through it.
+    implementation(project(":events"))
     // BC-0122: token-bucket rate limiting (ADR-0005). Core only; no Spring integration needed.
     implementation("com.bucket4j:bucket4j_jdk17-core:8.21.0")
     // BC-0301: the transactional-outbox publisher (com.beaconclimb.api.outbox). Only the core
@@ -58,11 +62,7 @@ tasks.named<ProcessResources>("processResources") {
         into("contracts/catalog")
     }
     // BC-0109: every outbox payload is validated against the attempts.v1 event contract before
-    // it is inserted (ADR-0002, TM-11), so the schema ships inside the jar the same way.
-    from("../../contracts/events") {
-        include("attempts.v1.schema.json")
-        into("contracts/events")
-    }
+    // it is inserted (ADR-0002, TM-11); since BC-0302 that schema ships inside the :events jar.
     // BC-0111: the decision record and candidate snapshot are validated against the decision
     // contract before the ledger transaction commits (ADR-0003), so the schema ships inside the jar.
     from("../../contracts/decisions") {

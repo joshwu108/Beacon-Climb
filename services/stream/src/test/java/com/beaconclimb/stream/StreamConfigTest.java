@@ -23,6 +23,7 @@ class StreamConfigTest {
     assertThat(config.attemptsTopic()).isEqualTo("attempts.v1");
     assertThat(config.featuresTopic()).isEqualTo("climber-features.v1");
     assertThat(config.reconciliationTopic()).isEqualTo("stream-reconciliation.v1");
+    assertThat(config.dlqTopic()).isEqualTo("stream-dlq.v1");
     assertThat(config.groupId()).isEqualTo("beacon-stream");
     assertThat(config.checkpointDir()).isEqualTo("file:///checkpoints");
     assertThat(config.checkpointInterval()).isEqualTo(Duration.ofSeconds(10));

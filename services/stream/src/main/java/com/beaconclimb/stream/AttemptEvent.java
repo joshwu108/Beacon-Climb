@@ -9,7 +9,8 @@ import java.util.Objects;
  * (contracts/events/attempts.v1.schema.json) plus the original bytes, which are forwarded unchanged
  * to the reconciliation and DLQ topics. {@code gradeNumeric} is the OPTIONAL {@code
  * attributes.grade_numeric} added consumer-first by BC-0301/BC-0302: {@code null} when absent
- * (treated as ungraded downstream).
+ * (treated as ungraded downstream). Only {@link AttemptEventParser} builds one, from a document the
+ * shared validator accepted.
  */
 public record AttemptEvent(
     String eventId,

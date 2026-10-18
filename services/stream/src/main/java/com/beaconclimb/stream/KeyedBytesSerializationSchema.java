@@ -6,9 +6,10 @@ import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
 /**
- * Writes a {@link KeyedBytes} to one topic with the user_id as the record key (so every record of a
- * user lands on the same partition, ADR-0004) and the headers copied over; the partition is left to
- * the producer's default key hashing.
+ * Writes a {@link KeyedBytes} to one topic with its key as the record key (user_id for features and
+ * reconciliation so every record of a user lands on the same partition, ADR-0004; the original key
+ * for DLQ records) and the headers copied over; the partition is left to the producer's default key
+ * hashing.
  */
 public final class KeyedBytesSerializationSchema
     implements KafkaRecordSerializationSchema<KeyedBytes> {

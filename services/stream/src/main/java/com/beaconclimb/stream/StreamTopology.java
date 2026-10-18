@@ -18,9 +18,14 @@ public final class StreamTopology {
   /** After this long without events a source split stops holding the watermark back. */
   public static final Duration IDLENESS = Duration.ofMinutes(1);
 
-  /** The three streams leaving the topology; each goes to its own sink. */
+  /**
+   * The three streams leaving the topology; each goes to its own sink ({@code invalid} is the
+   * stream-dlq.v1 feed: value = DLQ record, key = original key, headers = DLQ headers).
+   */
   public record Outputs(
-      DataStream<KeyedBytes> features, DataStream<KeyedBytes> late, DataStream<byte[]> invalid) {}
+      DataStream<KeyedBytes> features,
+      DataStream<KeyedBytes> late,
+      DataStream<KeyedBytes> invalid) {}
 
   private StreamTopology() {}
 
@@ -36,10 +41,20 @@ public final class StreamTopology {
     return (event, previous) -> event.occurredAtMillis();
   }
 
+  /**
+   * @param rawAttempts the source records of {@code attemptsTopic}
+   * @param watermarks the watermark strategy on {@code occurred_at}
+   * @param attemptsTopic the source topic name, recorded in every DLQ record
+   */
   public static Outputs wire(
-      DataStream<byte[]> rawAttempts, WatermarkStrategy<AttemptEvent> watermarks) {
+      DataStream<SourceRecord> rawAttempts,
+      WatermarkStrategy<AttemptEvent> watermarks,
+      String attemptsTopic) {
     SingleOutputStreamOperator<AttemptEvent> parsed =
-        rawAttempts.process(new ParseAttempts()).name("parse-attempts").uid("parse-attempts");
+        rawAttempts
+            .process(new ParseAttempts(attemptsTopic))
+            .name("parse-attempts")
+            .uid("parse-attempts");
     SingleOutputStreamOperator<KeyedBytes> features =
         parsed
             .assignTimestampsAndWatermarks(watermarks)
