@@ -1,0 +1,19 @@
+bash scripts/seed-demo.sh
+seed-demo: waiting for http://127.0.0.1:8080/health/ready (up to 60s)
+seed-demo: API ready
+seed-demo: importing ml/datasets/synthetic/fixtures/demo-board-v1.jsonl
+imported routes=300 variants=609 holds=144 rejected=0 provenance=01a14d7b-adfa-78f9-8bf1-a7046a54a2cc
+updated routes=0 variants=0 holds=0
+seed-demo: user 'demo' registered
+seed-demo: consent v1 recorded for 'demo' (service=true, research=false)
+seed-demo: preferences set for 'demo': board synthetic-demo-1 at 40 deg, INTERMEDIATE, goals [TECHNIQUE]
+seed-demo: GET /v1/me ok: username=demo
+seed-demo: user 'admin' registered
+seed-demo: user 'admin' has role ADMIN
+
+Beacon Climb dev stack is seeded.
+  web  http://127.0.0.1:3000
+  api  http://127.0.0.1:8080
+  sign in as  demo / demo-password   (board synthetic-demo-1, 40 deg)
+  admin user  admin (password: BEACON_ADMIN_PASSWORD in .env; not printed)
+Re-running 'make seed-demo' is safe.

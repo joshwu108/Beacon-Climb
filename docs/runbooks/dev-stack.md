@@ -149,6 +149,14 @@ the stock format (path and status, no bodies).
 `set <VAR> in .env` from compose; `make seed-demo` fails with
 `BEACON_ADMIN_PASSWORD is unset or empty`.
 
+**`make dev` fails with `service "migrate" didn't complete successfully: exit 1` and
+`... logs migrate` shows `FATAL: password authentication failed for user "beacon_migrate"`**
+— the named volume `compose_pgdata` already exists from an earlier checkout or an earlier
+`.env` (the compose project is named after the `infra/compose` directory, so every clone of
+this repository on one machine shares its volumes, and `make down` keeps them). The roles in
+that volume carry the old passwords. Run `make reset-db` once (drops `pgdata` and `decisions`),
+then `make dev` again. Seen on the BC-0125 clean-clone run (docs/evidence/BC-0125/).
+
 **Port already in use** — `Bind for 127.0.0.1:8080 failed: port is already allocated`
 (or 3000 / 5432). Find the owner with `lsof -nP -iTCP:8080 -sTCP:LISTEN`; a stray
 `./gradlew bootRun`, a Vite preview or an old compose project are the usual culprits.

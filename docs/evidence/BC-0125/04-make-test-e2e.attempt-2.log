@@ -1,0 +1,12 @@
+pnpm --filter @beacon/web exec playwright test --config ../../test/e2e/playwright.config.ts
+
+Running 6 tests using 2 workers
+
+  ✓  2 [chromium-desktop] › ../../test/e2e/contract-examples.spec.ts:101:5 › contract example fixtures replay against the seeded demo board (305ms)
+  ✓  1 [chromium-desktop] › ../../test/e2e/demo-login.spec.ts:13:5 › the seeded demo user signs in and lands on the synthetic board at 40 degrees (859ms)
+  ✓  4 [chromium-mobile] › ../../test/e2e/contract-examples.spec.ts:101:5 › contract example fixtures replay against the seeded demo board (246ms)
+  ✓  5 [chromium-mobile] › ../../test/e2e/demo-login.spec.ts:13:5 › the seeded demo user signs in and lands on the synthetic board at 40 degrees (690ms)
+  ✓  3 [chromium-desktop] › ../../test/e2e/slice.spec.ts:71:5 › onboard -> browse -> recommend -> log twice -> history -> cold start ends (3.3s)
+  ✓  6 [chromium-mobile] › ../../test/e2e/slice.spec.ts:71:5 › onboard -> browse -> recommend -> log twice -> history -> cold start ends (3.4s)
+
+  6 passed (7.1s)

@@ -1,0 +1,3 @@
+curl: (7) Failed to connect to 127.0.0.1 port 3000 after 0 ms: Couldn't connect to server
+e2e: the dev stack is not up on 127.0.0.1:3000 - run make dev && make seed-demo first
+make: *** [test-e2e] Error 1

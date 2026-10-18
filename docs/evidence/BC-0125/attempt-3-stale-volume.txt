@@ -1,0 +1,30 @@
+BC-0125 Gate G1 clean-clone run started 2026-10-18T05:30:25Z
+hardware: Apple M5, 24 GB RAM, macOS 27.0 (26A428), Docker engine 29.2.1 with 7836 MiB / 10 CPUs, openjdk version "21.0.12.1" 2026-08-18, node v25.2.1, pnpm 10.34.7
+source commit: d1ab5e3d1f95cdeed3b33eeb1e6cf66ebdc6cba0
+$ git clone /Users/joshuawu/Beacon-Climb /private/tmp/beacon-g1-clone
+clone HEAD: d1ab5e3d1f95cdeed3b33eeb1e6cf66ebdc6cba0; tracked files: 656
+.env created from .env.example with 4 random values (openssl rand -hex 24); values not logged
+### 00-pnpm-install
+$ pnpm install --frozen-lockfile
+exit=0 wall=2s (full output: docs/evidence/BC-0125/00-pnpm-install.log)
+### 00b-uv-sync
+$ uv sync --directory services/ml
+exit=0 wall=0s (full output: docs/evidence/BC-0125/00b-uv-sync.log)
+### 01-make-dev
+$ make dev
+exit=2 wall=9s (full output: docs/evidence/BC-0125/01-make-dev.log)
+### 02-make-seed-demo
+$ make seed-demo
+exit=2 wall=62s (full output: docs/evidence/BC-0125/02-make-seed-demo.log)
+### 03-make-test
+$ make test
+exit=0 wall=61s (full output: docs/evidence/BC-0125/03-make-test.log)
+### 04-make-test-e2e
+$ make test-e2e
+exit=2 wall=0s (full output: docs/evidence/BC-0125/04-make-test-e2e.log)
+### 05-make-down
+$ make down
+exit=0 wall=0s (full output: docs/evidence/BC-0125/05-make-down.log)
+finished 2026-10-18T05:32:42Z
+
+Diagnosis (attempt 3): same shared-volume failure as attempt 1: attempt 2 ended with `make down`, which keeps compose_pgdata, and the new clone generated new passwords. The README instruction added for this case (`make reset-db` once when a volume from an earlier checkout exists) is now part of the recorded sequence (step 00c), and the run ends with `make reset-db` so the machine is left clean.

@@ -1,0 +1,23 @@
+BC-0125 Gate G1 clean-clone run started 2026-10-18T05:25:37Z
+hardware: Apple M5, 24 GB RAM, macOS 27.0 (26A428), Docker engine 29.2.1 with 7836 MiB / 10 CPUs, openjdk version "21.0.12.1" 2026-08-18, node v25.2.1, pnpm 10.34.7
+source commit: 1cfb8ae9836ace91dd804e1811ef5cadf0df499a
+$ git clone /Users/joshuawu/Beacon-Climb /private/tmp/beacon-g1-clone
+clone HEAD: 1cfb8ae9836ace91dd804e1811ef5cadf0df499a; tracked files: 656
+.env created from .env.example with 4 random values (openssl rand -hex 24); values not logged
+### 00-pnpm-install
+$ pnpm install --frozen-lockfile
+exit=0 wall=1s (full output: docs/evidence/BC-0125/00-pnpm-install.log)
+### 00b-uv-sync
+$ uv sync --directory services/ml
+exit=0 wall=0s (full output: docs/evidence/BC-0125/00b-uv-sync.log)
+### 01-make-dev
+$ make dev
+exit=2 wall=18s (full output: docs/evidence/BC-0125/01-make-dev.log)
+### 02-make-seed-demo
+$ make seed-demo
+exit=2 wall=61s (full output: docs/evidence/BC-0125/02-make-seed-demo.log)
+### 03-make-test
+$ make test
+migrate-1  | 05:25:57.774  WARN AnnotationConfigApplicationContext - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'attemptAuditRepository' defined in URL [jar:nested:/app/api.jar/!BOOT-INF/classes/!/com/beaconclimb/api/attempts/AttemptAuditRepository.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'jdbcClient' defined in class path resource [org/springframework/boot/jdbc/autoconfigure/JdbcClientAutoConfiguration.class]: Failed to initialize dependency 'flywayInitializer' of JdbcClient bean 'jdbcClient': Error creating bean with name 'flywayInitializer' defined in class path resource [org/springframework/boot/flyway/autoconfigure/FlywayAutoConfiguration$FlywayConfiguration.class]: Unable to obtain connection from database: FATAL: password authentication failed for user "beacon_migrate"
+migrate-1  | Message    : FATAL: password authentication failed for user "beacon_migrate"
+Diagnosis (attempt 1): the compose project name is derived from the directory name `infra/compose`, so the fresh clone attached to the named volume `compose_pgdata` left behind by the original checkout (make down keeps volumes). That volume's roles carry the old passwords, so the new .env's BEACON_MIGRATE_DB_PASSWORD was refused. Fix: README/runbook now say to run `make reset-db` when a database volume from an earlier checkout exists, with the exact error in troubleshooting; the run was restarted after `make reset-db`.

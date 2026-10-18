@@ -1,0 +1,5 @@
+docker compose --env-file .env -f infra/compose/docker-compose.yml --profile core down -v
+ Volume compose_decisions Removing 
+ Volume compose_pgdata Removing 
+ Volume compose_decisions Removed 
+ Volume compose_pgdata Removed 

@@ -1,0 +1,30 @@
+BC-0125 Gate G1 clean-clone run started 2026-10-18T05:28:08Z
+hardware: Apple M5, 24 GB RAM, macOS 27.0 (26A428), Docker engine 29.2.1 with 7836 MiB / 10 CPUs, openjdk version "21.0.12.1" 2026-08-18, node v25.2.1, pnpm 10.34.7
+source commit: 1cfb8ae9836ace91dd804e1811ef5cadf0df499a
+$ git clone /Users/joshuawu/Beacon-Climb /private/tmp/beacon-g1-clone
+clone HEAD: 1cfb8ae9836ace91dd804e1811ef5cadf0df499a; tracked files: 656
+.env created from .env.example with 4 random values (openssl rand -hex 24); values not logged
+### 00-pnpm-install
+$ pnpm install --frozen-lockfile
+exit=0 wall=1s (full output: docs/evidence/BC-0125/00-pnpm-install.log)
+### 00b-uv-sync
+$ uv sync --directory services/ml
+exit=0 wall=0s (full output: docs/evidence/BC-0125/00b-uv-sync.log)
+### 01-make-dev
+$ make dev
+exit=0 wall=20s (full output: docs/evidence/BC-0125/01-make-dev.log)
+### 02-make-seed-demo
+$ make seed-demo
+exit=0 wall=2s (full output: docs/evidence/BC-0125/02-make-seed-demo.log)
+### 03-make-test
+$ make test
+exit=2 wall=49s (full output: docs/evidence/BC-0125/03-make-test.log)
+### 04-make-test-e2e
+$ make test-e2e
+exit=0 wall=8s (full output: docs/evidence/BC-0125/04-make-test-e2e.log)
+### 05-make-down
+$ make down
+exit=0 wall=1s (full output: docs/evidence/BC-0125/05-make-down.log)
+finished 2026-10-18T05:29:32Z
+
+Diagnosis (attempt 2): make test failed with 2 of 366 api tests (AttemptCreateIT.shippedFixturesConformToTheirSchemas, PreferencesEndpointIT.fixtureRequestAngleIsNotOnTheDemoBoard) because BC-0005c (1cfb8ae) moved the contract fixtures to angle 40 and those tests still pinned 35. Fixed in the next commit; attempt 3 re-runs from a fresh clone.

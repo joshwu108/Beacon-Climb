@@ -1,0 +1,150 @@
+./gradlew :api:bootJar
+Starting a Gradle Daemon, 1 busy Daemon could not be reused, use --status for details
+> Task :api:compileJava
+> Task :api:processResources
+> Task :api:classes
+> Task :api:resolveMainClassName
+> Task :api:bootJar
+
+BUILD SUCCESSFUL in 5s
+4 actionable tasks: 4 executed
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+docker compose --env-file .env -f infra/compose/docker-compose.yml --profile core up -d --build --wait
+ Image beacon-web:dev Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 586B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 2.49kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:22.23.3-alpine
+#3 DONE 0.0s
+
+#4 [internal] load metadata for docker.io/nginxinc/nginx-unprivileged:1.27-alpine
+#4 DONE 0.0s
+
+#5 [stage-1 1/4] FROM docker.io/nginxinc/nginx-unprivileged:1.27-alpine@sha256:65e3e85dbaed8ba248841d9d58a899b6197106c23cb0ff1a132b7bfe0547e4c0
+#5 resolve docker.io/nginxinc/nginx-unprivileged:1.27-alpine@sha256:65e3e85dbaed8ba248841d9d58a899b6197106c23cb0ff1a132b7bfe0547e4c0 done
+#5 DONE 0.0s
+
+#6 [build 1/9] FROM docker.io/library/node:22.23.3-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402
+#6 resolve docker.io/library/node:22.23.3-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 902.19kB 0.0s done
+#7 DONE 0.0s
+
+#8 [build 2/9] RUN corepack enable && corepack prepare pnpm@10.34.7 --activate
+#8 CACHED
+
+#9 [build 5/9] COPY apps/web/package.json apps/web/package.json
+#9 CACHED
+
+#10 [build 3/9] WORKDIR /src
+#10 CACHED
+
+#11 [build 4/9] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+#11 CACHED
+
+#12 [build 6/9] RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store     pnpm install --frozen-lockfile
+#12 CACHED
+
+#13 [build 7/9] COPY contracts contracts
+#13 DONE 0.0s
+
+#14 [build 8/9] COPY apps/web apps/web
+#14 DONE 0.0s
+
+#15 [build 9/9] RUN pnpm --filter @beacon/web build     && rm -f apps/web/dist/mockServiceWorker.js
+#15 0.327 
+#15 0.327 > @beacon/web@0.1.0 build /src/apps/web
+#15 0.327 > tsc -b && vite build
+#15 0.327 
+#15 3.868 [36mvite v6.4.4 [32mbuilding for production...[36m[39m
+#15 3.913 transforming...
+#15 4.997 [32m✓[39m 421 modules transformed.
+#15 5.001 Initially, there are
+#15 5.001 21 chunks, of which
+#15 5.001 16 are below minChunkSize.
+#15 5.001 After merging chunks, there are
+#15 5.001 9 chunks, of which
+#15 5.001 4 are below minChunkSize.
+#15 5.061 rendering chunks...
+#15 5.123 computing gzip size...
+#15 5.131 [2mdist/[22m[32mindex.html                           [39m[1m[2m  0.85 kB[22m[1m[22m[2m │ gzip:   0.42 kB[22m
+#15 5.131 [2mdist/[22m[2massets/[22m[35mDecisionPage-BQ11buJl.css     [39m[1m[2m  1.38 kB[22m[1m[22m[2m │ gzip:   0.51 kB[22m
+#15 5.131 [2mdist/[22m[2massets/[22m[35mRouteDetailPage-CkFoqgxH.css  [39m[1m[2m  2.10 kB[22m[1m[22m[2m │ gzip:   0.71 kB[22m
+#15 5.131 [2mdist/[22m[2massets/[22m[35mOnboardingPage-57oHCVHN.css   [39m[1m[2m  2.39 kB[22m[1m[22m[2m │ gzip:   0.75 kB[22m
+#15 5.131 [2mdist/[22m[2massets/[22m[35mSessionPage-BkLPyVDn.css      [39m[1m[2m  2.68 kB[22m[1m[22m[2m │ gzip:   0.77 kB[22m
+#15 5.131 [2mdist/[22m[2massets/[22m[35mAttemptFormPage-BCyRPEBE.css  [39m[1m[2m  4.23 kB[22m[1m[22m[2m │ gzip:   1.20 kB[22m
+#15 5.131 [2mdist/[22m[2massets/[22m[35mExplorePage-BUqwKHbq.css      [39m[1m[2m  4.34 kB[22m[1m[22m[2m │ gzip:   1.14 kB[22m
+#15 5.131 [2mdist/[22m[2massets/[22m[35mindex-B-_O05hT.css            [39m[1m[2m 17.13 kB[22m[1m[22m[2m │ gzip:   4.11 kB[22m
+#15 5.131 [2mdist/[22m[2massets/[22m[36mdraft-store-CGpllVkC.js       [39m[1m[2m  1.97 kB[22m[1m[22m[2m │ gzip:   0.98 kB[22m
+#15 5.131 [2mdist/[22m[2massets/[22m[36mDecisionPage-DxAJHV0C.js      [39m[1m[2m  5.65 kB[22m[1m[22m[2m │ gzip:   1.92 kB[22m
+#15 5.131 [2mdist/[22m[2massets/[22m[36mRouteDetailPage-0B9AbDFh.js   [39m[1m[2m  8.94 kB[22m[1m[22m[2m │ gzip:   3.13 kB[22m
+#15 5.131 [2mdist/[22m[2massets/[22m[36mExplorePage-B_5KkoD5.js       [39m[1m[2m  9.43 kB[22m[1m[22m[2m │ gzip:   3.02 kB[22m
+#15 5.131 [2mdist/[22m[2massets/[22m[36mSessionPage-D_jV6lOS.js       [39m[1m[2m 11.39 kB[22m[1m[22m[2m │ gzip:   3.93 kB[22m
+#15 5.131 [2mdist/[22m[2massets/[22m[36museDecision-dR0BQ8Az.js       [39m[1m[2m 15.73 kB[22m[1m[22m[2m │ gzip:   6.05 kB[22m
+#15 5.131 [2mdist/[22m[2massets/[22m[36mOnboardingPage-BfyHHIsK.js    [39m[1m[2m 18.82 kB[22m[1m[22m[2m │ gzip:   5.96 kB[22m
+#15 5.131 [2mdist/[22m[2massets/[22m[36mAttemptFormPage-B5a9_DAk.js   [39m[1m[2m 26.02 kB[22m[1m[22m[2m │ gzip:   7.93 kB[22m
+#15 5.131 [2mdist/[22m[2massets/[22m[36mindex-DnuBxXWD.js             [39m[1m[2m361.60 kB[22m[1m[22m[2m │ gzip: 114.92 kB[22m
+#15 5.131 [32m✓ built in 1.25s[39m
+#15 5.147 
+#15 5.147 > @beacon/web@0.1.0 postbuild /src/apps/web
+#15 5.147 > rm -f dist/mockServiceWorker.js
+#15 5.147 
+#15 DONE 5.2s
+
+#16 [stage-1 3/4] COPY apps/web/nginx/security-headers.conf /etc/nginx/conf.d/security-headers.inc
+#16 CACHED
+
+#17 [stage-1 2/4] COPY apps/web/nginx/default.conf /etc/nginx/conf.d/default.conf
+#17 CACHED
+
+#18 [stage-1 4/4] COPY --from=build /src/apps/web/dist /usr/share/nginx/html
+#18 CACHED
+
+#19 exporting to image
+#19 exporting layers done
+#19 exporting manifest sha256:d622671e288366d1cd2c8fb2b36bfbac2f46aecf69b6e25b3fcdbc8dd21caa5d done
+#19 exporting config sha256:cf2e6d75f6454798c1789a11025b8ea66f4d584f9180be7ef5239c612621bb41 done
+#19 exporting attestation manifest sha256:be43d20c1751adfccf79d4e075b05207aaab6cc1c1e156df14069feb08db61fa done
+#19 exporting manifest list sha256:77d6e51159839ca3252e581d790ac74d3d401ae41a5034072b56d55e487e2514 done
+#19 naming to docker.io/library/beacon-web:dev done
+#19 unpacking to docker.io/library/beacon-web:dev done
+#19 DONE 0.0s
+
+#20 resolving provenance for metadata file
+#20 DONE 0.0s
+ Image beacon-web:dev Built 
+ Network compose_default Creating 
+ Network compose_default Created 
+ Container compose-decisions-init-1 Creating 
+ Container compose-postgres-1 Creating 
+ Container compose-decisions-init-1 Created 
+ Container compose-postgres-1 Created 
+ Container compose-migrate-1 Creating 
+ Container compose-migrate-1 Created 
+ Container compose-api-1 Creating 
+ Container compose-api-1 Created 
+ Container compose-web-1 Creating 
+ Container compose-web-1 Created 
+ Container compose-postgres-1 Starting 
+ Container compose-decisions-init-1 Starting 
+ Container compose-decisions-init-1 Started 
+ Container compose-postgres-1 Started 
+ Container compose-postgres-1 Waiting 
+ Container compose-postgres-1 Healthy 
+ Container compose-migrate-1 Starting 
+ Container compose-migrate-1 Started 
+ Container compose-migrate-1 Waiting 
+ Container compose-decisions-init-1 Waiting 
+ Container compose-postgres-1 Waiting 
+ Container compose-decisions-init-1 Exited 
+ Container compose-postgres-1 Healthy 
+ Container compose-migrate-1 Error service "migrate" didn't complete successfully: exit 1
+service "migrate" didn't complete successfully: exit 1
+make: *** [dev] Error 1

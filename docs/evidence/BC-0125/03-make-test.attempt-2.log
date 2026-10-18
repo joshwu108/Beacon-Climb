@@ -1,0 +1,68 @@
+./gradlew :api:test
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:compileTestJava
+> Task :api:processTestResources
+> Task :api:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+
+> Task :api:test
+
+AttemptCreateIT > shippedFixturesConformToTheirSchemas() FAILED
+    org.opentest4j.AssertionFailedError at AttemptCreateIT.java:393
+
+PreferencesEndpointIT > fixtureRequestAngleIsNotOnTheDemoBoard() FAILED
+    org.opentest4j.AssertionFailedError at PreferencesEndpointIT.java:243
+
+{"@timestamp":"2026-10-18T05:29:23.026168Z","log":{"level":"INFO","logger":"org.springframework.boot.tomcat.GracefulShutdown"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"Commencing graceful shutdown. Waiting for active requests to complete","tags":["COMMONS-LOGGING"],"ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.031742Z","log":{"level":"INFO","logger":"org.springframework.boot.tomcat.GracefulShutdown"},"process":{"pid":90303,"thread":{"name":"tomcat-shutdown"}},"service":{"name":"beacon-api","node":{}},"message":"Graceful shutdown complete","tags":["COMMONS-LOGGING"],"ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.034217Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-1 - Shutdown initiated...","ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.034797Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-1 - Shutdown completed.","ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.037633Z","log":{"level":"INFO","logger":"org.springframework.boot.tomcat.GracefulShutdown"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"Commencing graceful shutdown. Waiting for active requests to complete","tags":["COMMONS-LOGGING"],"ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.039408Z","log":{"level":"INFO","logger":"org.springframework.boot.tomcat.GracefulShutdown"},"process":{"pid":90303,"thread":{"name":"tomcat-shutdown"}},"service":{"name":"beacon-api","node":{}},"message":"Graceful shutdown complete","tags":["COMMONS-LOGGING"],"ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.040582Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-2 - Shutdown initiated...","ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.040802Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-2 - Shutdown completed.","ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.042218Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-3 - Shutdown initiated...","ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.042498Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-3 - Shutdown completed.","ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.042847Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-4 - Shutdown initiated...","ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.043084Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-4 - Shutdown completed.","ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.043248Z","log":{"level":"INFO","logger":"org.springframework.boot.tomcat.GracefulShutdown"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"Commencing graceful shutdown. Waiting for active requests to complete","tags":["COMMONS-LOGGING"],"ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.044843Z","log":{"level":"INFO","logger":"org.springframework.boot.tomcat.GracefulShutdown"},"process":{"pid":90303,"thread":{"name":"tomcat-shutdown"}},"service":{"name":"beacon-api","node":{}},"message":"Graceful shutdown complete","tags":["COMMONS-LOGGING"],"ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.046271Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-5 - Shutdown initiated...","ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.046453Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-5 - Shutdown completed.","ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.047730Z","log":{"level":"INFO","logger":"org.springframework.boot.tomcat.GracefulShutdown"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"Commencing graceful shutdown. Waiting for active requests to complete","tags":["COMMONS-LOGGING"],"ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.049271Z","log":{"level":"INFO","logger":"org.springframework.boot.tomcat.GracefulShutdown"},"process":{"pid":90303,"thread":{"name":"tomcat-shutdown"}},"service":{"name":"beacon-api","node":{}},"message":"Graceful shutdown complete","tags":["COMMONS-LOGGING"],"ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.050049Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-6 - Shutdown initiated...","ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.050243Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-6 - Shutdown completed.","ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.051403Z","log":{"level":"INFO","logger":"org.springframework.boot.tomcat.GracefulShutdown"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"Commencing graceful shutdown. Waiting for active requests to complete","tags":["COMMONS-LOGGING"],"ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.052760Z","log":{"level":"INFO","logger":"org.springframework.boot.tomcat.GracefulShutdown"},"process":{"pid":90303,"thread":{"name":"tomcat-shutdown"}},"service":{"name":"beacon-api","node":{}},"message":"Graceful shutdown complete","tags":["COMMONS-LOGGING"],"ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.053781Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-7 - Shutdown initiated...","ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.053961Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-7 - Shutdown completed.","ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.054965Z","log":{"level":"INFO","logger":"org.springframework.boot.tomcat.GracefulShutdown"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"Commencing graceful shutdown. Waiting for active requests to complete","tags":["COMMONS-LOGGING"],"ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.057672Z","log":{"level":"INFO","logger":"org.springframework.boot.tomcat.GracefulShutdown"},"process":{"pid":90303,"thread":{"name":"tomcat-shutdown"}},"service":{"name":"beacon-api","node":{}},"message":"Graceful shutdown complete","tags":["COMMONS-LOGGING"],"ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.058525Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-8 - Shutdown initiated...","ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.058918Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-8 - Shutdown completed.","ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.061235Z","log":{"level":"INFO","logger":"org.springframework.boot.tomcat.GracefulShutdown"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"Commencing graceful shutdown. Waiting for active requests to complete","tags":["COMMONS-LOGGING"],"ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.062782Z","log":{"level":"INFO","logger":"org.springframework.boot.tomcat.GracefulShutdown"},"process":{"pid":90303,"thread":{"name":"tomcat-shutdown"}},"service":{"name":"beacon-api","node":{}},"message":"Graceful shutdown complete","tags":["COMMONS-LOGGING"],"ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.063482Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-9 - Shutdown initiated...","ecs":{"version":"8.11"}}
+{"@timestamp":"2026-10-18T05:29:23.063678Z","log":{"level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource"},"process":{"pid":90303,"thread":{"name":"SpringApplicationShutdownHook"}},"service":{"name":"beacon-api","node":{}},"message":"HikariPool-9 - Shutdown completed.","ecs":{"version":"8.11"}}
+
+> Task :api:test
+
+366 tests completed, 2 failed, 1 skipped
+
+> Task :api:test FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':api:test'.
+> There were failing tests. See the report at: file:///private/tmp/beacon-g1-clone/services/api/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 49s
+5 actionable tasks: 3 executed, 2 up-to-date
+make: *** [test-api] Error 1
