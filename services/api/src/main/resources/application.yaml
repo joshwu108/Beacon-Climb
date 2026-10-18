@@ -94,6 +94,14 @@ beacon:
     consumer:
       materializer-group-id: beacon-materializer
       reconciliation-group-id: beacon-reconciliation
+    materializer:
+      # BC-0305 (MaterializerConfig): one consumer thread on climber-features.v1 (six partitions,
+      # parallelism 1 is enough locally), manual ack after the Postgres commit, no auto commit,
+      # earliest on first start. A failed transaction is redelivered after retry-backoff, without
+      # limit, so a snapshot is never skipped; invalid records and checksum conflicts go to
+      # stream-dlq.v1 and are acknowledged.
+      max-poll-records: 100
+      retry-backoff: 1s
 logging:
   structured:
     format:

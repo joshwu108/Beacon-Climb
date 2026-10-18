@@ -18,11 +18,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * BC-0101/BC-0107/BC-0109/BC-0113/BC-0110/BC-0111/BC-0123/BC-0123c: every Flyway migration applies
- * on an empty Postgres 17 as beacon_migrate, the runtime role beacon_app gets DML and nothing more
- * (and no UPDATE or DELETE on the append-only ledger and audit tables), the constraints from
- * planning/06 sections 1, 6 and 7 hold, and the golden schema document docs/db/schema-v1.md matches
- * pg_dump of the live database.
+ * BC-0101/BC-0107/BC-0109/BC-0113/BC-0110/BC-0111/BC-0123/BC-0123c/BC-0305: every Flyway migration
+ * applies on an empty Postgres 17 as beacon_migrate, the runtime role beacon_app gets DML and
+ * nothing more (and no UPDATE or DELETE on the append-only ledger and audit tables), the
+ * constraints from planning/06 sections 1, 6 and 7 hold, and the golden schema document
+ * docs/db/schema-v1.md matches pg_dump of the live database.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 class MigrationIT extends AbstractPostgresIT {
@@ -37,7 +37,8 @@ class MigrationIT extends AbstractPostgresIT {
           Map.entry("5", "V5__ranking_policies.sql"),
           Map.entry("6", "V6__decisions.sql"),
           Map.entry("7", "V7__attempt_revisions_append_only.sql"),
-          Map.entry("8", "V8__account_creations.sql"));
+          Map.entry("8", "V8__account_creations.sql"),
+          Map.entry("9", "V9__feature_snapshots_stream.sql"));
 
   private static final List<String> ALL_TABLES =
       List.of(
@@ -75,7 +76,7 @@ class MigrationIT extends AbstractPostgresIT {
   }
 
   @Test
-  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionEight() {
+  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionNine() {
     List<Map<String, Object>> rows =
         jdbc()
             .queryForList(
@@ -85,7 +86,7 @@ class MigrationIT extends AbstractPostgresIT {
     assertThat(rows)
         .extracting(row -> Map.entry(row.get("version").toString(), row.get("script").toString()))
         .containsExactlyElementsOf(MIGRATIONS);
-    assertThat(rows.getLast().get("version").toString()).isEqualTo("8");
+    assertThat(rows.getLast().get("version").toString()).isEqualTo("9");
   }
 
   @Test
@@ -257,6 +258,80 @@ class MigrationIT extends AbstractPostgresIT {
     assertThat(privilegesOf("account_creations")).containsExactly("DELETE", "INSERT", "SELECT");
     assertThat(indexDefinition("account_creations_ip_idx"))
         .contains("ON public.account_creations USING btree (client_ip, created_at)");
+  }
+
+  /**
+   * BC-0305 (V9): one SYNC and one STREAM row per (user_id, feature_schema_version) coexist under
+   * the widened primary key, a second STREAM row is refused, and the app role keeps full DML on the
+   * table. (Each expected constraint error aborts the test transaction, so the position CHECK has
+   * its own tests below.)
+   */
+  @Test
+  @Transactional
+  void featureSnapshotsSyncAndStreamRowsCoexistUnderTheWidenedKey() {
+    assertThat(indexDefinition("user_feature_snapshots_pkey"))
+        .contains("UNIQUE INDEX")
+        .contains("(user_id, feature_schema_version, source)");
+    assertThat(privilegesOf("user_feature_snapshots"))
+        .containsExactly("DELETE", "INSERT", "SELECT", "UPDATE");
+    UUID userId = insertSnapshotUser("00000000-0000-7000-8000-0000000000af", "snapshots-1");
+    insertSnapshot(userId, "SYNC", null, null);
+    insertSnapshot(userId, "STREAM", 2, 10L);
+    assertThat(
+            jdbc()
+                .queryForObject(
+                    "select count(*) from user_feature_snapshots where user_id = ?",
+                    Integer.class,
+                    userId))
+        .isEqualTo(2);
+    assertThatThrownBy(() -> insertSnapshot(userId, "STREAM", 2, 11L))
+        .isInstanceOf(DuplicateKeyException.class)
+        .hasMessageContaining("user_feature_snapshots_pkey");
+  }
+
+  /** BC-0305 (V9): a STREAM row must carry its Kafka position. */
+  @Test
+  @Transactional
+  void featureSnapshotsStreamRowWithoutPositionIsRejected() {
+    UUID userId = insertSnapshotUser("00000000-0000-7000-8000-0000000000b0", "snapshots-2");
+    assertThatThrownBy(() -> insertSnapshot(userId, "STREAM", null, null))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("user_feature_snapshots_source_position_check");
+  }
+
+  /** BC-0305 (V9): a SYNC row must not carry a Kafka position. */
+  @Test
+  @Transactional
+  void featureSnapshotsSyncRowWithPositionIsRejected() {
+    UUID userId = insertSnapshotUser("00000000-0000-7000-8000-0000000000b1", "snapshots-3");
+    assertThatThrownBy(() -> insertSnapshot(userId, "SYNC", 0, 0L))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("user_feature_snapshots_source_position_check");
+  }
+
+  private UUID insertSnapshotUser(String id, String username) {
+    UUID userId = UUID.fromString(id);
+    jdbc()
+        .update(
+            "insert into users (id, username, password_hash) values (?, ?, ?)",
+            userId,
+            "migration-it-" + username,
+            "argon2id$placeholder");
+    return userId;
+  }
+
+  private void insertSnapshot(UUID userId, String source, Integer partition, Long offset) {
+    jdbc()
+        .update(
+            "insert into user_feature_snapshots (user_id, feature_schema_version, cutoff_w,"
+                + " feature_as_of, aggregates_json, provenance_checksum, source, source_partition,"
+                + " source_offset, computed_at) values (?, 1, now(), null, '{}'::jsonb, ?, ?, ?, ?,"
+                + " now())",
+            userId,
+            "0".repeat(64),
+            source,
+            partition,
+            offset);
   }
 
   @Test

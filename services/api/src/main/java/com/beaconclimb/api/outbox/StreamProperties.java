@@ -15,6 +15,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param topics topic names of the event contract (contracts/events/README.md)
  * @param publisher outbox publisher tuning
  * @param consumer consumer group ids reserved for the materializer and reconciliation tickets
+ * @param materializer climber-features.v1 materializer tuning (BC-0305)
  */
 @ConfigurationProperties(prefix = "beacon.stream")
 public record StreamProperties(
@@ -22,7 +23,8 @@ public record StreamProperties(
     @DefaultValue("127.0.0.1:9094") String bootstrapServers,
     @DefaultValue Topics topics,
     @DefaultValue Publisher publisher,
-    @DefaultValue Consumer consumer) {
+    @DefaultValue Consumer consumer,
+    @DefaultValue Materializer materializer) {
 
   public record Topics(
       @DefaultValue("attempts.v1") String attempts,
@@ -48,4 +50,14 @@ public record StreamProperties(
   public record Consumer(
       @DefaultValue("beacon-materializer") String materializerGroupId,
       @DefaultValue("beacon-reconciliation") String reconciliationGroupId) {}
+
+  /**
+   * @param maxPollRecords consumer {@code max.poll.records}; each record is one Postgres
+   *     transaction and one synchronous offset commit, so a modest batch keeps a stop or rebalance
+   *     cheap
+   * @param retryBackoff wait before a record whose transaction failed is redelivered; retries are
+   *     unlimited because skipping a feature event would silently lose a snapshot (at-least-once)
+   */
+  public record Materializer(
+      @DefaultValue("100") int maxPollRecords, @DefaultValue("1s") Duration retryBackoff) {}
 }

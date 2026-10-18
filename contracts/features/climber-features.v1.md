@@ -106,7 +106,7 @@ that straddles the window edge is counted from its in-window records.
 | `feature_as_of` | `max(occurred_at)` over `A(u, W)`, null when empty. Always `<= cutoff_w`. The API (BC-0111) exposes this; parity keys on `cutoff_w`. |
 | `provenance_checksum` | `sha256(UTF-8(join(",", sorted(["<attempt_id>:<revision>" for each included record]))))` as 64 lowercase hex characters. `attempt_id` is the canonical lowercase 36-character UUID text, `revision` the decimal integer; the strings are sorted with plain code-unit ordering (`String.compareTo`). An empty set hashes the empty string: `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`. |
 | `feature_schema_version` | `1`. |
-| `source` | `SYNC` for this recompute, `STREAM` for the BC-0305 materializer. |
+| `source` | `SYNC` for this recompute, `STREAM` for the BC-0305 materializer. Since V9 (`V9__feature_snapshots_stream.sql`) the two coexist as separate rows under the primary key `(user_id, feature_schema_version, source)`: the SYNC row keeps the monotonic `cutoff_w` rule (BC-0124 HIGH-2); the STREAM row is guarded only by its `(source_partition, source_offset)` (ADR-0004: apply when the offset is greater on the same partition, equal offset + same checksum is a duplicate, equal offset + different checksum goes to the DLQ, a different partition is a conflict, never a watermark-only guard); the read path (BC-0310 part 2) prefers STREAM when its `cutoff_w` is at least the SYNC `cutoff_w`. |
 | `source_partition`, `source_offset` | null for `SYNC`; the consumed Kafka position for `STREAM`. |
 | `computed_at` | wall-clock time of the write (not an input to anything). |
 
