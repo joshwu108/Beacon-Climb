@@ -1,0 +1,4 @@
+beacon-api         http://api:8080/prometheus               up    lastScrape=2026-10-18T08:00:55 duration=0.007s err=''
+flink-jobmanager   http://jobmanager:9249/metrics           up    lastScrape=2026-10-18T08:00:56 duration=0.002s err=''
+flink-taskmanager  http://taskmanager:9249/metrics          up    lastScrape=2026-10-18T08:00:55 duration=0.026s err=''
+prometheus         http://localhost:9090/metrics            up    lastScrape=2026-10-18T08:00:55 duration=0.007s err=''

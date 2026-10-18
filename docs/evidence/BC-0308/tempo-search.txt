@@ -1,0 +1,13 @@
+# Tempo TraceQL search: { resource.service.name = "beacon-api" && name = "POST /v1/me/attempts" }  (limit 5; trace id, root service, root span, duration)
+6fa41a399676118f09a1d3f492b2b8d9 beacon-api POST /v1/me/attempts 13ms
+aa5d70614761fae7b760c5d1aa4cf4c7 beacon-api POST /v1/me/attempts 8ms
+631aa7cc4200a461737c1e2d5b446ecf beacon-api POST /v1/me/attempts 6ms
+a6548bfb4682a7b2c4e8a20cd09b191b beacon-api POST /v1/me/attempts 13ms
+77bccde4890e1db7ec74929073d80a37 beacon-api POST /v1/me/attempts 38ms
+
+# Tempo tag search: service.name=beacon-api (limit 5)
+60a45fda694951d2614413cf1bcdeb39 beacon-api GET /health/** 3ms
+200b13d136454f0b763da43314c09d89 beacon-api OutboxPublisher.poll Nonems
+1095a559c4d65259e07ef6ce9b1b8396 beacon-api OutboxPublisher.poll 1ms
+20ba4dcaac34139921916a004d9625f7 beacon-api OutboxPublisher.poll 1ms
+3440815f72a7b565a665e8621e605d1a beacon-api OutboxPublisher.poll 3ms

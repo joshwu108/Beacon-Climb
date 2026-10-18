@@ -1,0 +1,10 @@
+NAME                    MEM USAGE / LIMIT   MEM %     CPU %
+compose-grafana-1       339.2MiB / 512MiB   66.25%    0.66%
+compose-jobmanager-1    667.7MiB / 896MiB   74.52%    2.31%
+compose-taskmanager-1   894.8MiB / 1.5GiB   58.26%    1.03%
+compose-prometheus-1    62.43MiB / 512MiB   12.19%    0.21%
+compose-api-1           572MiB / 1GiB       55.85%    0.97%
+compose-tempo-1         239.3MiB / 512MiB   46.74%    0.45%
+compose-web-1           8.57MiB / 128MiB    6.70%     0.46%
+compose-postgres-1      42.33MiB / 512MiB   8.27%     1.79%
+compose-kafka-1         406.2MiB / 1GiB     39.66%    1.85%

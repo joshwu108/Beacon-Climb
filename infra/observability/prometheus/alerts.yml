@@ -1,0 +1,149 @@
+# BC-0308: alerting rules evaluated by Prometheus (infra/observability/prometheus/prometheus.yml).
+# There is NO notification channel in this stack: no Alertmanager, no e-mail, no pager. A firing
+# rule is visible on http://127.0.0.1:9090/alerts and in the "Alerts" panel of the Grafana
+# dashboard, nothing more. Wiring a receiver is a deployment concern outside the laptop stack.
+# Every threshold below is a first guess for one laptop and one synthetic board; retune with
+# real traffic. The metric names are the ones the api (OutboxMetrics, MaterializerMetrics,
+# Spring Boot's http_server_requests) and Flink's PrometheusReporter actually emit, verified
+# by test/observability/metrics-presence.sh and docs/evidence/BC-0308/prometheus-scrape.txt.
+# Runbook: docs/runbooks/observability.md.
+groups:
+  - name: beacon-outbox
+    rules:
+      - alert: OutboxBacklogStale
+        # Rows unpublished for longer than beacon.stream.publisher.stale-after (60 s) for two
+        # minutes: the publisher is stopped, the broker is unreachable, or a batch keeps rolling
+        # back. First look: `make outbox-status`, then `... logs api | grep outbox`.
+        expr: beacon_outbox_stale_rows > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "outbox has {{ $value }} rows unpublished for more than 60 s"
+          runbook: docs/runbooks/observability.md#outbox
+      - alert: OutboxPublishFailures
+        # Any batch rollback in the last five minutes, by reason (kafka, timeout, database, other).
+        expr: sum by (reason) (rate(beacon_outbox_publish_failures_total[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "outbox batches are failing (reason={{ $labels.reason }})"
+          runbook: docs/runbooks/observability.md#outbox
+
+  - name: beacon-materializer
+    rules:
+      - alert: MaterializerConflicts
+        # A climber-features.v1 record for an offset that was already applied with a different
+        # provenance_checksum, or a partition mismatch; the record went to stream-dlq.v1 with
+        # CHECKSUM_CONFLICT. Parity investigation (ADR-0004), docs/runbooks/dlq.md.
+        expr: sum by (reason) (increase(beacon_materializer_conflict_total[5m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "materializer conflicts in the last 5 min (reason={{ $labels.reason }})"
+          runbook: docs/runbooks/dlq.md
+      - alert: MaterializerErrors
+        # The snapshot transaction or the DLQ write itself failed; the record is redelivered
+        # after beacon.stream.materializer.retry-backoff without limit, so a persistent error
+        # stalls the consumer and the lag alert below follows.
+        expr: increase(beacon_materializer_errors_total[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "materializer transaction/DLQ errors in the last 5 min"
+          runbook: docs/runbooks/observability.md#materializer
+
+  - name: beacon-consumer-lag
+    rules:
+      - alert: ConsumerLagHigh
+        # The api's materializer consumer (Kafka client metrics registered by the
+        # MicrometerConsumerListener, BC-0305) is more than 1000 records behind on some partition.
+        expr: max(kafka_consumer_fetch_manager_records_lag_max{job="beacon-api"}) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "api materializer consumer lag {{ $value }} records"
+          runbook: docs/runbooks/observability.md#consumer-lag
+      - alert: FlinkSourceLagHigh
+        # The Flink job's attempts.v1 source reader (KafkaSourceReader.KafkaConsumer metric group of
+        # flink-connector-kafka) is more than 1000 records behind.
+        expr: max(flink_taskmanager_job_task_operator_KafkaSourceReader_KafkaConsumer_records_lag_max) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Flink attempts.v1 source lag {{ $value }} records"
+          runbook: docs/runbooks/observability.md#consumer-lag
+
+  - name: beacon-flink
+    rules:
+      - alert: FlinkCheckpointStale
+        # The checkpoint interval is 10 s (flink.yml), so a running job completes a checkpoint
+        # at least every ~10-20 s. Job-scoped gauges only exist while the job is RUNNING (Flink
+        # unregisters them when it ends), so "the completed counter has not moved for 2 min on a
+        # job that has been up for more than 60 s" means checkpoints are stalling, not that the
+        # job is gone. Checkpoint volume full or owned by root (flink-init), backpressure, or a
+        # broker outage are the usual causes.
+        expr: changes(flink_jobmanager_job_numberOfCompletedCheckpoints[2m]) == 0 and flink_jobmanager_job_uptime > 60000
+        labels:
+          severity: warning
+        annotations:
+          summary: "Flink job {{ $labels.job_name }} completed no checkpoint in 2 min"
+          runbook: docs/runbooks/observability.md#flink
+      - alert: FlinkCheckpointFailures
+        expr: increase(flink_jobmanager_job_numberOfFailedCheckpoints[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Flink job {{ $labels.job_name }} had failed checkpoints in the last 5 min"
+          runbook: docs/runbooks/observability.md#flink
+
+  - name: beacon-dlq
+    rules:
+      - alert: DlqRate
+        # Records the api materializer sent to stream-dlq.v1: invalid (shared validator) plus
+        # checksum/partition conflicts. The api has no "dlq published" counter of its own yet, so
+        # these two outcomes are the api-side DLQ rate; beacon_dlq_published_total{consumer}
+        # (DlqPublisher, BC-0302) is the same thing counted at the producer but is registered on
+        # first use, so it is OR-ed in rather than relied on. The Flink-side DLQ
+        # (sink-stream-dlq-v1) is the Writer operator's numRecordsIn, see FlinkDlqRate below.
+        expr: (sum(increase(beacon_materializer_invalid_total[5m])) or vector(0)) + sum(increase(beacon_materializer_conflict_total[5m])) + (sum(increase(beacon_dlq_published_total[5m])) or vector(0)) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "api materializer sent records to the DLQ in the last 5 min"
+          runbook: docs/runbooks/dlq.md
+      - alert: FlinkDlqRate
+        # Records the Flink job wrote to stream-dlq.v1 (operator "sink-stream-dlq-v1" in
+        # StreamJob). Flink reports a sink v2 as two operators, "<name>: Writer" and
+        # "<name>: Committer", with the name's non-alphanumerics replaced by "_"; only the
+        # Writer's numRecordsIn counts DLQ records (the Committer's numRecordsIn counts one
+        # committable per checkpoint and is NOT a DLQ count: the first proof run alerted on it).
+        # Label value verified in docs/evidence/BC-0308/flink-scrape.txt. The series exists at 0
+        # from job start, so a running job always has it.
+        expr: sum(increase(flink_taskmanager_job_task_operator_numRecordsIn{operator_name="sink_stream_dlq_v1:_Writer"}[5m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Flink job wrote records to stream-dlq.v1 in the last 5 min"
+          runbook: docs/runbooks/dlq.md
+
+  - name: beacon-api
+    rules:
+      - alert: ApiErrorRate
+        # http_server_requests_seconds has no histogram buckets in application.yaml
+        # (management.metrics.distribution.* is not set, and BC-0308 part 1 does not edit the api
+        # config), so there is no p99 alert yet; the error ratio over 5 min is the gate instead.
+        # Part 2 follow-up: enable percentiles-histogram for http.server.requests and add
+        # ApiLatencyP99 on histogram_quantile.
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="beacon-api",status=~"5.."}[5m]))
+            / sum(rate(http_server_requests_seconds_count{job="beacon-api"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "api 5xx ratio {{ $value | humanizePercentage }} over 5 min"
+          runbook: docs/runbooks/observability.md#api

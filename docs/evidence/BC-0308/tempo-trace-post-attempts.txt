@@ -1,0 +1,11 @@
+# GET /api/traces/6fa41a399676118f09a1d3f492b2b8d9 : service | instrumentation scope | span | duration | selected attributes (no bodies, no user ids)
+beacon-api | io.opentelemetry.tomcat-10.0 | POST /v1/me/attempts | 13.8 ms | {'http.response.status_code': '201', 'http.request.method': 'POST', 'url.path': '/v1/me/attempts', 'http.route': '/v1/me/attempts'}
+beacon-api | io.opentelemetry.jdbc | SELECT beacon | 0.4 ms | {}
+beacon-api | io.opentelemetry.jdbc | SELECT beacon | 0.3 ms | {}
+beacon-api | io.opentelemetry.jdbc | SELECT beacon | 0.4 ms | {}
+beacon-api | io.opentelemetry.jdbc | SELECT beacon | 0.3 ms | {}
+beacon-api | io.opentelemetry.jdbc | INSERT beacon.attempts | 0.8 ms | {}
+beacon-api | io.opentelemetry.jdbc | INSERT beacon.attempt_revisions | 0.2 ms | {}
+beacon-api | io.opentelemetry.jdbc | INSERT beacon.attempt_event_outbox | 0.3 ms | {}
+beacon-api | io.opentelemetry.jdbc | SELECT beacon | 0.4 ms | {}
+beacon-api | io.opentelemetry.jdbc | INSERT beacon.user_feature_snapshots | 0.3 ms | {}

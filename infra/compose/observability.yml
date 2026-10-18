@@ -1,0 +1,262 @@
+# BC-0308 (part 1, infrastructure): the `observability` profile. Prometheus, Grafana and Tempo
+# plus the overrides that hook the OpenTelemetry Java agent into the api and the Flink roles.
+# Merged LAST over docker-compose.yml, kafka.yml and flink.yml by the Makefile
+# (COMPOSE_OBS: `make observability-up`, `make observability-down`); `make dev` and
+# `make stream-up` never load it, so the core and stream profiles keep running without any of
+# this (no agent, no exporter, no reporter). Memory budget (Docker VM ~7.6 GB, core ~2.2 GB +
+# stream ~3.3 GB of limits): every long-running service here is capped at 512 MiB.
+# Hardening as in docker-compose.yml (TM-27): host ports on 127.0.0.1 only (9090 Prometheus,
+# 3001 Grafana, 3200 Tempo query API; the OTLP receivers 4317/4318 are in-network only),
+# no-new-privileges, cap_drop ALL, read-only root filesystems where the image allows it,
+# json-file log rotation. No Kafka JMX exporter and no OTel collector: the agents export
+# OTLP/http straight to Tempo, and Tempo's metrics-generator is off (tempo.yaml).
+# Runbook: docs/runbooks/observability.md.
+services:
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    profiles: [observability]
+    read_only: true
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=2d
+      - --web.listen-address=0.0.0.0:9090
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ../observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/ready"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  tempo:
+    image: grafana/tempo:3.0.4
+    profiles: [observability]
+    read_only: true
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    ports:
+      # Query API only (Grafana reaches it in-network; curl from the host for proof/debugging).
+      - "127.0.0.1:3200:3200"
+    volumes:
+      - ../observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    # The image's /var/tempo is owned by uid 10001 (the user the image runs as), and an empty
+    # named volume takes over that ownership, so no chown init is needed (unlike decisions-init).
+    # No healthcheck: the tempo image is a single static binary without a shell or wget, so
+    # there is nothing to run inside it. `make observability-check` polls /ready from the host.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  grafana:
+    image: grafana/grafana:13.2.4
+    profiles: [observability]
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_ALLOW_ORG_CREATE: "false"
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      # Grafana 13 preinstalls several app plugins on first start; the ones below are not used
+      # here and each costs heap. GOMEMLIMIT (honoured by every Go binary) keeps the Go GC
+      # target below the 512m cap: without it the proof run measured 510 MiB of 512 MiB anon
+      # memory (not killed, but one allocation away from it).
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_PLUGINS_DISABLE_PLUGINS: grafana-pyroscope-app,grafana-metricsdrilldown-app,grafana-lokiexplore-app
+      GOMEMLIMIT: 384MiB
+      GF_SERVER_HTTP_PORT: "3000"
+      GF_SERVER_ROOT_URL: http://127.0.0.1:3001/
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+    ports:
+      # 3000 on the host is the web app (nginx); Grafana's own 3000 is published as 3001.
+      - "127.0.0.1:3001:3000"
+    volumes:
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  # One-shot: fetches the OpenTelemetry Java agent (a tool binary, never data) into the named
+  # volume `otel-agent` once, verifies it against the sha256 pinned below AND the checksums.txt
+  # published with the release, and exits 0 if the jar is already there and intact. Root (0:0)
+  # only because the fresh volume is root-owned; cap_drop ALL still applies (writing to a
+  # directory you own needs no capability). The jar is left 0444 so the api (uid 65534) and
+  # Flink (uid 9999) can read it. A blocked download fails this container and therefore
+  # `make observability-up` ("dependency failed to start"): see the runbook.
+  otel-agent-init:
+    image: curlimages/curl:8.22.0
+    profiles: [observability]
+    user: "0:0"
+    read_only: true
+    tmpfs:
+      - /tmp
+    entrypoint: ["/bin/sh", "-c"]
+    environment:
+      OTEL_AGENT_VERSION: 2.32.0
+      # sha256 of opentelemetry-javaagent.jar from the v2.32.0 release's checksums.txt
+      # (https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/tag/v2.32.0).
+      OTEL_AGENT_SHA256: f787eb6c7f3d18e69a431e108a15278d25ee37f83d68b678f621e063f3988f82
+    command:
+      - |
+        set -eu
+        jar=/otel/opentelemetry-javaagent.jar
+        base="https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v$${OTEL_AGENT_VERSION}"
+        if [ -f "$$jar" ] && echo "$${OTEL_AGENT_SHA256}  $$jar" | sha256sum -c - >/dev/null 2>&1; then
+          echo "otel-agent-init: $$jar present, v$${OTEL_AGENT_VERSION}, sha256 verified"; exit 0
+        fi
+        echo "otel-agent-init: downloading opentelemetry-javaagent.jar v$${OTEL_AGENT_VERSION}"
+        curl -fsSL --retry 3 --retry-delay 2 -o /tmp/checksums.txt "$$base/checksums.txt"
+        published=$$(awk '$$2 == "opentelemetry-javaagent.jar" { print $$1 }' /tmp/checksums.txt)
+        if [ "$$published" != "$${OTEL_AGENT_SHA256}" ]; then
+          echo "otel-agent-init: pinned sha256 $${OTEL_AGENT_SHA256} differs from published $$published" >&2; exit 1
+        fi
+        curl -fsSL --retry 3 --retry-delay 2 -o /tmp/agent.jar "$$base/opentelemetry-javaagent.jar"
+        echo "$${OTEL_AGENT_SHA256}  /tmp/agent.jar" | sha256sum -c -
+        cp /tmp/agent.jar "$$jar.part" && chmod 0444 "$$jar.part" && mv "$$jar.part" "$$jar"
+        ls -l "$$jar"
+    volumes:
+      - otel-agent:/otel
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 128m
+    cpus: 0.5
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "1"
+  # Merged into the core api service: the agent jar (read-only), the JVM flag that loads it, and
+  # the exporter settings. The api stays nobody on a read-only root: the agent needs no writable
+  # directory (it extracts nothing; /tmp is already a tmpfs). JAVA_TOOL_OPTIONS is read by every
+  # JVM in this container, but the container runs only the api jar (migrate is a separate
+  # service without this override).
+  api:
+    volumes:
+      - otel-agent:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: -javaagent:/otel/opentelemetry-javaagent.jar
+      OTEL_SERVICE_NAME: beacon-api
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      OTEL_TRACES_SAMPLER: always_on
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=local
+    depends_on:
+      otel-agent-init:
+        condition: service_completed_successfully
+      tempo:
+        condition: service_started
+  # Flink roles: same agent through FLINK_ENV_JAVA_OPTS_JM / _TM (bin/config.sh honours these
+  # environment variables and they apply to the role's JVM only, so `flink run` from `make
+  # stream-submit`, which runs inside the jobmanager container, does not load the agent), and
+  # the PrometheusReporter on 9249 through dynamic properties appended to the entrypoint
+  # command. docker-entrypoint.sh passes them to jobmanager.sh/taskmanager.sh unchanged, and
+  # both scripts expect the two-token form `-D key=value` (jobmanager.sh treats a second token
+  # that is not exactly "-D" as the legacy <host> positional). FLINK_PROPERTIES stays the one in
+  # flink.yml; nothing is duplicated here. The plugin jar ships in
+  # /opt/flink/plugins/metrics-prometheus of the flink:2.2.1 image, nothing to copy.
+  jobmanager:
+    command:
+      - jobmanager
+      - -D
+      - metrics.reporter.prom.factory.class=org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+      - -D
+      - metrics.reporter.prom.port=9249
+    volumes:
+      - otel-agent:/otel:ro
+    # The agent's metaspace and byte-buddy caches sit on top of Flink's 640m process size: the
+    # proof run measured 682 MiB against flink.yml's 768m cap (89 %), so this profile gives the
+    # jobmanager 128 MiB more (taskmanager: 839 MiB of 1.5 GiB, no change needed).
+    mem_limit: 896m
+    environment:
+      FLINK_ENV_JAVA_OPTS_JM: -javaagent:/otel/opentelemetry-javaagent.jar
+      OTEL_SERVICE_NAME: beacon-stream-jobmanager
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      OTEL_TRACES_SAMPLER: always_on
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=local
+    depends_on:
+      otel-agent-init:
+        condition: service_completed_successfully
+  taskmanager:
+    command:
+      - taskmanager
+      - -D
+      - metrics.reporter.prom.factory.class=org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+      - -D
+      - metrics.reporter.prom.port=9249
+    volumes:
+      - otel-agent:/otel:ro
+    environment:
+      FLINK_ENV_JAVA_OPTS_TM: -javaagent:/otel/opentelemetry-javaagent.jar
+      OTEL_SERVICE_NAME: beacon-stream-taskmanager
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      OTEL_TRACES_SAMPLER: always_on
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=local
+    depends_on:
+      otel-agent-init:
+        condition: service_completed_successfully
+volumes:
+  prometheus-data:
+  grafana-data:
+  tempo-data:
+  otel-agent:

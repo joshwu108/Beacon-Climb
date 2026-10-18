@@ -1,0 +1,16 @@
+# BC-0308: file-provisioned dashboards. Every *.json under /etc/grafana/dashboards (a read-only
+# mount of infra/observability/grafana/dashboards) is loaded at start and re-read every 30 s,
+# so editing the JSON in the repo updates the running Grafana. UI edits of a provisioned
+# dashboard cannot be saved (allowUiUpdates: false): change the file instead.
+apiVersion: 1
+providers:
+  - name: beacon
+    orgId: 1
+    folder: Beacon
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: false

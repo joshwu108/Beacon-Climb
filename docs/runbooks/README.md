@@ -12,6 +12,7 @@ Operational procedures for running, diagnosing and recovering Beacon Climb. None
 | Kilter import (local only, rights-gated) | E01 (BC-0105) | planned, blocked on `docs/data-source-audit.md` |
 | Erasure request end to end (30-day grace, all stores) | E04 (BC-0412) | planned, policy in `docs/privacy-and-retention.md` |
 | Kafka and Flink: restart, checkpoint recovery, DLQ drain | E03 | planned |
+| Observability: Prometheus, Grafana dashboard, Tempo traces, alert rules (`make observability-up`) | E03 (BC-0308) | [observability.md](observability.md), part 1 executed 2026-10-18 |
 | Model rollout, canary and rollback | E04 | planned |
 | Replay a decision and compare | E04 | planned |
 | Incident response and postmortem template | E06 | planned |

@@ -1,0 +1,24 @@
+metrics-presence: scraped http://127.0.0.1:8080/prometheus (1017 lines)
+FOUND    http_server_requests_seconds_count (11 series)
+FOUND    http_server_requests_seconds_sum (11 series)
+FOUND    http_server_requests_seconds_max (11 series)
+FOUND    beacon_outbox_backlog_rows (1 series)
+FOUND    beacon_outbox_backlog_age_seconds (1 series)
+FOUND    beacon_outbox_stale_rows (1 series)
+FOUND    beacon_outbox_published_total (1 series)
+FOUND    beacon_outbox_publish_failures_total (4 series)
+FOUND    beacon_materializer_applied_total (1 series)
+FOUND    beacon_materializer_skipped_total (2 series)
+FOUND    beacon_materializer_conflict_total (2 series)
+FOUND    beacon_materializer_errors_total (1 series)
+FOUND    kafka_consumer_fetch_manager_records_lag_max (24 series)
+ABSENT   beacon_materializer_invalid_total (optional: registered on first use)
+ABSENT   beacon_dlq_published_total (optional: registered on first use)
+FOUND    beacon_dlq_publish_failures_total (1 series)
+INFO     http_server_requests_seconds_bucket absent (no percentiles-histogram yet; dashboard uses avg + max)
+metrics-presence: Prometheus targets (http://127.0.0.1:9090):
+  beacon-api         http://api:8080/prometheus up    
+  flink-jobmanager   http://jobmanager:9249/metrics up    
+  flink-taskmanager  http://taskmanager:9249/metrics up    
+  prometheus         http://localhost:9090/metrics up    
+metrics-presence: OK

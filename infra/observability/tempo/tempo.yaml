@@ -1,0 +1,47 @@
+# BC-0308: Grafana Tempo 3.0 single-binary configuration for the `observability` compose profile.
+# Receives OTLP from the OpenTelemetry Java agents in api/jobmanager/taskmanager
+# (http/protobuf on 4318; gRPC 4317 is open for completeness) and stores blocks on the named
+# volume `tempo-data` (/var/tempo). The query API (3200) is published on 127.0.0.1 only; the
+# OTLP ports are not published at all (in-network only).
+# The metrics-generator is OFF: no `metrics_generator` section and no processors in
+# `overrides`, so Tempo never remote-writes to Prometheus (the 512 MiB budget has no room for
+# span-metrics, and the dashboard's latency panels come from the api's own meters).
+# Runbook: docs/runbooks/observability.md.
+stream_over_http_enabled: true
+
+server:
+  http_listen_port: 3200
+  log_level: info
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+
+# Tempo 3.0 replaced the ingester/compactor sections with live_store, block_builder and the
+# backend scheduler/worker pair (all in-process in single-binary mode; the `ingest` Kafka
+# settings are left at their defaults, which in single-binary mode is the in-process broker
+# the official single-binary example relies on). Only the retention is shortened here.
+backend_scheduler:
+  provider:
+    compaction:
+      compaction:
+        block_retention: 48h
+backend_worker:
+  compaction:
+    block_retention: 48h
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /var/tempo/wal
+    local:
+      path: /var/tempo/blocks
+
+usage_report:
+  reporting_enabled: false

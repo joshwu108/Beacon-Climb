@@ -1,0 +1,8 @@
+flink_jobmanager_job_numberOfCompletedCheckpoints {'job': 'flink-jobmanager', 'job_name': 'beacon_climb_features'} 52
+flink_jobmanager_job_lastCheckpointDuration {'job': 'flink-jobmanager', 'job_name': 'beacon_climb_features'} 9
+flink_jobmanager_job_lastCheckpointSize {'job': 'flink-jobmanager', 'job_name': 'beacon_climb_features'} 8028
+flink_jobmanager_job_uptime {'job': 'flink-jobmanager', 'job_name': 'beacon_climb_features'} 539790
+flink_jobmanager_numRunningJobs {'job': 'flink-jobmanager'} 1
+flink_taskmanager_job_task_operator_KafkaSourceReader_KafkaConsumer_records_lag_max {'job': 'flink-taskmanager', 'job_name': 'beacon_climb_features', 'operator_name': 'Source:_attempts_v1', 'subtask_index': '0'} NaN
+flink_taskmanager_job_task_operator_numRecordsIn sink_stream_dlq_v1:_Committer 52
+flink_taskmanager_job_task_operator_numRecordsIn sink_stream_dlq_v1:_Writer 0

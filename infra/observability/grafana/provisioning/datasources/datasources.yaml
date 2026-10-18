@@ -1,0 +1,30 @@
+# BC-0308: Grafana datasources, provisioned from this file at start (read-only mount in
+# observability.yml). The uids are referenced by infra/observability/grafana/dashboards/*.json
+# and must not change. Editing a provisioned datasource in the UI is disabled.
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 5s
+      httpMethod: POST
+  - name: Tempo
+    uid: tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: false
+    jsonData:
+      # Trace -> metrics links back into Prometheus by the span's service.name.
+      tracesToMetrics:
+        datasourceUid: prometheus
+      # No metrics-generator in this stack (tempo.yaml), so the service map has no data source.
+      serviceMap:
+        datasourceUid: prometheus
+      nodeGraph:
+        enabled: false

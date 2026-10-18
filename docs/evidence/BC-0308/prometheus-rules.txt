@@ -1,0 +1,11 @@
+ApiErrorRate                 inactive  health=ok 
+ConsumerLagHigh              inactive  health=ok 
+FlinkSourceLagHigh           inactive  health=ok 
+DlqRate                      inactive  health=ok 
+FlinkDlqRate                 inactive  health=ok 
+FlinkCheckpointStale         inactive  health=ok 
+FlinkCheckpointFailures      inactive  health=ok 
+MaterializerConflicts        inactive  health=ok 
+MaterializerErrors           inactive  health=ok 
+OutboxBacklogStale           inactive  health=ok 
+OutboxPublishFailures        inactive  health=ok 

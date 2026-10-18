@@ -204,3 +204,25 @@ freshness:
 	@test -n "$(EVENTS)" || { echo "usage: make freshness EVENTS=<events.jsonl> [OUT=dir]" >&2; exit 2; }
 	python3 -I scripts/loadgen/freshness.py $(EVENTS) $(if $(OUT),--out $(OUT),)
 
+# BC-0308: observability profile (infra/compose/observability.yml merged last over the stream
+# file set: Prometheus 127.0.0.1:9090, Grafana 127.0.0.1:3001 (admin / GRAFANA_ADMIN_PASSWORD
+# from .env), Tempo 127.0.0.1:3200, the one-shot otel-agent-init and the api/jobmanager/
+# taskmanager overrides that load the OpenTelemetry Java agent). `observability-up` recreates
+# the api and the Flink roles with the agent; `observability-down` removes only the
+# observability containers (volumes kept), after which `make stream-up` or `make dev` recreates
+# the api/Flink without the agent. `observability-check` asserts the metric names on the api's
+# /prometheus endpoint (test/observability/metrics-presence.sh; STREAM=0 when only the core
+# profile is running). Runbook: docs/runbooks/observability.md.
+.PHONY: observability-up observability-down observability-check
+
+COMPOSE_OBS := $(COMPOSE_STREAM) -f infra/compose/observability.yml --profile observability
+
+observability-up: .env
+	$(COMPOSE_OBS) up -d --wait
+
+observability-down: .env
+	$(COMPOSE_OBS) rm -sf prometheus grafana tempo otel-agent-init
+
+observability-check:
+	$(if $(filter 0,$(STREAM)),BEACON_OBS_STREAM=0,) bash test/observability/metrics-presence.sh
+
