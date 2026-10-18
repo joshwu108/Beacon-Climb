@@ -9,6 +9,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * per client IP), session TTL (24 h) and the Argon2 concurrency gate (BC-0123 F1): at most {@code
  * max-concurrent-hashes} password hashes run at once, each using 64 MiB of heap, and a request
  * waits at most {@code hash-wait} for a slot before it is refused with 503 SERVICE_UNAVAILABLE.
+ * {@code register-per-ip-per-day} (BC-0123c, F5 residual) caps the accounts one client address may
+ * create per UTC day, counted in SQL by {@link AccountCreationCap}; above it 429 RATE_LIMITED.
  */
 @ConfigurationProperties(prefix = "beacon.auth")
 public record AuthProperties(
@@ -16,4 +18,5 @@ public record AuthProperties(
     @DefaultValue("15m") Duration loginWindow,
     @DefaultValue("24h") Duration sessionTtl,
     @DefaultValue("3") int maxConcurrentHashes,
-    @DefaultValue("2s") Duration hashWait) {}
+    @DefaultValue("2s") Duration hashWait,
+    @DefaultValue("20") int registerPerIpPerDay) {}

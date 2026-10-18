@@ -18,11 +18,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * BC-0101/BC-0107/BC-0109/BC-0113/BC-0110/BC-0111/BC-0123: every Flyway migration applies on an
- * empty Postgres 17 as beacon_migrate, the runtime role beacon_app gets DML and nothing more (and
- * no UPDATE or DELETE on the append-only ledger and audit tables), the constraints from planning/06
- * sections 1, 6 and 7 hold, and the golden schema document docs/db/schema-v1.md matches pg_dump of
- * the live database.
+ * BC-0101/BC-0107/BC-0109/BC-0113/BC-0110/BC-0111/BC-0123/BC-0123c: every Flyway migration applies
+ * on an empty Postgres 17 as beacon_migrate, the runtime role beacon_app gets DML and nothing more
+ * (and no UPDATE or DELETE on the append-only ledger and audit tables), the constraints from
+ * planning/06 sections 1, 6 and 7 hold, and the golden schema document docs/db/schema-v1.md matches
+ * pg_dump of the live database.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 class MigrationIT extends AbstractPostgresIT {
@@ -36,7 +36,8 @@ class MigrationIT extends AbstractPostgresIT {
           Map.entry("4", "V4__feature_snapshots.sql"),
           Map.entry("5", "V5__ranking_policies.sql"),
           Map.entry("6", "V6__decisions.sql"),
-          Map.entry("7", "V7__attempt_revisions_append_only.sql"));
+          Map.entry("7", "V7__attempt_revisions_append_only.sql"),
+          Map.entry("8", "V8__account_creations.sql"));
 
   private static final List<String> ALL_TABLES =
       List.of(
@@ -56,7 +57,8 @@ class MigrationIT extends AbstractPostgresIT {
           "user_feature_snapshots",
           "ranking_policies",
           "recommendation_decisions",
-          "recommendation_exposures");
+          "recommendation_exposures",
+          "account_creations");
 
   private static final UUID PROVENANCE_ID = UUID.fromString("00000000-0000-7000-8000-000000000001");
   private static final String BOARD_ID = "migration-it-board";
@@ -73,7 +75,7 @@ class MigrationIT extends AbstractPostgresIT {
   }
 
   @Test
-  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionSeven() {
+  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionEight() {
     List<Map<String, Object>> rows =
         jdbc()
             .queryForList(
@@ -83,7 +85,7 @@ class MigrationIT extends AbstractPostgresIT {
     assertThat(rows)
         .extracting(row -> Map.entry(row.get("version").toString(), row.get("script").toString()))
         .containsExactlyElementsOf(MIGRATIONS);
-    assertThat(rows.getLast().get("version").toString()).isEqualTo("7");
+    assertThat(rows.getLast().get("version").toString()).isEqualTo("8");
   }
 
   @Test
@@ -246,6 +248,17 @@ class MigrationIT extends AbstractPostgresIT {
         .containsExactly("DELETE", "INSERT", "SELECT", "UPDATE");
   }
 
+  /**
+   * BC-0123c (V8): the per-address registration counter is append-only for the API role (DELETE
+   * stays for retention) and is read through its (client_ip, created_at) index.
+   */
+  @Test
+  void accountCreationsDenyUpdateToAppRoleAndHaveAddressIndex() {
+    assertThat(privilegesOf("account_creations")).containsExactly("DELETE", "INSERT", "SELECT");
+    assertThat(indexDefinition("account_creations_ip_idx"))
+        .contains("ON public.account_creations USING btree (client_ip, created_at)");
+  }
+
   @Test
   @Transactional
   void attemptsCountCheckRejectsZero() {
@@ -276,7 +289,8 @@ class MigrationIT extends AbstractPostgresIT {
         .contains("CREATE TABLE public.user_feature_snapshots")
         .contains("CREATE TABLE public.ranking_policies")
         .contains("CREATE TABLE public.recommendation_decisions")
-        .contains("CREATE TABLE public.recommendation_exposures");
+        .contains("CREATE TABLE public.recommendation_exposures")
+        .contains("CREATE TABLE public.account_creations");
     if (SchemaGolden.shouldUpdate()) {
       SchemaGolden.writeDoc(live);
       return;

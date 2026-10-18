@@ -31,6 +31,11 @@ beacon:
     # waits up to hash-wait for a slot and is otherwise 503 SERVICE_UNAVAILABLE with Retry-After.
     max-concurrent-hashes: 3
     hash-wait: 2s
+    # BC-0123c (F5 residual): accounts one client address may create per UTC day, counted in
+    # SQL (account_creations, V8); the next registration is 429 RATE_LIMITED with Retry-After
+    # set to the seconds until midnight UTC. Keyed like the other per-IP limits (ClientAddress),
+    # so behind an unlisted proxy every browser user shares it (docs/runbooks/dev-stack.md).
+    register-per-ip-per-day: 20
   http:
     # BC-0122 (HttpProperties). Bodies above this are 413 PAYLOAD_TOO_LARGE (TM-25).
     max-body-bytes: 65536

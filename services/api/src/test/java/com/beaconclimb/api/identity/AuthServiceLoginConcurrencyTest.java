@@ -55,13 +55,15 @@ class AuthServiceLoginConcurrencyTest {
     when(users.findActiveByUsername(anyString())).thenReturn(Optional.empty());
     AuthProperties properties =
         new AuthProperties(
-            LIMIT, Duration.ofMinutes(15), Duration.ofHours(24), 3, Duration.ofSeconds(2));
+            LIMIT, Duration.ofMinutes(15), Duration.ofHours(24), 3, Duration.ofSeconds(2), 20);
     AuthService service =
         new AuthService(
             users,
             mock(SessionRepository.class),
             hasher,
             new LoginAttemptLimiter(LIMIT, Duration.ofMinutes(15), Clock.systemUTC()),
+            mock(AccountCreationCap.class),
+            mock(AccountCreationRepository.class),
             properties,
             mock(TransactionTemplate.class),
             Clock.systemUTC());

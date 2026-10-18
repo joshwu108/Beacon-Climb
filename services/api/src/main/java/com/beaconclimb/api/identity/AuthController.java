@@ -30,8 +30,10 @@ public class AuthController {
       consumes = MediaType.APPLICATION_JSON_VALUE,
       produces = MediaType.APPLICATION_JSON_VALUE)
   @ResponseStatus(HttpStatus.CREATED)
-  public AuthResponse register(@RequestBody AuthRequest body) {
-    return auth.register(body);
+  public AuthResponse register(@RequestBody AuthRequest body, HttpServletRequest request) {
+    // Same client address as the public write bucket and the login limiter (BC-0123 F3): the
+    // per-day account-creation cap (BC-0123c, F5 residual) is keyed on it.
+    return auth.register(body, ClientAddress.of(request, trustedProxies));
   }
 
   @PostMapping(

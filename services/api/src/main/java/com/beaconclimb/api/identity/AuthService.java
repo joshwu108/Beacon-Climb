@@ -43,6 +43,8 @@ public class AuthService {
   private final SessionRepository sessions;
   private final PasswordHasher hasher;
   private final LoginAttemptLimiter limiter;
+  private final AccountCreationCap creationCap;
+  private final AccountCreationRepository creations;
   private final AuthProperties properties;
   private final TransactionTemplate tx;
   private final Clock clock;
@@ -52,6 +54,8 @@ public class AuthService {
       SessionRepository sessions,
       PasswordHasher hasher,
       LoginAttemptLimiter limiter,
+      AccountCreationCap creationCap,
+      AccountCreationRepository creations,
       AuthProperties properties,
       TransactionTemplate tx,
       Clock clock) {
@@ -59,20 +63,32 @@ public class AuthService {
     this.sessions = sessions;
     this.hasher = hasher;
     this.limiter = limiter;
+    this.creationCap = creationCap;
+    this.creations = creations;
     this.properties = properties;
     this.tx = tx;
     this.clock = clock;
   }
 
-  public AuthResponse register(AuthRequest request) {
+  /**
+   * Registers {@code request} from {@code clientIp} (the {@code ClientAddress} of the request). The
+   * daily cap is checked before the password is hashed so a capped address costs no Argon2 work;
+   * only a committed account counts towards the cap.
+   */
+  public AuthResponse register(AuthRequest request, String clientIp) {
     requireValid(request);
+    creationCap.require(clientIp, clock.instant());
     String hash = hasher.hash(request.password());
     UUID userId = Uuid7.next(clock);
-    return tx.execute(status -> insertAndOpenSession(userId, request.username(), hash));
+    return tx.execute(status -> insertAndOpenSession(userId, request.username(), hash, clientIp));
   }
 
-  /** Inside the registration transaction: the user row and its first session, nothing else. */
-  private AuthResponse insertAndOpenSession(UUID userId, String username, String hash) {
+  /**
+   * Inside the registration transaction: the user row, its account_creations row (the cap counts
+   * committed accounts only) and its first session, nothing else.
+   */
+  private AuthResponse insertAndOpenSession(
+      UUID userId, String username, String hash, String clientIp) {
     try {
       users.insert(userId, username, hash);
     } catch (DuplicateKeyException e) {
@@ -83,6 +99,7 @@ public class AuthService {
           "Username is already registered",
           List.of(new FieldError("username", "unique", "already registered")));
     }
+    creations.insert(userId, clientIp, clock.instant());
     log.info("registration outcome=OK user_id={}", userId);
     return openSession(userId);
   }
