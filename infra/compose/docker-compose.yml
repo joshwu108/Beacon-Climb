@@ -1,4 +1,4 @@
-# Local development stack. Profiles: core (postgres, decisions-init, api, web). Run
+# Local development stack. Profiles: core (postgres, decisions-init, migrate, api, web). Run
 # through the Makefile (`make dev`, `make down`, `make seed-demo`), which passes the
 # repo-root .env; every secret must be set there (no fallbacks: `${VAR:?}` aborts compose
 # if a value is missing or empty). Runbook: docs/runbooks/dev-stack.md.
@@ -59,6 +59,48 @@ services:
       options:
         max-size: "1m"
         max-file: "1"
+  # One-shot (BC-0123 F6b): applies the Flyway migrations as the schema-owner role and exits 0.
+  # Same jar, image and hardening as api; this is the only container that ever receives
+  # BEACON_MIGRATE_DB_PASSWORD. The datasource stays the runtime role (application-migrate.yaml);
+  # only Flyway connects as beacon_migrate. No ports, no volumes except the jar. Flyway failures
+  # show up here (`... logs migrate`), and api does not start until this has exited 0.
+  migrate:
+    image: eclipse-temurin:21-jre
+    profiles: [core]
+    user: "65534:65534"
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - ../../services/api/build/libs/api-0.1.0.jar:/app/api.jar:ro
+    command:
+      [
+        "java",
+        "-XX:MaxRAMPercentage=75",
+        "-jar",
+        "/app/api.jar",
+        "--spring.profiles.active=migrate",
+      ]
+    environment:
+      BEACON_DB_URL: jdbc:postgresql://postgres:5432/beacon
+      BEACON_APP_DB_USER: beacon_app
+      BEACON_APP_DB_PASSWORD: ${BEACON_APP_DB_PASSWORD:?set BEACON_APP_DB_PASSWORD in .env}
+      BEACON_MIGRATE_DB_USER: beacon_migrate
+      BEACON_MIGRATE_DB_PASSWORD: ${BEACON_MIGRATE_DB_PASSWORD:?set BEACON_MIGRATE_DB_PASSWORD in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
   api:
     image: eclipse-temurin:21-jre
     profiles: [core]
@@ -75,8 +117,9 @@ services:
       BEACON_DB_URL: jdbc:postgresql://postgres:5432/beacon
       BEACON_APP_DB_USER: beacon_app
       BEACON_APP_DB_PASSWORD: ${BEACON_APP_DB_PASSWORD:?set BEACON_APP_DB_PASSWORD in .env}
-      BEACON_MIGRATE_DB_USER: beacon_migrate
-      BEACON_MIGRATE_DB_PASSWORD: ${BEACON_MIGRATE_DB_PASSWORD:?set BEACON_MIGRATE_DB_PASSWORD in .env}
+      # BC-0123 F6b: the migrate service above owns the schema step; the long-running api never
+      # holds the schema-owner password (no BEACON_MIGRATE_DB_PASSWORD here, TM-24/TM-27).
+      BEACON_FLYWAY_ENABLED: "false"
       BEACON_DECISIONS_DIR: /data/decisions
       # beacon.http.cors-allowed-origins (relaxed binding). The compose web front proxies
       # /v1/ same-origin, so the browser normally sends no cross-origin request; the 3000
@@ -88,6 +131,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       decisions-init:
         condition: service_completed_successfully
     healthcheck:

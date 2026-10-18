@@ -38,6 +38,7 @@ is bounded by your network, not the CPU.
 |---|---|---|---|
 | `postgres` | `postgres:17` | 5432 | roles from `postgres/init.sql`; data in volume `pgdata` |
 | `decisions-init` | `alpine:3.21` | – | one-shot `chown` of volume `decisions` to uid 65534, then exits |
+| `migrate` | `eclipse-temurin:21-jre` | – | one-shot: the api jar with `--spring.profiles.active=migrate` applies the Flyway migrations as `beacon_migrate` (the only container that gets `BEACON_MIGRATE_DB_PASSWORD`), prints one `migrated version=N` line per migration and exits 0; `api` waits for it (BC-0123 F6b) |
 | `api` | `eclipse-temurin:21-jre` | 8080 | runs as `nobody`, read-only root, only the jar (ro) and `decisions` (rw at `/data/decisions`, `BEACON_DECISIONS_DIR`) mounted |
 | `web` | `beacon-web:dev` (built from `apps/web/Dockerfile`) | 3000 | nginx 1.27 unprivileged (uid 101), read-only root + tmpfs `/tmp`, serves `dist/` and proxies `/v1/` and `/health/` to `api:8080` |
 
@@ -77,10 +78,16 @@ the per-IP limits. Then the first `X-Forwarded-For` entry is the client for requ
 peer is the web container, and :8080 callers stay keyed on their own address. Never put an
 appending proxy in front of nginx.
 
-Flyway runs inside the api at startup. A future one-shot migrate service can own that
-step instead: start the api with `BEACON_FLYWAY_ENABLED=false` (`spring.flyway.enabled`)
-and without `BEACON_MIGRATE_DB_PASSWORD`, so the long-running process never holds the
-schema-owner credentials (BC-0123 F6). compose does not do this yet.
+Flyway no longer runs inside the long-running api. The one-shot `migrate` service runs the
+same jar under the `migrate` Spring profile (`application-migrate.yaml`: no web server,
+`spring.flyway.enabled` forced on, datasource still the runtime role `beacon_app`, Flyway
+connecting as `beacon_migrate`), prints the applied versions and exits 0; `api` then starts
+with `BEACON_FLYWAY_ENABLED=false` and without `BEACON_MIGRATE_DB_PASSWORD`, so the
+process that serves requests never holds the schema-owner credentials (BC-0123 F6b,
+TM-24/TM-27). There is no fallback password: Postgres refuses an empty one for
+`beacon_migrate` (`MigrateProfileIT`), so an unset `.env` value can only fail, never
+silently migrate. `make import` and `make recompute-features` run the jar on the host with
+the full `.env`, so they still migrate on their own if the schema is behind.
 
 nginx also sets `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options: DENY`,
 `Permissions-Policy` and a strict CSP (`script-src 'self'`, no inline scripts; the Vite
@@ -123,7 +130,7 @@ SYNTHETIC`).
 | Stop, keep data | `make down` |
 | Stop and drop the database and decision snapshots | `make reset-db` (volumes `pgdata`, `decisions` are removed; `init.sql` runs again on the next `make dev`) |
 | Re-seed | `make seed-demo` (idempotent: import reports `imported routes=0`, existing users log in instead of registering, consent/preferences are re-applied, role stays ADMIN) |
-| Logs | `docker compose --env-file .env -f infra/compose/docker-compose.yml --profile core logs -f api` (or `web`, `postgres`) |
+| Logs | `docker compose --env-file .env -f infra/compose/docker-compose.yml --profile core logs -f api` (or `web`, `postgres`, `migrate` for the migration run) |
 | Status | `docker compose --env-file .env -f infra/compose/docker-compose.yml --profile core ps -a` |
 | psql | `docker compose --env-file .env -f infra/compose/docker-compose.yml --profile core exec postgres psql -U beacon -d beacon` |
 | Restart just the api (e.g. after a rebuilt jar) | `docker compose --env-file .env -f infra/compose/docker-compose.yml --profile core restart api` |
@@ -147,11 +154,17 @@ the stock format (path and status, no bodies).
 `./gradlew bootRun`, a Vite preview or an old compose project are the usual culprits.
 `make down` then `make dev`.
 
+**`make dev` stops with `dependency failed to start: container compose-migrate-1 exited (1)`**
+— the migration run failed and `api` was never started. Look at `... logs migrate`: a
+Flyway error names the migration; `password authentication failed for user
+"beacon_migrate"` means the role or its password changed (`make reset-db` re-initialises
+the database from `.env`). A healthy run ends with `migrations applied=N pending=0`.
+
 **`make dev` times out waiting for `api` to be healthy** — look at
 `... logs api`. Typical causes: the jar is missing (`./gradlew :api:bootJar` failed
-earlier), Flyway refused a migration (the `beacon_migrate` role or its password changed:
-`make reset-db` re-initialises the database), or the laptop is slow and the 20 s start
-period + 30 x 3 s retries were not enough (re-run `make dev`; containers are reused).
+earlier), the api cannot reach Postgres as `beacon_app`, or the laptop is slow and the 20 s
+start period + 30 x 3 s retries were not enough (re-run `make dev`; containers are reused).
+Flyway problems are not in these logs any more: see the `migrate` entry above.
 
 **`web` unhealthy or 502 on `/v1/...`** — the web container only starts after `api` is
 healthy; a 502 later means `api` crashed or restarted. `... ps -a` then `... logs api`.
@@ -173,7 +186,12 @@ Import exit codes are documented on the `import` target in the Makefile.
 burst of `beacon.http.public-burst` (default 5) refilling at
 `beacon.http.public-write-limit-per-minute` (default 30, one token every two seconds), or
 10 failed logins per 15 minutes per username and per IP. Wait a few seconds (or 15 minutes
-after failed logins) and re-run.
+after failed logins) and re-run. A 429 on `/v1/auth/register` whose `Retry-After` is in the
+thousands of seconds is the daily account-creation cap instead
+(`beacon.auth.register-per-ip-per-day`, default 20 accounts per client IP per UTC day,
+counted in the `account_creations` table, BC-0123c): behind nginx on :3000 every browser
+user shares it, as with the other per-IP limits above. Wait for midnight UTC, raise the cap
+on the `api` service (`BEACON_AUTH_REGISTERPERIPPERDAY`), or `make reset-db`.
 
 **`HTTP 503` with `Retry-After: 1` on register or sign-in** — more than
 `beacon.auth.max-concurrent-hashes` (default 3) password hashes were in flight for longer

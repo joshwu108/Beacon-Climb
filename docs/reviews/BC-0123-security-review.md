@@ -215,8 +215,8 @@ The two scratch programs are in `/private/tmp/claude-501/-Users-joshuawu-Beacon-
 | F2 path confusion | fixed: PathNormalizationFilter (404 on ;, dot segments, structural percent-escapes); filters match the normalised path | 842c137 |
 | F3 XFF behind nginx | fixed: nginx sends $remote_addr; beacon.http.trusted-proxies allowlist; runbook documents the shared-IP lockout | 842c137 |
 | F4 drafts not owner-bound | fixed: owner_user_id on drafts, foreign drafts purged on sign-in, Playwright repro | 8a8871a |
-| F5 global snapshot quota | fixed: per-user daily decision quota (429) in addition to the store cap | 842c137 |
-| F6 app role privileges | partly: V7 makes attempt_revisions append-only; migrate-only service deferred (BEACON_FLYWAY_ENABLED added) | 842c137 |
+| F5 global snapshot quota | fixed: per-user daily decision quota (429) in addition to the store cap; per-IP/day account-creation cap (BC-0123c: `beacon.auth.register-per-ip-per-day`, default 20, counted in SQL on V8 `account_creations`, 429 + Retry-After to midnight UTC, `AuthRegistrationCapIT`) | 842c137, this commit |
+| F6 app role privileges | fixed: V7 makes attempt_revisions append-only; one-shot compose `migrate` service (BC-0123c F6b: api jar under the `migrate` profile, same hardening, only holder of BEACON_MIGRATE_DB_PASSWORD; api runs with BEACON_FLYWAY_ENABLED=false and no migrate password, `MigrateProfileIT`) | 842c137, this commit |
 | F7 guard coverage | fixed: more extensions + SQLite header sniff | c2d5dfa |
 | F8 dev-only vitest/tinypool advisories | open: upgrade vitest ≥ 4.1.11 deferred (prod audit clean) | — |
 | F9 CI hardening | partly: read-only permissions on all workflows, contracts job fails instead of skipping; SHA pins and dependency scans deferred | c2d5dfa |

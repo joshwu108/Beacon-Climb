@@ -1,0 +1,23 @@
+# BC-0123c (F6b): `--spring.profiles.active=migrate` turns the jar into the one-shot schema
+# migrator the compose `migrate` service runs before `api` starts. No web server; Flyway is forced
+# on here (this profile document outranks the ${BEACON_FLYWAY_ENABLED} switch in application.yaml)
+# and connects as the schema-owner role from BEACON_MIGRATE_DB_USER / BEACON_MIGRATE_DB_PASSWORD,
+# while the datasource itself stays the runtime role (same context as the api, including the
+# ranking-policy upsert at startup). MigrateRunner then prints the applied versions and the JVM
+# exits 0; a failed or pending migration fails startup and exits non-zero.
+spring:
+  main:
+    web-application-type: none
+    banner-mode: off
+  flyway:
+    enabled: true
+logging:
+  level:
+    root: WARN
+    com.beaconclimb.api.db: INFO
+  structured:
+    format:
+      # The migrator is a CLI read by a person or a compose log; plain pattern.
+      console: ""
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %5p %logger{0} - %m%n"
