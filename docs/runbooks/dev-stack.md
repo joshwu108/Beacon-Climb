@@ -95,6 +95,22 @@ build has none because the modulePreload polyfill is off; `'unsafe-inline'` only
 `style-src` for React style attributes). Hashed `/assets/*` are cached immutable;
 `index.html` is `no-cache`.
 
+### Stream profile (BC-0301)
+
+`make stream-up` starts core plus `infra/compose/kafka.yml` (Kafka 4.3.1 KRaft as `kafka`,
+one-shot `kafka-init` that creates the four topics, and an `api` override that sets
+`BEACON_STREAM_ENABLED=true` and `BEACON_STREAM_BOOTSTRAPSERVERS=kafka:9092`) and
+`infra/compose/flink.yml` (the Flink session cluster, BC-0303). Loading `kafka.yml` is the
+only publisher switch: `make dev` never loads it, so the core api runs with
+`beacon.stream.enabled=false` and no Kafka bean exists; `make stream-up` after `make dev`
+recreates the api with the outbox publisher on, and `make dev` later turns it off again.
+Host listener `127.0.0.1:9094` (loopback only); the broker runs with `cap_drop: ALL`,
+`mem_limit: 1g` and a 512 MiB heap. `make outbox-status` prints the unpublished-row count,
+the oldest unpublished age and the rows unpublished for more than 60 s through psql; the same
+numbers are the `beacon_outbox_*` gauges on `http://127.0.0.1:8080/prometheus`. `make
+stream-down` stops everything; `make reset-db` now also removes the `kafkadata` (and `flink-checkpoints`) volumes. The
+streaming runbook (job submission, parity, chaos, recovery) is BC-0312.
+
 ## Credentials policy
 
 | Account | Password | Role | Where it comes from |

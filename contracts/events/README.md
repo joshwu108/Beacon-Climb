@@ -1,5 +1,25 @@
 # Event contract v1
 
-All events use JSON Schema 2020-12. Kafka keys: `user_id` for `attempts.v1` and `climber-features.v1`; `original_key` for `stream-dlq.v1`. Planned configuration (not yet deployed): attempts: six partitions, seven-day retention; features: compacted by user ID; DLQ: 30-day retention. `attempts.v1` dedupe key is `(attempt_id,attempt_revision)`; higher revision supersedes lower. `climber-features.v1` materializer guard uses the feature-topic Kafka partition and offset (consumer metadata), stored per user; same offset with different checksum is an error. The watermark describes freshness, not delivery order. See ADR-0002 and ADR-0004.
+All events use JSON Schema 2020-12. Kafka keys: `user_id` for `attempts.v1` and `climber-features.v1`; `original_key` for `stream-dlq.v1`. Deployed configuration is listed at the end of this file (BC-0301); the planned defaults were attempts: six partitions, seven-day retention; features: compacted by user ID; DLQ: 30-day retention. `attempts.v1` dedupe key is `(attempt_id,attempt_revision)`; higher revision supersedes lower. `climber-features.v1` materializer guard uses the feature-topic Kafka partition and offset (consumer metadata), stored per user; same offset with different checksum is an error. The watermark describes freshness, not delivery order. See ADR-0002 and ADR-0004.
 
 Within a major, add optional fields only after consumers tolerate them; never change required fields or meanings. A breaking change gets a new topic suffix. `attempts.v1.attributes` is a closed allowlist (`additionalProperties: false`, C-01 / TM-11). Consumer-first rule: a consumer schema bump that tolerates a new optional attribute ships before any producer emits it; an unknown attribute key is a contract violation and the event is routed to the DLQ, never silently accepted. `notes` is never an attribute (the explicit `not: {required: [notes]}` guard is kept alongside the allowlist so the intent survives a future allowlist edit); renamed or disguised note keys (`note`, `Notes`, `comment`, `free_text`) are negative fixtures. DLQ redrive preserves original bytes, increments `attempt`, and routes permanently invalid data for manual review. Topic ACLs and encryption are deployment responsibilities; no real user data is allowed in committed examples.
+
+## Changelog within v1
+
+Additive, optional changes only (the rule above). Each entry names the consumer-first proof.
+
+- 2026-10-18 (BC-0301): `attempts.v1` `attributes.grade_numeric`, optional, type `number` or `null`: the route variant's `grade_numeric` at the moment the attempt was written (read with the attempt row from `route_variants` in the same request; patches re-read it inside the update transaction), explicit `null` when the variant is ungraded. Consumers must tolerate absence exactly like `null` (UNGRADED); the validation library (BC-0302) and the stream job (BC-0304) are written against this schema in the same change set, so no consumer predates the attribute. The allowlist stays closed: `grade_numeric` is the only new key. Examples: `valid-attempt-recorded.json` (number), `valid-attempt-corrected.json` (null), `valid-attempt-retracted.json` (absent), `invalid-attempt-grade-numeric-string.json` (a string is rejected).
+
+## Deployed configuration (compose, BC-0301)
+
+`infra/compose/kafka.yml`, profile `stream` (`make stream-up`): one Kafka 4.3.1 KRaft broker, `kafka:9092` for containers and `127.0.0.1:9094` on the host. `kafka-init` creates the topics with `--if-not-exists`; auto-creation is off.
+
+| Topic | Partitions | Key | Config | Writer |
+|---|---|---|---|---|
+| `attempts.v1` | 6 | `user_id` | `retention.ms=604800000` (7 d) | api outbox publisher (`com.beaconclimb.api.outbox`) |
+| `climber-features.v1` | 6 | `user_id` | `cleanup.policy=compact` | stream job (BC-0303/BC-0304) |
+| `stream-dlq.v1` | 6 | `original_key` | `retention.ms=2592000000` (30 d) | validation library consumers (BC-0302) |
+| `stream-reconciliation.v1` | 6 | `user_id` | `retention.ms=2592000000` (30 d) | stream job late-event side output (BC-0304) |
+
+`attempts.v1` records: value = the outbox row's `payload_json` as Postgres renders the jsonb (semantically the validated event; key order and number spelling follow jsonb, the application never re-serialises it), headers `event_id`, `event_type`, `schema_version`. The publisher is at-least-once (ADR-0002): a row is marked published only after every send in its batch is acknowledged, so a crash or a timeout between acknowledgement and commit delivers it again with the same `event_id`. One `user_id` always lands on one partition; changing the partition count is a controlled reset (ADR-0004).
+

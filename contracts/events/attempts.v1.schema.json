@@ -89,6 +89,13 @@
           "minimum": 1,
           "maximum": 10
         },
+        "grade_numeric": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Optional since 2026-10-18 (BC-0301): the route variant's grade_numeric when the attempt was written, null when ungraded. Consumers treat absence like null (UNGRADED)."
+        },
         "status": {
           "type": "string",
           "enum": [
@@ -103,7 +110,7 @@
           "notes"
         ]
       },
-      "description": "Closed allowlist (C-01, TM-11). Unknown keys are a contract violation routed to the DLQ. A new optional attribute is added here, consumers ship first, then producers may emit it. notes is never an attribute."
+      "description": "Closed allowlist (C-01, TM-11). Unknown keys are a contract violation routed to the DLQ. A new optional attribute is added here, consumers ship first, then producers may emit it (changelog in README.md). notes is never an attribute."
     }
   },
   "allOf": [

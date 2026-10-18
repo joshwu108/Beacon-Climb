@@ -1,0 +1,115 @@
+# Streaming profile (BC-0301): Kafka 4.3.1 single-node KRaft, the one-shot topic bootstrap and
+# the override that turns the api's outbox publisher on. This file is a second compose file merged
+# over docker-compose.yml and is only ever loaded by the stream targets in the Makefile
+# (COMPOSE_STREAM: `make stream-up`, `make stream-down`, `make reset-db`); `make dev` never loads
+# it, so the core profile stays Kafka-free and the api runs with beacon.stream.enabled=false.
+# Hardening follows docker-compose.yml (TM-27): host ports bind 127.0.0.1 only, no-new-privileges,
+# cap_drop ALL (verified: the image's entrypoint runs as its own uid `appuser` and needs no
+# capability), memory/CPU caps, json-file log rotation. The broker's root filesystem is not
+# read-only because the image entrypoint renders /opt/kafka/config/server.properties at start.
+# Runbook pointer: docs/runbooks/dev-stack.md "Stream profile"; the streaming runbook is BC-0312.
+services:
+  kafka:
+    image: apache/kafka:4.3.1
+    profiles: [stream]
+    environment:
+      # Fixed so the formatted kafkadata volume re-opens on every restart (a different id is
+      # refused by the broker). Generated once with kafka-storage.sh random-uuid.
+      CLUSTER_ID: BcOp3BSlQDCerc9LDkcWAQ
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      # PLAINTEXT: containers (kafka:9092). HOST: the loopback-published listener below.
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,HOST://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,HOST://127.0.0.1:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,HOST:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR: "1"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      # Topics are created by kafka-init below with explicit partitions and retention.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_HEAP_OPTS: "-Xmx512m -Xms256m"
+    ports:
+      - "127.0.0.1:9094:9094"
+    volumes:
+      - kafkadata:/var/lib/kafka/data
+    healthcheck:
+      # A TCP probe of the container listener (no JVM per check: the CLI tools would inherit
+      # KAFKA_HEAP_OPTS and start a second 256 MiB heap inside the 1 GiB cap every interval).
+      # The KRaft broker starts its acceptors last, so an open port is a close readiness proxy;
+      # kafka-init still retries its first call so a premature "healthy" cannot break it.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9092"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 1g
+    cpus: 1.5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  # One-shot: waits for the broker, creates the four contract topics (--if-not-exists, so an
+  # existing topic keeps its current config) and prints --describe, then exits 0. Same image and
+  # hardening as kafka; read-only root with a tmpfs /tmp for the JVM. Six partitions each, as
+  # documented in contracts/events/README.md ("Deployed configuration").
+  kafka-init:
+    image: apache/kafka:4.3.1
+    profiles: [stream]
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      KAFKA_HEAP_OPTS: "-Xmx128m -Xms32m"
+    command:
+      - bash
+      - -c
+      - |
+        set -eu
+        b=kafka:9092
+        t=/opt/kafka/bin/kafka-topics.sh
+        for i in $$(seq 1 30); do
+          if $$t --bootstrap-server $$b --list >/dev/null 2>&1; then break; fi
+          echo "kafka-init: waiting for broker ($$i/30)"; sleep 2
+        done
+        create() { $$t --bootstrap-server $$b --create --if-not-exists --topic "$$1" --partitions 6 --replication-factor 1 --config "$$2"; }
+        create attempts.v1 retention.ms=604800000
+        create climber-features.v1 cleanup.policy=compact
+        create stream-dlq.v1 retention.ms=2592000000
+        create stream-reconciliation.v1 retention.ms=2592000000
+        $$t --bootstrap-server $$b --describe
+    depends_on:
+      kafka:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 256m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "1"
+  # Merged into the core api service: the publisher switch and the in-network bootstrap address.
+  # Loading this file is the switch; nothing else in .env or the environment needs to change.
+  api:
+    environment:
+      BEACON_STREAM_ENABLED: "true"
+      BEACON_STREAM_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+volumes:
+  kafkadata:

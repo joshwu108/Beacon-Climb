@@ -13,7 +13,8 @@
     "attributes": {
       "sent": false,
       "attempts_count": 2,
-      "status": "ACTIVE"
+      "status": "ACTIVE",
+      "grade_numeric": null
     },
     "trace_id": "synthetic-trace-1",
     "producer": "api"

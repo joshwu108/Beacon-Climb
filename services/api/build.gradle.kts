@@ -28,12 +28,22 @@ dependencies {
     implementation("com.networknt:json-schema-validator:3.0.8")
     // BC-0122: token-bucket rate limiting (ADR-0005). Core only; no Spring integration needed.
     implementation("com.bucket4j:bucket4j_jdk17-core:8.21.0")
+    // BC-0301: the transactional-outbox publisher (com.beaconclimb.api.outbox). Only the core
+    // spring-kafka library (BOM: spring-kafka 4.1.1, kafka-clients 4.2.1), deliberately not the
+    // Boot starter/auto-configuration module, so no Kafka bean exists unless
+    // beacon.stream.enabled=true wires them (OutboxConfig).
+    implementation("org.springframework.kafka:spring-kafka")
+    // BC-0301 (and BC-0308): the outbox gauges/counters scrape at /prometheus on 127.0.0.1:8080.
+    implementation("io.micrometer:micrometer-registry-prometheus")
     runtimeOnly("org.postgresql:postgresql")
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     testImplementation("org.testcontainers:testcontainers-postgresql")
+    // BC-0301: shared apache/kafka:4.3.1 KRaft container (KafkaTestContainer) and bounded waits.
+    testImplementation("org.testcontainers:testcontainers-kafka")
+    testImplementation("org.awaitility:awaitility")
     testImplementation("net.jqwik:jqwik:1.9.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

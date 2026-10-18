@@ -13,7 +13,9 @@ import tools.jackson.databind.node.ObjectNode;
 /**
  * Builds {@code attempts.v1} outbox payloads from an explicit field list (TM-11): the envelope
  * members the schema requires plus the {@code attributes} allowlist (sent, attempts_count, status,
- * optional completion_fraction and perceived_effort). {@code notes} is never read here. Every
+ * grade_numeric, optional completion_fraction and perceived_effort). {@code grade_numeric}
+ * (BC-0301, additive within v1) is the variant's current grade or an explicit null when ungraded;
+ * consumers treat null and absence alike as UNGRADED. {@code notes} is never read here. Every
  * payload is validated against the bundled schema before it is returned; a violation is a server
  * bug (500), never a client error, so it is thrown as {@link IllegalStateException}.
  */
@@ -54,6 +56,9 @@ public class AttemptEvents {
     if (row.perceivedEffort() != null) {
       attributes.put("perceived_effort", row.perceivedEffort());
     }
+    // BC-0301: the variant's grade_numeric as read with the row (route_variants join on patch,
+    // the visible-variant lookup on create); explicit null when the variant is ungraded.
+    attributes.put("grade_numeric", row.route().gradeNumeric());
     event.put("trace_id", traceId);
     event.put("producer", PRODUCER);
     List<Error> errors = schema.validate(event);

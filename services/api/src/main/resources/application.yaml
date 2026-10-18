@@ -66,6 +66,34 @@ beacon:
     # BC-0123 F5: new decisions one user may create per UTC day before 429 RATE_LIMITED, so one
     # account cannot fill max-files for everyone.
     max-per-user-per-day: 500
+  stream:
+    # BC-0301 (StreamProperties). Off by default: every Kafka bean is conditional on this flag,
+    # so `make dev` (core profile) and the test suite run without a broker. `make stream-up`
+    # loads infra/compose/kafka.yml, which sets BEACON_STREAM_ENABLED=true on the api service.
+    enabled: ${BEACON_STREAM_ENABLED:false}
+    # kafka:9092 inside compose (kafka.yml); 127.0.0.1:9094 is the host listener.
+    bootstrap-servers: ${BEACON_STREAM_BOOTSTRAPSERVERS:127.0.0.1:9094}
+    topics:
+      attempts: attempts.v1
+      features: climber-features.v1
+      dlq: stream-dlq.v1
+      reconciliation: stream-reconciliation.v1
+    publisher:
+      # One poll = one transaction: SELECT ... FOR UPDATE SKIP LOCKED up to batch-size rows,
+      # send them all, wait, UPDATE published_at, commit; then one aggregate query over the
+      # partial index (published_at IS NULL) refreshes the backlog gauges.
+      poll-interval: 500ms
+      batch-size: 200
+      # Rows unpublished for longer than this count as stale (beacon_outbox_stale_rows,
+      # OutboxReconciliation, `make outbox-status`).
+      stale-after: 60s
+      # Producer delivery.timeout.ms / request.timeout.ms: a dead broker fails a batch in
+      # about ten seconds; the rows stay unpublished and the next poll retries (at-least-once).
+      delivery-timeout: 10s
+      request-timeout: 5s
+    consumer:
+      materializer-group-id: beacon-materializer
+      reconciliation-group-id: beacon-reconciliation
 logging:
   structured:
     format:
@@ -82,7 +110,9 @@ management:
       path-mapping:
         health: health
       exposure:
-        include: health
+        # BC-0301: the Prometheus scrape (outbox gauges/counters, BC-0308) is /prometheus on
+        # 127.0.0.1:8080 only; nginx does not proxy it. Health paths above are unchanged.
+        include: health,prometheus
   endpoint:
     health:
       probes:

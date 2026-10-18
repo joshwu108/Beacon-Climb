@@ -32,7 +32,13 @@ class AttemptLogScrubbingIT extends AttemptsTestSupport {
       List.of("org.springframework.web.servlet", "com.beaconclimb");
   private static final String TEST_CLIENT_LOGGER_PREFIX = "org.springframework.web.client";
   private static final Set<String> ATTRIBUTE_ALLOWLIST =
-      Set.of("sent", "attempts_count", "status", "completion_fraction", "perceived_effort");
+      Set.of(
+          "sent",
+          "attempts_count",
+          "status",
+          "completion_fraction",
+          "perceived_effort",
+          "grade_numeric");
 
   private final ListAppender<ILoggingEvent> appender = new ListAppender<>();
   private final Map<String, Level> previousLevels = new HashMap<>();

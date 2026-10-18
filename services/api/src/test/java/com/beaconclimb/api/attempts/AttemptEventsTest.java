@@ -28,7 +28,13 @@ class AttemptEventsTest {
   private static final Path EXAMPLES =
       Path.of("..", "..", "contracts", "events", "examples").toAbsolutePath().normalize();
   private static final Set<String> ATTRIBUTE_ALLOWLIST =
-      Set.of("sent", "attempts_count", "status", "completion_fraction", "perceived_effort");
+      Set.of(
+          "sent",
+          "attempts_count",
+          "status",
+          "completion_fraction",
+          "perceived_effort",
+          "grade_numeric");
 
   private final JsonMapper json = JsonMapper.builder().build();
   private final AttemptEventSchema schema = new AttemptEventSchema();
@@ -40,7 +46,7 @@ class AttemptEventsTest {
     int revision = change == AttemptChange.RECORDED ? 1 : 3;
     AttemptStatus status =
         change == AttemptChange.RETRACTED ? AttemptStatus.RETRACTED : AttemptStatus.ACTIVE;
-    AttemptRow row = row(revision, status, 0.75, 7, "secret note text");
+    AttemptRow row = row(revision, status, 0.75, 7, "secret note text", 5.5);
     UUID eventId = UUID.fromString("018f0000-0000-7000-8000-000000000005");
 
     String payload =
@@ -57,13 +63,15 @@ class AttemptEventsTest {
     assertThat(event.get("attributes").get("status").asString()).isEqualTo(status.name());
     assertThat(event.get("attributes").get("completion_fraction").asDouble()).isEqualTo(0.75);
     assertThat(event.get("attributes").get("perceived_effort").asInt()).isEqualTo(7);
+    assertThat(event.get("attributes").get("grade_numeric").asDouble()).isEqualTo(5.5);
     assertThat(event.get("attributes").propertyNames()).isSubsetOf(ATTRIBUTE_ALLOWLIST);
     assertThat(payload).doesNotContain("note");
   }
 
+  /** completion_fraction and perceived_effort are omitted; grade_numeric is an explicit null. */
   @Test
-  void optionalAttributesAreOmittedWhenNull() {
-    AttemptRow row = row(1, AttemptStatus.ACTIVE, null, null, null);
+  void optionalAttributesAreOmittedWhenNullAndAnUngradedVariantIsAnExplicitNull() {
+    AttemptRow row = row(1, AttemptStatus.ACTIVE, null, null, null, null);
 
     JsonNode event =
         json.readTree(
@@ -71,12 +79,13 @@ class AttemptEventsTest {
 
     assertThat(schema.validate(event)).isEmpty();
     assertThat(event.get("attributes").propertyNames())
-        .containsExactlyInAnyOrder("sent", "attempts_count", "status");
+        .containsExactlyInAnyOrder("sent", "attempts_count", "status", "grade_numeric");
+    assertThat(event.get("attributes").get("grade_numeric").isNull()).isTrue();
   }
 
   @Test
   void contractViolationIsAServerErrorNotAClientError() {
-    AttemptRow recordedAtRevisionTwo = row(2, AttemptStatus.ACTIVE, null, null, null);
+    AttemptRow recordedAtRevisionTwo = row(2, AttemptStatus.ACTIVE, null, null, null, null);
 
     assertThatThrownBy(
             () ->
@@ -105,7 +114,8 @@ class AttemptEventsTest {
             "invalid-attempt-renamed-notes-comment.json",
             "invalid-attempt-renamed-notes-free_text.json",
             "invalid-attempt-missing-revision.json",
-            "invalid-attempt-bad-timestamp.json");
+            "invalid-attempt-bad-timestamp.json",
+            "invalid-attempt-grade-numeric-string.json");
     for (String name : valid) {
       assertThat(schema.validate(example(name))).as(name).isEmpty();
     }
@@ -120,7 +130,12 @@ class AttemptEventsTest {
   }
 
   private static AttemptRow row(
-      int revision, AttemptStatus status, Double fraction, Integer effort, String notes) {
+      int revision,
+      AttemptStatus status,
+      Double fraction,
+      Integer effort,
+      String notes,
+      Double gradeNumeric) {
     return new AttemptRow(
         UUID.fromString("018f0000-0000-7000-8000-000000000002"),
         UUID.fromString("018f0000-0000-7000-8000-000000000001"),
@@ -137,6 +152,6 @@ class AttemptEventsTest {
         status,
         "0".repeat(64),
         "{}",
-        new RouteVariantSummaryView("synthetic-route-001:35", "b", 35, "n", null, null, 0));
+        new RouteVariantSummaryView("synthetic-route-001:35", "b", 35, "n", gradeNumeric, null, 0));
   }
 }
