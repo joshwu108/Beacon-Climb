@@ -33,7 +33,13 @@ describe('mock handlers', () => {
     expect(first.headers.get('X-Request-Id')).toBe(
       registerFixture.headers['X-Request-Id'],
     );
-    await expect(first.json()).resolves.toEqual(registerFixture.body);
+    const issued = (await first.json()) as { expires_at: string };
+    expect(issued).toEqual({
+      ...registerFixture.body,
+      expires_at: expect.any(String),
+    });
+    // The fixture's fixed expires_at has passed; the mock issues a live session.
+    expect(Date.parse(issued.expires_at)).toBeGreaterThan(Date.now());
     const second = await fetch(`${BASE}/v1/auth/register`, {
       method: 'POST',
       body,

@@ -7,8 +7,10 @@ import { DRAFT_DB_NAME, DRAFT_STORE_NAME } from './states';
  * prompt, and an attempt saved while offline syncs once the browser is back online.
  * Mock state lives in the page (MSW worker), so "elsewhere" is a direct fetch from the
  * page and offline is Playwright's emulation, which the mocks honour via navigator.onLine.
- * The last test is the BC-0123 F4 repro: a draft left by one account on a shared browser
- * is neither shown to nor sent under the next account.
+ * The BC-0123 F4 repro: a draft left by one account on a shared browser is neither shown
+ * to nor sent under the next account. The BC-0123 N4 pair: signing in again as the same
+ * account in another tab keeps this tab's unsent draft; signing in as another account
+ * removes it.
  */
 
 const SESSION_STORAGE_KEY = 'beacon.session.v1';
@@ -21,6 +23,106 @@ const FORM = '/attempts/new?route_variant_id=synthetic-route-002%3A35';
 
 const historyRows = (page: Page) =>
   page.getByRole('region', { name: 'History' }).getByRole('listitem');
+
+/** Draft rows in IndexedDB, read directly: what the next page load will find. */
+const draftsOnDevice = (p: Page): Promise<number> =>
+  p.evaluate(
+    ([dbName, storeName]) =>
+      new Promise<number>((resolve, reject) => {
+        const open = indexedDB.open(dbName, 1);
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const count = open.result
+            .transaction(storeName, 'readonly')
+            .objectStore(storeName)
+            .count();
+          count.onsuccess = () => {
+            open.result.close();
+            resolve(count.result);
+          };
+          count.onerror = () => reject(count.error);
+        };
+      }),
+    [DRAFT_DB_NAME, DRAFT_STORE_NAME] as const,
+  );
+
+/** The notes of every draft row in IndexedDB. */
+const draftNotesOnDevice = (p: Page): Promise<string[]> =>
+  p.evaluate(
+    ([dbName, storeName]) =>
+      new Promise<string[]>((resolve, reject) => {
+        const open = indexedDB.open(dbName, 1);
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const all = open.result
+            .transaction(storeName, 'readonly')
+            .objectStore(storeName)
+            .getAll();
+          all.onsuccess = () => {
+            open.result.close();
+            resolve(
+              (all.result as { body: { notes?: string } }[]).map(
+                (row) => row.body.notes ?? '',
+              ),
+            );
+          };
+          all.onerror = () => reject(all.error);
+        };
+      }),
+    [DRAFT_DB_NAME, DRAFT_STORE_NAME] as const,
+  );
+
+const OFFLINE_FLAG = 'e2e.offline';
+
+/**
+ * The seeded session with the GET /v1/me fixture user already recorded, as the token
+ * store itself writes it after /v1/me answers. The shared beforeEach re-seeds the
+ * session on every load, and an offline reload cannot ask /v1/me again, so the tab needs
+ * its user id in the seed to list its own drafts.
+ */
+const FIXTURE_USER_ID = '018f0000-0000-7000-8000-000000000001';
+const SESSION_WITH_USER = JSON.stringify({
+  ...(JSON.parse(SESSION) as Record<string, string>),
+  userId: FIXTURE_USER_ID,
+});
+
+/**
+ * Offline for one tab only. The mocks answer with a network error while
+ * `navigator.onLine` is false, so a getter backed by this tab's sessionStorage keeps the
+ * tab offline across reloads while other tabs in the context stay online.
+ * (`context.setOffline(false)` would fire `online` here and auto-sync the draft.)
+ */
+const emulateOfflinePerTab = (p: Page): Promise<void> =>
+  p.addInitScript((flag) => {
+    Object.defineProperty(navigator, 'onLine', {
+      configurable: true,
+      get: () => sessionStorage.getItem(flag) !== '1',
+    });
+  }, OFFLINE_FLAG);
+
+const goOfflineInTab = (p: Page): Promise<void> =>
+  p.evaluate((flag) => sessionStorage.setItem(flag, '1'), OFFLINE_FLAG);
+
+/** User U (the seeded demo session) saves an attempt that cannot reach the server. */
+const leaveUnsentDraft = async (p: Page, notes: string): Promise<void> => {
+  await p.addInitScript(
+    ([key, value]) => sessionStorage.setItem(key, value),
+    [SESSION_STORAGE_KEY, SESSION_WITH_USER],
+  );
+  await emulateOfflinePerTab(p);
+  await p.goto(FORM);
+  await expect(
+    p.getByRole('heading', { level: 2, name: /synthetic/i }),
+  ).toBeVisible();
+  await expect(p.getByRole('button', { name: 'Save attempt' })).toBeEnabled();
+  await goOfflineInTab(p);
+  await p.getByLabel(/notes/i).fill(notes);
+  await p.getByRole('button', { name: 'Save attempt' }).click();
+  await expect(p.getByRole('alert')).toContainText(
+    "We didn't get a reply, so we can't tell if it saved.",
+  );
+  expect(await draftNotesOnDevice(p)).toEqual([notes]);
+};
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(
@@ -139,26 +241,6 @@ test('a draft left by one account is neither shown to nor sent under the next ac
   await expect(page.getByRole('alert')).toContainText(
     "We didn't get a reply, so we can't tell if it saved.",
   );
-  const draftsOnDevice = (p: Page): Promise<number> =>
-    p.evaluate(
-      ([dbName, storeName]) =>
-        new Promise<number>((resolve, reject) => {
-          const open = indexedDB.open(dbName, 1);
-          open.onerror = () => reject(open.error);
-          open.onsuccess = () => {
-            const count = open.result
-              .transaction(storeName, 'readonly')
-              .objectStore(storeName)
-              .count();
-            count.onsuccess = () => {
-              open.result.close();
-              resolve(count.result);
-            };
-            count.onerror = () => reject(count.error);
-          };
-        }),
-      [DRAFT_DB_NAME, DRAFT_STORE_NAME] as const,
-    );
   expect(await draftsOnDevice(page)).toBe(1);
   await page.close();
 
@@ -202,4 +284,65 @@ test('a draft left by one account is neither shown to nor sent under the next ac
   ).toEqual([]);
   expect(seen.some((r) => r.body.includes('A-private'))).toBe(false);
   await next.close();
+});
+
+test("a re-login as the same account in another tab keeps this tab's unsent draft (BC-0123 N4)", async ({
+  page,
+  context,
+}) => {
+  await leaveUnsentDraft(page, 'U-keeps-this');
+
+  // The same person signs in again in a second tab: fresh sessionStorage, same IndexedDB.
+  const other = await context.newPage();
+  await other.goto('/onboarding');
+  await other.getByRole('button', { name: 'Sign in instead' }).click();
+  await other.getByRole('textbox', { name: 'Username' }).fill('demo');
+  await other.getByLabel('Password', { exact: true }).fill('demo-password');
+  await other.getByRole('button', { name: 'Sign in' }).click();
+  // Landing on /explore means GET /v1/me answered, so the sign-in purge has run.
+  await expect(other).toHaveURL(/\/explore$/);
+  expect(await draftNotesOnDevice(other)).toEqual(['U-keeps-this']);
+  await other.close();
+
+  // Still offline in the first tab, the draft is there after a reload, waiting to be sent.
+  await page.goto('/attempts');
+  await expect(
+    page.getByRole('heading', { level: 2, name: 'Waiting to save (1)' }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
+  expect(await draftNotesOnDevice(page)).toEqual(['U-keeps-this']);
+});
+
+test("signing in as another account in a second tab removes this tab's unsent draft (BC-0123 N4)", async ({
+  page,
+  context,
+}) => {
+  await leaveUnsentDraft(page, 'U-private');
+
+  // Someone else registers in a second tab of the same browser.
+  const other = await context.newPage();
+  await other.goto('/onboarding');
+  await other
+    .getByRole('textbox', { name: 'Username' })
+    .fill(`user_v_${Date.now().toString(36)}`);
+  await other.getByLabel('Password', { exact: true }).fill('a-long-password');
+  await other.getByRole('button', { name: 'Create account' }).click();
+  await expect(
+    other.getByRole('heading', {
+      level: 2,
+      name: /decide what beacon may keep/i,
+    }),
+  ).toBeVisible();
+  // GET /v1/me identified V: U's draft left the device.
+  await expect.poll(() => draftsOnDevice(other)).toBe(0);
+  await other.close();
+
+  await page.goto('/attempts');
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Attempt log' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: /waiting to save/i }),
+  ).toHaveCount(0);
+  expect(await draftsOnDevice(page)).toBe(0);
 });

@@ -88,6 +88,51 @@ describe('draft store (memory fallback)', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
+  describe('purgeForeign on sign-in (BC-0123 F4, N4)', () => {
+    it("sign-in as U keeps all of U's drafts and removes V's", async () => {
+      const store = createDraftStore({ indexedDB: null });
+      await store.put(draft('u-one'));
+      await store.put({ ...draft('u-two'), state: 'failed' });
+      await store.put(draft('v-one', { owner_user_id: OTHER }));
+      await store.purgeForeign(OWNER);
+      expect(
+        store
+          .list()
+          .map((d) => d.draft_id)
+          .sort(),
+      ).toEqual(['u-one', 'u-two']);
+      expect(store.get('u-two')?.state).toBe('failed');
+      expect(store.get('v-one')).toBeUndefined();
+    });
+
+    it("re-login as U (the purge runs again) keeps U's drafts untouched", async () => {
+      const store = createDraftStore({ indexedDB: null });
+      const listener = vi.fn();
+      await store.put(draft('u-one'));
+      await store.put(draft('v-one', { owner_user_id: OTHER }));
+      await store.purgeForeign(OWNER);
+      const afterFirst = store.list();
+      store.subscribe(listener);
+      // A second sign-in as the same account: nothing is foreign any more.
+      await store.purgeForeign(OWNER);
+      expect(store.list()).toBe(afterFirst);
+      expect(store.list().map((d) => d.draft_id)).toEqual(['u-one']);
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('ownerless drafts count as foreign: any sign-in removes them', async () => {
+      const store = createDraftStore({ indexedDB: null });
+      await store.put(draft('u-one'));
+      // Written before owners existed (BC-0118): no owner at all.
+      const legacy = draft('legacy') as { owner_user_id?: string };
+      delete legacy.owner_user_id;
+      await store.put(legacy as AttemptDraft);
+      expect(store.list()).toHaveLength(2);
+      await store.purgeForeign(OWNER);
+      expect(store.list().map((d) => d.draft_id)).toEqual(['u-one']);
+    });
+  });
+
   it('keeps the same key for a draft across updates', async () => {
     const store = createDraftStore({ indexedDB: null });
     await store.put(draft('x'));

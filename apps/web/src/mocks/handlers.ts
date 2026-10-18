@@ -87,6 +87,21 @@ const fixture = (f: Fixture): Response => {
     : HttpResponse.json(f.body as Record<string, unknown>, init);
 };
 
+/**
+ * Auth responses: the committed fixtures carry a fixed `expires_at` that is now in the
+ * past, and the token store treats such a session as expired, so the mock issues a token
+ * that lasts an hour from issue. Everything else in the fixture is served as committed.
+ */
+const MOCK_SESSION_TTL_MS = 60 * 60 * 1000;
+const sessionFixture = (f: Fixture): Response =>
+  fixture({
+    ...f,
+    body: {
+      ...(f.body as Record<string, unknown>),
+      expires_at: new Date(Date.now() + MOCK_SESSION_TTL_MS).toISOString(),
+    },
+  });
+
 /** The only non-fixture response: bearer-protected operations without a token. */
 const unauthenticated = (): Response =>
   HttpResponse.json(
@@ -279,7 +294,7 @@ const publicHandlers: HttpHandler[] = [
         consent: null,
         preferences: null,
       };
-      return fixture(registerUser);
+      return sessionFixture(registerUser);
     }),
   ),
 
@@ -290,7 +305,7 @@ const publicHandlers: HttpHandler[] = [
       const password = typeof body.password === 'string' ? body.password : '';
       if (password.length < 8) return fixture(createSession422);
       mockState.me = null;
-      return fixture(createSession);
+      return sessionFixture(createSession);
     }),
   ),
 ];

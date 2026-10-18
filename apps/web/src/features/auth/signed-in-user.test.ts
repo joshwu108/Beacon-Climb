@@ -49,4 +49,21 @@ describe('recordSignedInUser', () => {
     await recordSignedInUser(USER_A);
     expect(draftStore.list().map((d) => d.draft_id)).toEqual(['a2']);
   });
+
+  it("a re-login in a fresh tab as the same user keeps that user's drafts (BC-0123 N4)", async () => {
+    await draftStore.put(draft('u1', USER_A));
+    await draftStore.put(draft('u2', USER_A));
+    await draftStore.put(draft('v1', USER_B));
+    // A new tab: its token store starts without a user id, like after POST /v1/auth/session.
+    tokenStore.set({ token: 'tab-two', expiresAt: FUTURE });
+    expect(tokenStore.getUserId()).toBeNull();
+    await recordSignedInUser(USER_A);
+    expect(tokenStore.getUserId()).toBe(USER_A);
+    expect(
+      draftStore
+        .list()
+        .map((d) => d.draft_id)
+        .sort(),
+    ).toEqual(['u1', 'u2']);
+  });
 });

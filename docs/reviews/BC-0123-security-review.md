@@ -227,3 +227,4 @@ The two scratch programs are in `/private/tmp/claude-501/-Users-joshuawu-Beacon-
 | I2 CSP vs localhost:3000 | open: runbook claim to be corrected (use 127.0.0.1:3000) | — |
 | I3 MSW worker in plain build | fixed: postbuild removal | 8a8871a |
 | I4 dev server on 0.0.0.0 | fixed: 127.0.0.1 | 8a8871a |
+| N4 sign-in in one tab deletes another tab's unsent drafts | verified not reproducible for the same account: purge is by owner_user_id only (8a8871a), so a re-login as the same user in any tab keeps that user's drafts; another account signing in removes them (F4 intent); ownerless pre-F4 drafts are purged on any sign-in. Unit tests on draft store + signed-in-user, 2 Playwright cross-tab tests; mock auth now issues a live expires_at (fixtures dated 2026-10-15 had expired) | this commit |

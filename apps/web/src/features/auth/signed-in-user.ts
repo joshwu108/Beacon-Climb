@@ -4,8 +4,10 @@ import { tokenStore } from './token-store';
  * Called whenever GET /v1/me answers (BC-0123 F4). Remembers which user this tab's token
  * belongs to and, the first time that is known in the tab or whenever it changes, deletes
  * every attempt draft left on the device by another account (or by no account: drafts
- * made before owners were recorded). The draft store is imported lazily, like in
- * SignOutButton, so the shell chunk stays free of IndexedDB code.
+ * made before owners were recorded). A fresh tab starts with no user id, so a re-login
+ * there runs the purge too, but it only ever removes other owners' drafts: the same
+ * account's unsent drafts in every tab survive (BC-0123 N4). The draft store is imported
+ * lazily, like in SignOutButton, so the shell chunk stays free of IndexedDB code.
  */
 export const recordSignedInUser = async (userId: string): Promise<void> => {
   const previous = tokenStore.getUserId();

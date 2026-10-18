@@ -10,6 +10,10 @@
  * see, and auto-send under their own token, drafts (with notes) left by the previous one.
  * `listFor` returns one owner's drafts; `purgeForeign` deletes every other owner's,
  * including drafts written before this field existed (no owner means foreign).
+ *
+ * Only ownership decides, never the sign-in event itself (BC-0123 N4): signing in again
+ * as the same account, in this tab or in another tab of the same browser, keeps that
+ * account's unsent drafts. Signing in as a different account removes them, as F4 intends.
  */
 import type { components } from '../../api/generated/schema';
 
@@ -61,7 +65,11 @@ export interface DraftStore {
   put(draft: AttemptDraft): Promise<void>;
   remove(draftId: string): Promise<void>;
   clear(): Promise<void>;
-  /** Delete every draft whose owner is not `ownerUserId` (ownerless ones included). */
+  /**
+   * Delete every draft whose owner is not `ownerUserId` (ownerless ones included). The
+   * owner's own drafts are never touched, so calling it again for the same owner is a
+   * no-op: a re-login keeps them.
+   */
   purgeForeign(ownerUserId: string): Promise<void>;
   subscribe(listener: () => void): () => void;
 }
