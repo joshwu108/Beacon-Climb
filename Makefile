@@ -234,3 +234,10 @@ observability-check:
 # e2e_/demo users only, otherwise refuses with exit 2) and prints one `parity summary ...` line.
 # Exit codes: 0 every compared user EQUAL, 1 any DIFF or SAME_W_MISMATCH, 2 usage/refusal/error.
 # USER is only honoured when given on the make command line (the login shell exports USER).
+# BC-0307 calls this after every chaos scenario (test/integration/parity/README.md).
+.PHONY: test-parity
+
+test-parity: .env
+	./gradlew :api:bootJar
+	bash scripts/parity/parity.sh --user $(if $(filter command line,$(origin USER)),$(USER),all) $(if $(OUT),--out $(OUT),)
+
