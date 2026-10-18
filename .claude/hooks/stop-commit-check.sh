@@ -22,7 +22,9 @@ block() {
 
 # ---------- 1. night mode (only for the session that received the overnight prompt) ----------
 NIGHT_FLAG="planning/handoffs/NIGHT-ACTIVE"
-NIGHT_LOG="$(ls planning/handoffs/NIGHT-*.md 2>/dev/null | grep -v DONE | head -1)"
+# Newest night log wins (dated file names sort chronologically); older nights already carry a
+# Morning summary and must not release a later night's session early.
+NIGHT_LOG="$(ls planning/handoffs/NIGHT-*.md 2>/dev/null | grep -v DONE | sort | tail -1)"
 NIGHT_CAP=80
 # Identify the overnight session: its transcript has a USER message containing the prompt's
 # opening phrase. Other sessions in the same repo (reviews, chat) must not be held open.
@@ -57,7 +59,7 @@ if [ -f "$NIGHT_FLAG" ] && [ "$is_night_owner" = "yes" ]; then
     n=$((n + 1)); printf '%s' "$n" > "$NIGHT_COUNTER"
     if [ "$n" -le "$NIGHT_CAP" ]; then
       dirty="$(git status --porcelain --untracked-files=all 2>/dev/null | wc -l | tr -d ' ')"
-      block "NIGHT MODE (stop $n of $NIGHT_CAP): the unattended run is not finished. If the ticket you just worked on is complete, commit its paths with the commit skill and log it in the NIGHT log; if it is blocked after 3 genuine attempts, write its BLOCKED handoff and log it. Then start the NEXT ticket in the list from planning/11-overnight-prompt.md. Do not ask questions; nobody is here. Only stop for good after writing the '## Morning summary' section of the NIGHT log (final step 28). Working tree currently has $dirty uncommitted paths."
+      block "NIGHT MODE (stop $n of $NIGHT_CAP): the unattended run is not finished. If the ticket you just worked on is complete, commit its paths with the commit skill and log it in the NIGHT log; if it is blocked after 3 genuine attempts, write its BLOCKED handoff and log it. Then start the NEXT ticket in the list from the overnight prompt you were given (the newest planning/*-overnight-prompt*.md). Do not ask questions; nobody is here. Only stop for good after writing the '## Morning summary' section of $NIGHT_LOG (the prompt's final step). Working tree currently has $dirty uncommitted paths."
     fi
     # cap reached: fall through and allow the stop
   fi
