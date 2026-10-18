@@ -222,9 +222,11 @@ All runs are the full `:api:test --rerun --continue` (331 tests) against a copy 
 | MEDIUM-5 FeatureComputer duplicates / lower revisions | fixed: highest revision per attempt_id kept; FeatureComputerTest | d8c89fd |
 | MEDIUM-6 ON CONFLICT only race-tested | fixed: AttemptRepositoryIT deterministic double insert | d8c89fd |
 | MEDIUM-7 attempt_revisions immutability untested | fixed: AttemptPatchIT permission-denied assertions | d8c89fd |
-| MEDIUM-8 recommendation property only cold users | open (≥ 45 min item) | — |
-| MEDIUM-9 score arithmetic order single witness | partly: pinned five-term bit fixture (12 rows); replay-from-artifacts test deferred to BC-0404 | d8c89fd |
+| MEDIUM-8 recommendation property only cold users | fixed: warm-user property (1–50 attempts, all angles, 120 days) through the hand-wired service asserts cold_start, feature_as_of, cooldown/PROJECT/widening eligibility, novelty, score bits, reason codes, tie order and determinism against an independent policy port (`ReferenceHeuristic`) | BC-0124c |
+| MEDIUM-9 score arithmetic order single witness | fixed: pinned five-term bit fixture (12 rows, d8c89fd) plus `DecisionReplayIT`, which re-derives a live decision from `record_json` + snapshot file alone (digest, eligibility, score bits, order, reason codes) for cold, warm/cooldown, PROJECT and widened cases with an independent policy port, not the production ranker | BC-0124c |
 | LOW-10 two intermediate commits not standalone-green | documented in handoffs (6ce019d, a041aa8); no history rewrite | — |
 | LOW-11 unreproduced live claims | top-level session re-ran the live smokes itself (see NIGHT log); "10/10" stays a subagent claim | — |
 | LOW-12 weak tie-order test | fixed: asserts equal scores and TieBreak order per session | d8c89fd |
 | Unit-test candidates | RecommendationValidatorTest, AttemptPatchValidatorTest, AttemptQueryParserTest added | d8c89fd |
+| Concurrent hook race | fixed: `FeatureHookRaceIT`, 10 rounds × 3 overlapping HTTP writes per user; snapshot sits at the max hook cutoff and equals `recompute(maxW)`; cutoffs made distinct by `TestClock.tick()`, the equal-millisecond case stays the documented gap | BC-0124c |
+| RecommendationQuotaIT live clock | fixed: clock pinned at 23:59:50Z, Retry-After = 10 asserted exactly, quota resets after the pinned midnight, 3600 s cap asserted; no main seam needed | BC-0124c |

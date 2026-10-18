@@ -31,6 +31,10 @@ public abstract class AbstractPostgresIT {
             .withPassword("test-superuser-password")
             .withEnv("BEACON_MIGRATE_DB_PASSWORD", MIGRATE_PASSWORD)
             .withEnv("BEACON_APP_DB_PASSWORD", APP_PASSWORD)
+            // Every distinct @SpringBootTest configuration keeps a cached context with its own
+            // Hikari pool (10 connections) for the whole JVM; ten such contexts exhaust the image
+            // default of 100 slots (BC-0124c saw "remaining connection slots are reserved").
+            .withCommand("postgres", "-c", "fsync=off", "-c", "max_connections=300")
             .withCopyFileToContainer(
                 MountableFile.forHostPath(initSql), "/docker-entrypoint-initdb.d/init.sql");
     POSTGRES.start();
