@@ -10,12 +10,19 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["*"]
-namespaces = true
+include = ["beacon_ml*"]
 
 [dependency-groups]
 dev = ["pytest==9.1.1", "ruff==0.17.0"]
 torch-cpu = ["torch==2.14.1"]
+# BC-0202/0203 training stack. Exact versions are pinned in uv.lock; exclude-newer below keeps
+# every resolved release at least two weeks old (supply-chain rule in AGENTS.md).
+train = ["numpy>=2.1", "scikit-learn>=1.6"]
+
+[tool.uv]
+exclude-newer = "2026-10-05T00:00:00Z"
+# ruff and pytest were pinned repo-wide before this cutoff was introduced; keep those pins.
+exclude-newer-package = { ruff = "2026-10-12T00:00:00Z", pytest = "2026-10-12T00:00:00Z" }
 
 [tool.uv.sources]
 torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
@@ -27,6 +34,7 @@ explicit = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "datasets"]
+pythonpath = ["."]
 python_files = ["test_*.py"]
 
 [tool.ruff]
