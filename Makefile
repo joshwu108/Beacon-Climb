@@ -293,3 +293,19 @@ precompute-model: .env
 	set -a; . ./.env; set +a; \
 	BEACON_ML_DB_URL="postgresql://beacon_app:$${BEACON_APP_DB_PASSWORD}@127.0.0.1:5432/beacon" \
 	uv run --directory services/ml python -I -m app.precompute --dir ../../data/models/registry/$(VERSION) --board $(or $(BOARD),kilter-l1-s10)
+
+# BC-0212: ML inference service (compose profile `ml`, infra/compose/ml.yml). It serves ONE
+# registry version from data/models/registry/ (read-only mount). With no real model yet, run
+# `make ml-smoke-model` and use MODEL=model-a-synthetic-smoke (SYNTHETIC, meaningless grades).
+COMPOSE_ML := docker compose --env-file .env -f infra/compose/docker-compose.yml -f infra/compose/ml.yml --profile ml
+ml-smoke-model:
+	uv run --directory ml --group train python -I -m beacon_ml.smoke
+ml-up: .env
+	@if [ -z "$(MODEL)" ]; then echo "usage: make ml-up MODEL=<folder in data/models/registry>" >&2; exit 2; fi
+	BEACON_ML_MODEL_VERSION=$(MODEL) $(COMPOSE_ML) up -d --build --wait ml
+ml-down: .env
+	BEACON_ML_MODEL_VERSION=unused $(COMPOSE_ML) stop ml
+	BEACON_ML_MODEL_VERSION=unused $(COMPOSE_ML) rm -f ml
+# Model A evaluation pipeline on synthetic data only (freeze, train, test stage, registry).
+test-eval:
+	uv run --directory ml --group train --group torch-cpu python -I -m pytest -q tests/test_model_a_train.py tests/test_model_a_deepsets.py tests/test_registry.py

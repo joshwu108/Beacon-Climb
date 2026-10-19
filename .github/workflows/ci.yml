@@ -77,8 +77,9 @@ jobs:
       - run: uv run --directory services/ml --locked ruff check .
       - run: uv run --directory ml --no-project --with ruff==0.17.0 ruff check .
       - run: uv run --directory services/ml --locked pytest
-      - run: |
-          uv run --directory ml --no-project --with pytest==9.1.1 pytest || test "$?" -eq 5
+      # BC-0212: the training, registry and smoke-model tests need numpy, scikit-learn and
+      # torch; without the groups they would be skipped silently (importorskip).
+      - run: uv run --directory ml --locked --group train --group torch-cpu pytest
       - name: Elapsed
         if: always()
         run: |

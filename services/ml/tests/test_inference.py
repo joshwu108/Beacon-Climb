@@ -88,3 +88,13 @@ def test_committed_contract_matches_the_app():
     assert json.loads(committed.read_text()) == app.openapi(), (
         "contracts/ml-inference.openapi.json is stale; regenerate it from app.openapi()"
     )
+
+
+def test_serving_does_not_need_the_dataset_scripts(monkeypatch, registry_root):
+    """The image ships ml/beacon_ml only; loading a model must not touch ml/datasets/."""
+    import beacon_ml.train.data as data_module
+
+    monkeypatch.setattr(data_module, "ACCESS_PATH", data_module.ML_ROOT / "missing" / "access.py")
+    monkeypatch.delitem(__import__("sys").modules, "beacon_model_a_access", raising=False)
+    with _client(monkeypatch, registry_root / "model-a-gbm-t") as c:
+        assert c.get("/v1/models").json()["status"] == "READY"

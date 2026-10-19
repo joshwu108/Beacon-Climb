@@ -1,0 +1,13 @@
+# Allowlist for the services/ml/Dockerfile build context (repo root): only the training
+# package and the service. .env, data/ (licensed data, model weights), planning/, .git and
+# local virtualenvs and caches never enter the image or the builder cache.
+*
+!ml/pyproject.toml
+!ml/uv.lock
+!ml/beacon_ml
+!services/ml/pyproject.toml
+!services/ml/uv.lock
+!services/ml/app
+**/__pycache__
+**/.venv
+**/*.egg-info

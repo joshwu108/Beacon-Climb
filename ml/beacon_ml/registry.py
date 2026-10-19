@@ -113,6 +113,7 @@ def package(
     metrics_ref: str,
     registry_root: Path = REGISTRY_ROOT,
     now: datetime | None = None,
+    license_review_status: str = "LOCAL_RESEARCH_ONLY",
 ) -> Path:
     folder = Path(registry_root) / model_version
     if folder.exists():
@@ -134,7 +135,7 @@ def package(
         "training_manifest_id": training_manifest_id,
         "training_run_id": training_run_id,
         "metrics_ref": metrics_ref,
-        "license_review_status": "LOCAL_RESEARCH_ONLY",
+        "license_review_status": license_review_status,
         "created_at": (now or datetime.now(UTC)).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "fixture": {
             "rows": rows,

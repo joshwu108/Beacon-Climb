@@ -1,0 +1,41 @@
+# BC-0212: the `ml` profile. The Model A inference service (services/ml) serving ONE registry
+# version, mounted read-only from data/models/registry/ (gitignored; LOCAL_RESEARCH_ONLY models
+# never leave this machine, docs/data-source-audit.md section 7). Merged over
+# docker-compose.yml by the Makefile (`make ml-up`, `make ml-down`). /health/ready stays 503
+# until the version passes the registry checks (hashes, digest, fixture predictions).
+# Hardening as in docker-compose.yml (TM-27): 127.0.0.1-only port, read-only root filesystem,
+# unprivileged user, no-new-privileges, cap_drop ALL, memory cap, log rotation.
+services:
+  ml:
+    build:
+      context: ../..
+      dockerfile: services/ml/Dockerfile
+    image: beacon-ml:dev
+    profiles: [ml]
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      BEACON_ML_MODEL_DIR: /models/${BEACON_ML_MODEL_VERSION:?set BEACON_ML_MODEL_VERSION (a folder in data/models/registry)}
+      OMP_NUM_THREADS: "2"
+    volumes:
+      - ../../data/models/registry:/models:ro
+    ports:
+      - "127.0.0.1:8090:8090"
+    healthcheck:
+      test: ["CMD", "python", "-I", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8090/health/ready', timeout=2).status == 200 else 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 1g
+    cpus: 2.0
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

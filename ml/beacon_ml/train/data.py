@@ -26,7 +26,12 @@ def _access():
     return sys.modules[name]
 
 
-access = _access()
+def __getattr__(name: str):
+    """``data.access`` loads datasets/model_a/access.py on first use only, so serving (which
+    needs ``to_split`` but never reads a frozen dataset) works where ml/datasets is absent."""
+    if name == "access":
+        return _access()
+    raise AttributeError(name)
 
 
 @dataclass(frozen=True)
@@ -68,7 +73,7 @@ def load(
     kwargs = {"unseal_purpose": unseal_purpose}
     if data_root is not None:
         kwargs["data_root"] = data_root
-    return to_split(split, list(access.load_split(manifest, split, **kwargs)))
+    return to_split(split, list(_access().load_split(manifest, split, **kwargs)))
 
 
 def hold_matrix(rows: list[dict], vocab: fa.HoldVocabulary) -> np.ndarray:

@@ -104,3 +104,13 @@ def test_wrong_input_schema_version_is_rejected(tmp_path):
 
 def test_missing_manifest_is_rejected(tmp_path):
     assert registry.verify(tmp_path).status == "REJECTED"
+
+
+def test_synthetic_smoke_model_packages_ready_and_labelled_synthetic(tmp_path):
+    from beacon_ml import smoke
+
+    folder = smoke.build(tmp_path)
+    result = registry.verify(folder)
+    assert result.status == "READY", result.reason
+    assert result.manifest["license_review_status"] == "SYNTHETIC"
+    assert smoke.build(tmp_path) == folder  # rebuildable in place
