@@ -241,3 +241,10 @@ test-parity: .env
 	./gradlew :api:bootJar
 	bash scripts/parity/parity.sh --user $(if $(filter command line,$(origin USER)),$(USER),all) $(if $(OUT),--out $(OUT),)
 
+
+# BC-0103: Kilter splits sqlite -> catalog v1 under data/catalog/kilter-<sha12>/ (gitignored,
+# LOCAL RESEARCH ONLY; docs/data-source-audit.md section 7). Never commit the output.
+KILTER_DB ?= data/raw/kilter_splits.sqlite
+KILTER_MANIFEST ?= ml/datasets/manifests/kilter-0a0bc5b1bed1.json
+extract-kilter:
+	uv run --directory ml --no-project python -I datasets/kilter/extract.py --db ../$(KILTER_DB) --manifest ../$(KILTER_MANIFEST) --acknowledge-audit
