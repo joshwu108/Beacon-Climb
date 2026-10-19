@@ -55,6 +55,7 @@ CONFIG = {
     "weight_decay": 0.0,
     "hidden": 32,
     "threads": 1,
+    "sweep": [{}, {"dropout": 0.1}],
 }
 
 
@@ -65,6 +66,9 @@ def test_val_then_test_end_to_end(tmp_path):
     val = run_deepsets.stage_val(CONFIG, manifest, names, "v1", data_root=root, models_dir=models)
     assert run.data.access.list_test_accesses(manifest, root) == []
     assert val["results"]["deepsets"]["all"]["n"] > 0
+    assert len(val["trials"]) == 2
+    best = min(val["trials"], key=lambda t: t["val_mae"])
+    assert val["candidate"]["trial_index"] == best["index"]
     out = tmp_path / "out"
     out.mkdir()
     run.stage_val(BASE_CONFIG, manifest, names, out, data_root=root)

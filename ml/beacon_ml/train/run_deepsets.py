@@ -38,28 +38,52 @@ def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _variants(config: dict) -> list[dict]:
+    """The pre-declared sweep: config minus 'sweep', updated by each override (val-selected)."""
+    base = {k: v for k, v in config.items() if k != "sweep"}
+    return [{**base, **override} for override in config.get("sweep", [{}])]
+
+
+TRIAL_KEYS = ("lr", "weight_decay", "hidden", "batch", "epochs", "patience")
+
+
 def stage_val(config, manifest, names, run_id, data_root=None, models_dir=MODELS) -> dict:
     train_rows = list(data.access.load_split(manifest, "train", **_root(data_root)))
     val_rows = list(data.access.load_split(manifest, "val", **_root(data_root)))
     vocab = deepsets.TokenVocab.fit(train_rows)
     enc_train = deepsets.encode(train_rows, vocab, config["max_holds"])
     enc_val = deepsets.encode(val_rows, vocab, config["max_holds"])
-    start = time.perf_counter()
-    model, history = deepsets.train(
-        enc_train,
-        enc_val,
-        vocab.size,
-        seed=config["seed"],
-        epochs=config["epochs"],
-        patience=config["patience"],
-        batch=config["batch"],
-        lr=config["lr"],
-        weight_decay=config["weight_decay"],
-        hidden=config["hidden"],
-    )
-    seconds = round(time.perf_counter() - start, 1)
     val_split = data.to_split("val", val_rows)
-    results = {"deepsets": score(deepsets.predict(model, enc_val), val_split, names, config)}
+    trials, best = [], None
+    for index, variant in enumerate(_variants(config)):
+        start = time.perf_counter()
+        dropout = variant.get("dropout", 0.0)
+        model, history = deepsets.train(
+            enc_train,
+            enc_val,
+            vocab.size,
+            seed=variant["seed"],
+            epochs=variant["epochs"],
+            patience=variant["patience"],
+            batch=variant["batch"],
+            lr=variant["lr"],
+            weight_decay=variant["weight_decay"],
+            hidden=variant["hidden"],
+            dropout=dropout,
+        )
+        result = score(deepsets.predict(model, enc_val), val_split, names, config)
+        trial = {
+            "index": index,
+            "params": {k: variant[k] for k in TRIAL_KEYS} | {"dropout": dropout},
+            "fit_seconds": round(time.perf_counter() - start, 1),
+            "history": history,
+            "val_mae": result["all"]["mae"],
+            "results": result,
+        }
+        trials.append(trial)
+        if best is None or trial["val_mae"] < best[0]["val_mae"]:
+            best = (trial, model)
+    trial, model = best
 
     out = Path(models_dir) / run_id
     out.mkdir(parents=True, exist_ok=True)
@@ -67,10 +91,12 @@ def stage_val(config, manifest, names, run_id, data_root=None, models_dir=MODELS
     (out / "vocab.json").write_text(json.dumps(sorted(vocab.index, key=vocab.index.get)))
     candidate = {
         "run_id": run_id,
-        "hidden": config["hidden"],
+        "hidden": trial["params"]["hidden"],
+        "dropout": trial["params"]["dropout"],
         "max_holds": config["max_holds"],
         "vocab_size": vocab.size,
-        "best_epoch": min(history, key=lambda h: h["val_mae"])["epoch"],
+        "trial_index": trial["index"],
+        "best_epoch": min(trial["history"], key=lambda h: h["val_mae"])["epoch"],
         "state_dict_sha256": _sha(out / "state_dict.pt"),
         "vocab_sha256": _sha(out / "vocab.json"),
         "feature_version": data.fa.FEATURE_VERSION,
@@ -80,10 +106,9 @@ def stage_val(config, manifest, names, run_id, data_root=None, models_dir=MODELS
         "split": "val",
         "n_train": len(train_rows),
         "n_eval": len(val_rows),
-        "fit_seconds": {"deepsets": seconds},
-        "history": history,
+        "trials": trials,
         "candidate": candidate,
-        "results": results,
+        "results": {"deepsets": trial["results"]},
     }
 
 
@@ -99,7 +124,9 @@ def _load_candidate(candidate_path: Path):
     if _sha(folder / "vocab.json") != candidate["vocab_sha256"]:
         raise SystemExit("vocab.json does not match candidate.json")
     vocab = deepsets.TokenVocab(json.loads((folder / "vocab.json").read_text()))
-    model = deepsets.DeepSets(candidate["vocab_size"], hidden=candidate["hidden"])
+    model = deepsets.DeepSets(
+        candidate["vocab_size"], hidden=candidate["hidden"], dropout=candidate.get("dropout", 0.0)
+    )
     model.load_state_dict(torch.load(folder / "state_dict.pt", weights_only=True))
     model.eval()
     return candidate, vocab, model, folder

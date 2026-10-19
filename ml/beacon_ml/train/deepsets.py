@@ -75,6 +75,7 @@ class DeepSets(nn.Module):
         hidden: int = 128,
         embedding_dim: int = 32,
         grade_mean: float = 0.0,
+        dropout: float = 0.0,
     ):
         super().__init__()
         self.hold_embedding = nn.Embedding(vocab_size, hold_dim, padding_idx=0)
@@ -85,8 +86,10 @@ class DeepSets(nn.Module):
             nn.GELU(),
         )
         self.rho = nn.Sequential(
+            nn.Dropout(dropout),
             nn.Linear(3 * hidden + 1, hidden),
             nn.GELU(),
+            nn.Dropout(dropout),
             nn.Linear(hidden, embedding_dim),
             nn.GELU(),
         )
@@ -128,12 +131,15 @@ def train(
     lr: float,
     weight_decay: float,
     hidden: int,
+    dropout: float = 0.0,
     log=print,
 ) -> tuple[DeepSets, list[dict]]:
     """Early stopping on val MAE; returns the best-epoch model and the per-epoch history."""
     torch.manual_seed(seed)
     generator = torch.Generator().manual_seed(seed)
-    model = DeepSets(vocab_size, hidden=hidden, grade_mean=float(train_data.grade.mean()))
+    model = DeepSets(
+        vocab_size, hidden=hidden, grade_mean=float(train_data.grade.mean()), dropout=dropout
+    )
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
     loss_fn = nn.HuberLoss(delta=1.0)
@@ -155,7 +161,7 @@ def train(
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            total += float(loss) * len(idx)
+            total += float(loss.detach()) * len(idx)
         scheduler.step()
         val_mae = float(np.mean(np.abs(predict(model, val_data) - val_data.grade.numpy())))
         history.append({"epoch": epoch, "train_huber": total / n, "val_mae": val_mae})
