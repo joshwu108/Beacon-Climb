@@ -1,0 +1,12 @@
+{
+  "manifest": "datasets/manifests/model-a-100d08f359ca.json",
+  "seed": 20261019,
+  "bootstrap_resamples": 1000,
+  "slices": {"ascents_min": [3, 10]},
+  "gbm_grid": {
+    "use_holds": [false, true],
+    "learning_rate": [0.1],
+    "max_leaf_nodes": [63, 255],
+    "max_iter": [400, 1200]
+  }
+}

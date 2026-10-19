@@ -43,3 +43,6 @@ CLAUDE.md
 
 # TypeScript incremental build state
 *.tsbuildinfo
+
+# Python packaging metadata
+*.egg-info/

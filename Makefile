@@ -254,3 +254,13 @@ extract-kilter:
 KILTER_CATALOG_DIR ?= data/catalog/kilter-0a0bc5b1bed1
 freeze-dataset:
 	uv run --directory ml --no-project python -I datasets/model_a/build.py --catalog-dir ../$(KILTER_CATALOG_DIR) --db ../$(KILTER_DB)
+
+# BC-0203: Model A baselines. `val` fits everything on train, scores val and freezes the
+# selection; `test` refits the frozen candidates and unseals test once (logged).
+# Reports: reports/model-a/<run>/metrics.json (gitignored); model: data/models/model-a/<run>/.
+MODEL_A_CONFIG ?= configs/model_a_baselines.json
+train-model-a-val:
+	uv run --directory ml --group train python -I -m beacon_ml.train.run --config $(MODEL_A_CONFIG) --stage val
+train-model-a-test:
+	@if [ -z "$(SELECTION)" ]; then echo "usage: make train-model-a-test SELECTION=reports/model-a/<run>/selection.json" >&2; exit 2; fi
+	uv run --directory ml --group train python -I -m beacon_ml.train.run --config $(MODEL_A_CONFIG) --stage test --selection ../$(SELECTION)
