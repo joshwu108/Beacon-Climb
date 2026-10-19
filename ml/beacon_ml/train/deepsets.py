@@ -63,7 +63,7 @@ def encode(rows: list[dict], vocab: TokenVocab, max_holds: int) -> Encoded:
         numeric=torch.from_numpy(numeric),
         mask=torch.from_numpy(mask),
         angle=torch.tensor([[r["angle_deg"] / ANGLE_SCALE] for r in rows], dtype=torch.float32),
-        grade=torch.tensor([r["grade"] for r in rows], dtype=torch.float32),
+        grade=torch.tensor([r.get("grade", 0.0) for r in rows], dtype=torch.float32),
     )
 
 

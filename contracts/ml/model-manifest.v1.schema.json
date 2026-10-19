@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beacon-climb.local/contracts/ml/model-manifest.v1.schema.json",
+  "title": "Model manifest v1 (BC-0205)",
+  "description": "manifest.json beside a packaged model under data/models/registry/<model_version>/. The loader (services/ml/app/registry.py) recomputes every file sha256 and artifact_digest, loads the model, and runs the fixture rows; only an exact match within tolerance marks the version READY, anything else REJECTED (the previously active version stays active).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "model_version",
+    "family",
+    "kind",
+    "files",
+    "artifact_digest",
+    "input_schema_version",
+    "training_manifest_id",
+    "training_run_id",
+    "metrics_ref",
+    "license_review_status",
+    "created_at",
+    "fixture"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "model_version": { "type": "string", "pattern": "^[a-z0-9][a-z0-9.-]{2,63}$" },
+    "family": { "enum": ["model-a"] },
+    "kind": { "enum": ["sklearn-hgb", "torch-deepsets"] },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,64}$" },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        }
+      }
+    },
+    "artifact_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "sha256 of the UTF-8 join with LF of '<path>:<sha256>' for every file, sorted by path."
+    },
+    "input_schema_version": { "const": "model-a-features-v1" },
+    "training_manifest_id": { "type": "string", "pattern": "^model-a-[a-f0-9]{12}$" },
+    "training_run_id": { "type": "string", "minLength": 1 },
+    "metrics_ref": { "type": "string", "description": "Repo path of the committed evidence for this model's metrics." },
+    "license_review_status": { "enum": ["LOCAL_RESEARCH_ONLY", "SYNTHETIC"] },
+    "created_at": { "type": "string", "format": "date-time" },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rows", "expected_grade", "tolerance"],
+      "properties": {
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["angle_deg", "holds"],
+            "properties": {
+              "angle_deg": { "type": "integer", "minimum": -10, "maximum": 70 },
+              "holds": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["id", "x", "y", "role"],
+                  "properties": {
+                    "id": { "type": "string" },
+                    "x": { "type": "number" },
+                    "y": { "type": "number" },
+                    "role": { "enum": ["START", "HAND", "FOOT", "FINISH"] }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "expected_grade": { "type": "array", "items": { "type": "number" } },
+        "tolerance": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    }
+  }
+}

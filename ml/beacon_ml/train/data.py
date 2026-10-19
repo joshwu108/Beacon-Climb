@@ -54,9 +54,11 @@ def to_split(name: str, rows: list[dict]) -> Split:
             [fa.geometry_vector(r["holds"], r["angle_deg"]) for r in rows], dtype=np.float64
         ).reshape(len(rows), len(fa.GEOMETRY_FEATURES)),
         angle=np.array([r["angle_deg"] for r in rows], dtype=np.int64),
-        grade=np.array([r["grade"] for r in rows], dtype=np.float64),
-        ascents=np.array([r["ascents"] for r in rows], dtype=np.int64),
-        route=np.array([routes.setdefault(r["route_uuid"], len(routes)) for r in rows]),
+        grade=np.array([r.get("grade", np.nan) for r in rows], dtype=np.float64),
+        ascents=np.array([r.get("ascents", 0) for r in rows], dtype=np.int64),
+        route=np.array(
+            [routes.setdefault(r.get("route_uuid", i), len(routes)) for i, r in enumerate(rows)]
+        ),
     )
 
 

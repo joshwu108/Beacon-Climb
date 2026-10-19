@@ -2,10 +2,34 @@
 name = "beacon-ml-service"
 version = "0.1.0"
 requires-python = "==3.12.*"
-dependencies = ["fastapi==0.143.1", "uvicorn==0.38.0"]
+dependencies = [
+    "fastapi==0.143.1",
+    "uvicorn==0.38.0",
+    # BC-0205/0206: model registry and inference reuse the training package's features and
+    # model classes so serving computes exactly what training computed.
+    "beacon-climb-ml",
+    "numpy>=2.1",
+    "scikit-learn>=1.6",
+    "torch==2.14.1",
+    "psycopg[binary]>=3.2",
+]
 
 [dependency-groups]
 dev = ["pytest==9.1.1", "httpx==0.28.1", "ruff==0.17.0"]
+
+[tool.uv]
+exclude-newer = "2026-10-05T00:00:00Z"
+# Pins chosen before this cutoff was introduced keep their versions.
+exclude-newer-package = { fastapi = "2026-10-19T00:00:00Z", uvicorn = "2026-10-19T00:00:00Z", httpx = "2026-10-19T00:00:00Z", pytest = "2026-10-19T00:00:00Z", ruff = "2026-10-19T00:00:00Z" }
+
+[tool.uv.sources]
+beacon-climb-ml = { path = "../../ml", editable = true }
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

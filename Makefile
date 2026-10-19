@@ -274,3 +274,14 @@ train-deepsets-val:
 train-deepsets-test:
 	@if [ -z "$(CANDIDATE)" ] || [ -z "$(SELECTION)" ]; then echo "usage: make train-deepsets-test CANDIDATE=data/models/model-a-deepsets/<run>/candidate.json SELECTION=reports/model-a/<run>/selection.json" >&2; exit 2; fi
 	uv run --directory ml --group train --group torch-cpu python -I -m beacon_ml.train.run_deepsets --config $(DEEPSETS_CONFIG) --stage test --candidate ../$(CANDIDATE) --baseline-selection ../$(SELECTION)
+
+# BC-0205: package a trained Model A artifact into data/models/registry/<VERSION>/ (gitignored)
+# and register it (READY/REJECTED after hash and fixture checks) in model_versions.
+package-model:
+	@if [ -z "$(KIND)" ] || [ -z "$(SOURCE)" ] || [ -z "$(VERSION)" ] || [ -z "$(RUN)" ] || [ -z "$(METRICS)" ]; then echo "usage: make package-model KIND=sklearn-hgb|torch-deepsets SOURCE=data/models/... VERSION=model-a-... RUN=<run id> METRICS=docs/evidence/..." >&2; exit 2; fi
+	uv run --directory ml --group train --group torch-cpu python -I -m beacon_ml.registry --kind $(KIND) --source-dir ../$(SOURCE) --model-version $(VERSION) --training-manifest-id model-a-100d08f359ca --training-run-id $(RUN) --metrics-ref $(METRICS)
+register-model: .env
+	@if [ -z "$(VERSION)" ]; then echo "usage: make register-model VERSION=model-a-... [ACTIVATE=1]" >&2; exit 2; fi
+	set -a; . ./.env; set +a; \
+	BEACON_ML_DB_URL="postgresql://beacon_app:$${BEACON_APP_DB_PASSWORD}@127.0.0.1:5432/beacon" \
+	uv run --directory services/ml python -I -m app.register --dir ../../data/models/registry/$(VERSION) $(if $(ACTIVATE),--activate,)

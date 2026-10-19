@@ -111,6 +111,32 @@ CREATE TABLE public.holds (
 
 COMMENT ON TABLE public.holds IS 'Hold positions per board in board geometry units (PRD 6.1 holds)';
 
+CREATE TABLE public.model_versions (
+    model_version text NOT NULL,
+    family text NOT NULL,
+    kind text NOT NULL,
+    artifact_digest character(64) NOT NULL,
+    input_schema_version text NOT NULL,
+    training_manifest_id text NOT NULL,
+    training_run_id text NOT NULL,
+    metrics_ref text NOT NULL,
+    license_review_status text NOT NULL,
+    status text NOT NULL,
+    rejection_reason text,
+    active boolean DEFAULT false NOT NULL,
+    registered_at timestamp with time zone DEFAULT now() NOT NULL,
+    activated_at timestamp with time zone,
+    CONSTRAINT model_versions_family_check CHECK ((family = 'model-a'::text)),
+    CONSTRAINT model_versions_kind_check CHECK ((kind = ANY (ARRAY['sklearn-hgb'::text, 'torch-deepsets'::text]))),
+    CONSTRAINT model_versions_license_check CHECK ((license_review_status = ANY (ARRAY['LOCAL_RESEARCH_ONLY'::text, 'SYNTHETIC'::text]))),
+    CONSTRAINT model_versions_only_ready_is_active CHECK (((NOT active) OR (status = 'READY'::text))),
+    CONSTRAINT model_versions_reason_only_when_rejected CHECK (((status = 'REJECTED'::text) = (rejection_reason IS NOT NULL))),
+    CONSTRAINT model_versions_status_check CHECK ((status = ANY (ARRAY['READY'::text, 'REJECTED'::text, 'RETIRED'::text]))),
+    CONSTRAINT model_versions_version_format CHECK ((model_version ~ '^[a-z0-9][a-z0-9.-]{2,63}$'::text))
+);
+
+COMMENT ON TABLE public.model_versions IS 'Packaged model versions (BC-0205): READY or REJECTED by load-time validation of hashes and fixture predictions; at most one active READY version per family';
+
 CREATE TABLE public.provenance_sources (
     provenance_id uuid NOT NULL,
     source text NOT NULL,
@@ -329,6 +355,9 @@ ALTER TABLE ONLY public.holds
 ALTER TABLE ONLY public.holds
     ADD CONSTRAINT holds_pkey PRIMARY KEY (hold_id);
 
+ALTER TABLE ONLY public.model_versions
+    ADD CONSTRAINT model_versions_pkey PRIMARY KEY (model_version);
+
 ALTER TABLE ONLY public.provenance_sources
     ADD CONSTRAINT provenance_sources_content_sha256_key UNIQUE (content_sha256);
 
@@ -387,6 +416,8 @@ CREATE INDEX attempt_event_outbox_unpublished_idx ON public.attempt_event_outbox
 CREATE INDEX attempts_user_history_idx ON public.attempts USING btree (user_id, occurred_at DESC, attempt_id DESC);
 
 CREATE INDEX attempts_user_variant_idx ON public.attempts USING btree (user_id, variant_id, occurred_at DESC);
+
+CREATE UNIQUE INDEX model_versions_one_active_per_family ON public.model_versions USING btree (family) WHERE active;
 
 CREATE INDEX recommendation_decisions_user_idx ON public.recommendation_decisions USING btree (user_id, created_at DESC);
 

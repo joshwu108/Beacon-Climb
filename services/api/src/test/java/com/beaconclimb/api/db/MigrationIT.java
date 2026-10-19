@@ -40,7 +40,8 @@ class MigrationIT extends AbstractPostgresIT {
           Map.entry("8", "V8__account_creations.sql"),
           Map.entry("9", "V9__feature_snapshots_stream.sql"),
           Map.entry("10", "V10__reconciliation.sql"),
-          Map.entry("11", "V11__decision_feature_provenance.sql"));
+          Map.entry("11", "V11__decision_feature_provenance.sql"),
+          Map.entry("12", "V12__model_versions.sql"));
 
   private static final List<String> ALL_TABLES =
       List.of(
@@ -62,7 +63,8 @@ class MigrationIT extends AbstractPostgresIT {
           "recommendation_decisions",
           "recommendation_exposures",
           "account_creations",
-          "reconciliation_events");
+          "reconciliation_events",
+          "model_versions");
 
   private static final UUID PROVENANCE_ID = UUID.fromString("00000000-0000-7000-8000-000000000001");
   private static final String BOARD_ID = "migration-it-board";
@@ -79,7 +81,7 @@ class MigrationIT extends AbstractPostgresIT {
   }
 
   @Test
-  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionEleven() {
+  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionTwelve() {
     List<Map<String, Object>> rows =
         jdbc()
             .queryForList(
@@ -89,7 +91,7 @@ class MigrationIT extends AbstractPostgresIT {
     assertThat(rows)
         .extracting(row -> Map.entry(row.get("version").toString(), row.get("script").toString()))
         .containsExactlyElementsOf(MIGRATIONS);
-    assertThat(rows.getLast().get("version").toString()).isEqualTo("11");
+    assertThat(rows.getLast().get("version").toString()).isEqualTo("12");
   }
 
   @Test
@@ -534,6 +536,56 @@ class MigrationIT extends AbstractPostgresIT {
             "%s is out of date; regenerate with %s=1 ./gradlew :api:test --tests '*MigrationIT*'",
             SchemaGolden.DOC_PATH, SchemaGolden.UPDATE_ENV_VAR)
         .isEqualTo(live);
+  }
+
+  /**
+   * BC-0205 (V12): registrations are kept (no DELETE for the API role), at most one active version
+   * per family, and only a READY version can be active. Each check runs in its own rolled-back
+   * transaction because a failed statement aborts the transaction.
+   */
+  @Test
+  void modelVersionsKeepHistoryForTheAppRoleAndIndexActivePerFamily() {
+    assertThat(privilegesOf("model_versions")).containsExactly("INSERT", "SELECT", "UPDATE");
+    assertThat(indexDefinition("model_versions_one_active_per_family"))
+        .contains("(family) WHERE active");
+  }
+
+  @Test
+  @Transactional
+  void modelVersionsRejectASecondActiveVersionInTheSameFamily() {
+    insertModelVersion("model-a-gbm-1", "READY", null, true);
+    assertThatThrownBy(() -> insertModelVersion("model-a-gbm-2", "READY", null, true))
+        .hasMessageContaining("model_versions_one_active_per_family");
+  }
+
+  @Test
+  @Transactional
+  void modelVersionsRejectAnActiveRejectedVersion() {
+    assertThatThrownBy(() -> insertModelVersion("model-a-bad-1", "REJECTED", "fixture", true))
+        .hasMessageContaining("model_versions_only_ready_is_active");
+  }
+
+  @Test
+  @Transactional
+  void modelVersionsRequireAReasonExactlyWhenRejected() {
+    insertModelVersion("model-a-bad-3", "REJECTED", "sha256 mismatch", false);
+    assertThatThrownBy(() -> insertModelVersion("model-a-bad-2", "REJECTED", null, false))
+        .hasMessageContaining("model_versions_reason_only_when_rejected");
+  }
+
+  private void insertModelVersion(String version, String status, String reason, boolean active) {
+    jdbc()
+        .update(
+            "insert into model_versions (model_version, family, kind, artifact_digest,"
+                + " input_schema_version, training_manifest_id, training_run_id, metrics_ref,"
+                + " license_review_status, status, rejection_reason, active)"
+                + " values (?, 'model-a', 'sklearn-hgb', ?, 'model-a-features-v1',"
+                + " 'model-a-000000000000', 'run', 'docs/x', 'SYNTHETIC', ?, ?, ?)",
+            version,
+            "0".repeat(64),
+            status,
+            reason,
+            active);
   }
 
   private List<String> privilegesOf(String table) {
