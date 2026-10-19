@@ -1,0 +1,21 @@
+{
+  "baselines": [
+    "median-global",
+    "median-by-angle",
+    "median-by-angle-and-holds"
+  ],
+  "gbm_geo": {
+    "use_holds": false,
+    "learning_rate": 0.1,
+    "max_leaf_nodes": 63,
+    "max_iter": 400,
+    "val_mae": 1.7921696877604787
+  },
+  "gbm_geo_holds": {
+    "use_holds": true,
+    "learning_rate": 0.1,
+    "max_leaf_nodes": 63,
+    "max_iter": 1200,
+    "val_mae": 1.499619466789837
+  }
+}

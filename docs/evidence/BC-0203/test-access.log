@@ -1,0 +1,2 @@
+{"at": "2026-10-19T23:08:15Z", "purpose": "BC-0203 final test of frozen candidates ['median-global', 'median-by-angle', 'median-by-angle-and-holds', 'gbm-geo[lr=0.1,leaves=63,iter=400]', 'gbm-geo+holds[lr=0.1,leaves=63,iter=1200]'] run 20261019T230345Z-test"}
+{"at": "2026-10-19T23:15:02Z", "purpose": "BC-0204 final test of frozen deepsets 20261019T225443Z-deepsets-val vs frozen gbm-geo+holds[lr=0.1,leaves=63,iter=1200], run 20261019T231047Z-deepsets-test"}
