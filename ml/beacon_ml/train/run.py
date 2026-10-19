@@ -231,6 +231,7 @@ def main(argv: list[str] | None = None) -> int:
     manifest = data.access.read_manifest(ML_ROOT / config["manifest"])
     names = grade_names(manifest)
     started = datetime.now(UTC)
+    git_at_start = _git()  # the code that actually ran, not HEAD at the end
     run_id = f"{started.strftime('%Y%m%dT%H%M%SZ')}-{args.stage}"
     out_dir = REPORTS / run_id
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -247,7 +248,7 @@ def main(argv: list[str] | None = None) -> int:
         "feature_version": data.fa.FEATURE_VERSION,
         "config": config,
         "config_sha256": hashlib.sha256(config_bytes).hexdigest(),
-        "git": _git(),
+        "git": git_at_start,
         "environment": "local",
         "hardware": _hardware(),
         "started_at": started.strftime("%Y-%m-%dT%H:%M:%SZ"),
