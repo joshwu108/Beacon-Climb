@@ -1,0 +1,14 @@
+{
+  "manifest": "datasets/manifests/model-a-100d08f359ca.json",
+  "seed": 20261019,
+  "bootstrap_resamples": 1000,
+  "slices": {"ascents_min": [3, 10]},
+  "max_holds": 40,
+  "epochs": 40,
+  "patience": 5,
+  "batch": 512,
+  "lr": 0.002,
+  "weight_decay": 0.0001,
+  "hidden": 128,
+  "threads": 8
+}

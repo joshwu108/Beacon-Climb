@@ -264,3 +264,13 @@ train-model-a-val:
 train-model-a-test:
 	@if [ -z "$(SELECTION)" ]; then echo "usage: make train-model-a-test SELECTION=reports/model-a/<run>/selection.json" >&2; exit 2; fi
 	uv run --directory ml --group train python -I -m beacon_ml.train.run --config $(MODEL_A_CONFIG) --stage test --selection ../$(SELECTION)
+
+# BC-0204: Deep Sets candidate. `val` trains with early stopping on val and freezes a
+# hash-checked checkpoint under data/models/model-a-deepsets/<run>/; `test` compares it with the
+# frozen gradient-boosting selection on a single unsealing of test.
+DEEPSETS_CONFIG ?= configs/model_a_deepsets.json
+train-deepsets-val:
+	uv run --directory ml --group train --group torch-cpu python -I -m beacon_ml.train.run_deepsets --config $(DEEPSETS_CONFIG) --stage val
+train-deepsets-test:
+	@if [ -z "$(CANDIDATE)" ] || [ -z "$(SELECTION)" ]; then echo "usage: make train-deepsets-test CANDIDATE=data/models/model-a-deepsets/<run>/candidate.json SELECTION=reports/model-a/<run>/selection.json" >&2; exit 2; fi
+	uv run --directory ml --group train --group torch-cpu python -I -m beacon_ml.train.run_deepsets --config $(DEEPSETS_CONFIG) --stage test --candidate ../$(CANDIDATE) --baseline-selection ../$(SELECTION)
