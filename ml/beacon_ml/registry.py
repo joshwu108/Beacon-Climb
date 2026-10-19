@@ -46,6 +46,7 @@ class Verified:
     status: str  # READY | REJECTED
     reason: str | None
     predict: Predictor | None
+    embed: Predictor | None = None  # [n, 32] route embeddings; None when the kind has none
 
 
 def sha256(path: Path) -> str:
@@ -62,7 +63,7 @@ def fixture_rows() -> list[dict]:
     return [{"angle_deg": c["angle_deg"], "holds": c["holds"]} for c in cases]
 
 
-def _sklearn_predictor(folder: Path) -> Predictor:
+def _sklearn_model(folder: Path) -> tuple[Predictor, None]:
     from beacon_ml.train.data import to_split
 
     model = pickle.loads((folder / "model.pkl").read_bytes())
@@ -70,10 +71,10 @@ def _sklearn_predictor(folder: Path) -> Predictor:
     def predict(rows: list[dict]) -> np.ndarray:
         return np.asarray(model.predict(to_split("inference", rows)), dtype=np.float64)
 
-    return predict
+    return predict, None
 
 
-def _torch_predictor(folder: Path) -> Predictor:
+def _torch_model(folder: Path) -> tuple[Predictor, Predictor]:
     import torch
 
     from beacon_ml.train import deepsets
@@ -89,10 +90,17 @@ def _torch_predictor(folder: Path) -> Predictor:
     def predict(rows: list[dict]) -> np.ndarray:
         return deepsets.predict(model, deepsets.encode(rows, vocab, candidate["max_holds"]))
 
-    return predict
+    def embed(rows: list[dict]) -> np.ndarray:
+        enc = deepsets.encode(rows, vocab, candidate["max_holds"])
+        with torch.no_grad():
+            out = model.embed(enc.hold_ids, enc.numeric, enc.mask, enc.angle)
+        return out.numpy().astype(np.float64)
+
+    return predict, embed
 
 
-LOADERS = {"sklearn-hgb": _sklearn_predictor, "torch-deepsets": _torch_predictor}
+# kind -> loader returning (predict, embed or None); called only after the digest check.
+LOADERS = {"sklearn-hgb": _sklearn_model, "torch-deepsets": _torch_model}
 
 
 def package(
@@ -114,7 +122,7 @@ def package(
         shutil.copyfile(Path(source_dir) / name, folder / name)
     files = [{"path": n, "sha256": sha256(folder / n)} for n in KIND_FILES[kind]]
     rows = fixture_rows()
-    expected = LOADERS[kind](folder)(rows)
+    expected = LOADERS[kind](folder)[0](rows)
     manifest = {
         "schema_version": 1,
         "model_version": model_version,
@@ -158,7 +166,7 @@ def verify(folder: Path) -> Verified:
     if artifact_digest(manifest["files"]) != manifest["artifact_digest"]:
         return Verified(manifest, "REJECTED", "artifact_digest mismatch", None)
     try:
-        predict = LOADERS[kind](folder)
+        predict, embed = LOADERS[kind](folder)
         got = predict(manifest["fixture"]["rows"])
     except Exception as exc:  # noqa: BLE001 - any load/inference failure rejects the version
         return Verified(manifest, "REJECTED", f"load or fixture inference failed: {exc}", None)
@@ -167,7 +175,7 @@ def verify(folder: Path) -> Verified:
         np.abs(got - expected) <= manifest["fixture"]["tolerance"]
     ):
         return Verified(manifest, "REJECTED", "fixture predictions differ from the manifest", None)
-    return Verified(manifest, "READY", None, predict)
+    return Verified(manifest, "READY", None, predict, embed)
 
 
 def main(argv: list[str] | None = None) -> int:

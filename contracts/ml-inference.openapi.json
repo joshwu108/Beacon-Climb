@@ -1,0 +1,457 @@
+{
+  "components": {
+    "schemas": {
+      "GradePrediction": {
+        "properties": {
+          "predicted_difficulty": {
+            "title": "Predicted Difficulty",
+            "type": "number"
+          }
+        },
+        "required": [
+          "predicted_difficulty"
+        ],
+        "title": "GradePrediction",
+        "type": "object"
+      },
+      "GradePredictions": {
+        "properties": {
+          "input_schema_version": {
+            "title": "Input Schema Version",
+            "type": "string"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "predictions": {
+            "items": {
+              "$ref": "#/components/schemas/GradePrediction"
+            },
+            "title": "Predictions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "model_version",
+          "input_schema_version",
+          "predictions"
+        ],
+        "title": "GradePredictions",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Hold": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "START",
+              "HAND",
+              "FOOT",
+              "FINISH"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "x": {
+            "maximum": 1000.0,
+            "minimum": -1000.0,
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "maximum": 1000.0,
+            "minimum": -1000.0,
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "x",
+          "y",
+          "role"
+        ],
+        "title": "Hold",
+        "type": "object"
+      },
+      "ModelInfo": {
+        "properties": {
+          "has_embeddings": {
+            "title": "Has Embeddings",
+            "type": "boolean"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "status": {
+            "enum": [
+              "READY",
+              "REJECTED",
+              "NOT_CONFIGURED"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "training_manifest_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Training Manifest Id"
+          }
+        },
+        "required": [
+          "model_version",
+          "kind",
+          "status",
+          "reason",
+          "training_manifest_id",
+          "has_embeddings"
+        ],
+        "title": "ModelInfo",
+        "type": "object"
+      },
+      "Route": {
+        "additionalProperties": false,
+        "properties": {
+          "angle_deg": {
+            "maximum": 70.0,
+            "minimum": -10.0,
+            "title": "Angle Deg",
+            "type": "integer"
+          },
+          "holds": {
+            "items": {
+              "$ref": "#/components/schemas/Hold"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Holds",
+            "type": "array"
+          }
+        },
+        "required": [
+          "angle_deg",
+          "holds"
+        ],
+        "title": "Route",
+        "type": "object"
+      },
+      "RouteEmbeddings": {
+        "properties": {
+          "dimension": {
+            "title": "Dimension",
+            "type": "integer"
+          },
+          "embeddings": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "title": "Embeddings",
+            "type": "array"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_version",
+          "dimension",
+          "embeddings"
+        ],
+        "title": "RouteEmbeddings",
+        "type": "object"
+      },
+      "RoutesRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "routes": {
+            "items": {
+              "$ref": "#/components/schemas/Route"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Routes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "routes"
+        ],
+        "title": "RoutesRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Beacon Climb ML",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/health/live": {
+      "get": {
+        "operationId": "health_health_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Health Live Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "ready_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "description": "No READY model loaded"
+          }
+        },
+        "summary": "Ready"
+      }
+    },
+    "/v1/grade-predictions": {
+      "post": {
+        "operationId": "grade_predictions_v1_grade_predictions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GradePredictions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "No READY model loaded"
+          }
+        },
+        "summary": "Grade Predictions"
+      }
+    },
+    "/v1/models": {
+      "get": {
+        "operationId": "models_v1_models_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Models"
+      }
+    },
+    "/v1/route-embeddings": {
+      "post": {
+        "operationId": "route_embeddings_v1_route_embeddings_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteEmbeddings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "Active model has no embeddings"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "No READY model loaded"
+          }
+        },
+        "summary": "Route Embeddings"
+      }
+    }
+  }
+}
