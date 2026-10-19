@@ -1,0 +1,29 @@
+# BC-0207 live run against the local dev database (2026-10-19, LOCAL RESEARCH ONLY; counts only)
+
+## make import FILE=data/catalog/kilter-0a0bc5b1bed1/catalog.jsonl ACK=1
+18:15:40.096  INFO CatalogImporter - catalog import done: inserted=RowCounts[boards=1, holds=692, routes=145065, variants=237551, placements=3067137] updated=RowCounts[boards=0, holds=0, routes=0, variants=0, placements=0] rejected=0
+imported routes=145065 variants=237551 holds=692 rejected=0 provenance=01a15672-7b07-7a78-9ac8-c3a06680e61c
+
+## make register-model
+       model_version       |      kind      | status | active | training_manifest_id | license_review_status 
+---------------------------+----------------+--------+--------+----------------------+-----------------------
+ model-a-gbm-20261019      | sklearn-hgb    | READY  | t      | model-a-100d08f359ca | LOCAL_RESEARCH_ONLY
+ model-a-deepsets-20261019 | torch-deepsets | READY  | f      | model-a-100d08f359ca | LOCAL_RESEARCH_ONLY
+(2 rows)
+
+## make precompute-model VERSION=model-a-gbm-20261019 (first run)
+{"model_version": "model-a-gbm-20261019", "board": "kilter-l1-s10", "written_this_run": 237551, "rows_for_version": 237551, "variants_on_board": 237551, "seconds": 31.8}
+
+## re-run (idempotent): written_this_run 0, see session log
+{"model_version": "model-a-gbm-20261019", "board": "kilter-l1-s10", "written_this_run": 0, "rows_for_version": 237551, "variants_on_board": 237551, "seconds": 0.3}
+
+## make precompute-model VERSION=model-a-deepsets-20261019
+{"model_version": "model-a-deepsets-20261019", "board": "kilter-l1-s10", "written_this_run": 237551, "rows_for_version": 237551, "variants_on_board": 237551, "seconds": 21.9}
+
+## stored rows per model, embeddings present, predicted difficulty range
+       model_version       |  rows  | with_embedding | min_pred | max_pred 
+---------------------------+--------+----------------+----------+----------
+ model-a-deepsets-20261019 | 237551 |         237551 |     7.61 |    32.32
+ model-a-gbm-20261019      | 237551 |              0 |     6.09 |    30.88
+(2 rows)
+
