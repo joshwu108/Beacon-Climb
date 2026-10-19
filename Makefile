@@ -248,3 +248,9 @@ KILTER_DB ?= data/raw/kilter_splits.sqlite
 KILTER_MANIFEST ?= ml/datasets/manifests/kilter-0a0bc5b1bed1.json
 extract-kilter:
 	uv run --directory ml --no-project python -I datasets/kilter/extract.py --db ../$(KILTER_DB) --manifest ../$(KILTER_MANIFEST) --acknowledge-audit
+
+# BC-0201: freeze the Model A dataset (dedupe across splits, seal test) from the BC-0103 output.
+# Rows go to data/datasets/model-a-<id>/ (gitignored); the hash-and-count manifest is committed.
+KILTER_CATALOG_DIR ?= data/catalog/kilter-0a0bc5b1bed1
+freeze-dataset:
+	uv run --directory ml --no-project python -I datasets/model_a/build.py --catalog-dir ../$(KILTER_CATALOG_DIR) --db ../$(KILTER_DB)

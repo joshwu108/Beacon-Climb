@@ -1,0 +1,447 @@
+{
+  "dataset_id": "model-a-100d08f359ca",
+  "dedupe_counts": {
+    "test_removed_exact_duplicate": 255,
+    "val_removed_exact_duplicate": 237,
+    "val_removed_mirror_duplicate": 2
+  },
+  "feature_fields": [
+    "angle_deg",
+    "holds"
+  ],
+  "files_sha256": {
+    "test": "cf8ae165a08b5ce6458224a2572d6aba8d12e827387e82dbe165be81ff713f54",
+    "train": "47bc17c56e3a041be7eb074d6f7d40a39bb1e0c1882ad392fa7c3e299703fdfc",
+    "val": "60fb4dee76fe5416f343e65b114587a165eb7c0b5fde4049de45760760845e7f"
+  },
+  "label_fields": [
+    "grade"
+  ],
+  "license_review_status": "LOCAL_RESEARCH_ONLY",
+  "metadata_fields_not_features": [
+    "route_uuid",
+    "ascents",
+    "hold_set_hash"
+  ],
+  "policy": {
+    "dedupe": "hold-set hash over sorted hold:role pairs, angle ignored; exact and left-right mirror matches removed from later splits; precedence train>val>test",
+    "split": "official uuid splits, re-asserted disjoint",
+    "ungraded": "dropped"
+  },
+  "row_fields": [
+    "route_uuid",
+    "angle_deg",
+    "holds",
+    "grade",
+    "ascents",
+    "hold_set_hash"
+  ],
+  "sealed_sha256": "cf8ae165a08b5ce6458224a2572d6aba8d12e827387e82dbe165be81ff713f54",
+  "sealed_split": "test",
+  "source_catalog_content_sha256": "e42c44c5b74d89b41d9d8ef71310f4ec18f004ab72cd6f57169c6a51a6d0d356",
+  "source_catalog_version": "kilter-l1-s10-0a0bc5b1bed1",
+  "splits": {
+    "test": {
+      "by_angle": {
+        "0": 268,
+        "10": 508,
+        "15": 818,
+        "20": 1508,
+        "25": 1222,
+        "30": 3473,
+        "35": 1545,
+        "40": 6738,
+        "45": 3346,
+        "5": 200,
+        "50": 2358,
+        "55": 455,
+        "60": 486,
+        "65": 60,
+        "70": 164
+      },
+      "by_grade": [
+        {
+          "difficulty": 10,
+          "name": "4a/V0",
+          "rows": 412
+        },
+        {
+          "difficulty": 11,
+          "name": "4b/V0",
+          "rows": 484
+        },
+        {
+          "difficulty": 12,
+          "name": "4c/V0",
+          "rows": 428
+        },
+        {
+          "difficulty": 13,
+          "name": "5a/V1",
+          "rows": 705
+        },
+        {
+          "difficulty": 14,
+          "name": "5b/V1",
+          "rows": 738
+        },
+        {
+          "difficulty": 15,
+          "name": "5c/V2",
+          "rows": 1358
+        },
+        {
+          "difficulty": 16,
+          "name": "6a/V3",
+          "rows": 1547
+        },
+        {
+          "difficulty": 17,
+          "name": "6a+/V3",
+          "rows": 1620
+        },
+        {
+          "difficulty": 18,
+          "name": "6b/V4",
+          "rows": 1924
+        },
+        {
+          "difficulty": 19,
+          "name": "6b+/V4",
+          "rows": 1856
+        },
+        {
+          "difficulty": 20,
+          "name": "6c/V5",
+          "rows": 2090
+        },
+        {
+          "difficulty": 21,
+          "name": "6c+/V5",
+          "rows": 1856
+        },
+        {
+          "difficulty": 22,
+          "name": "7a/V6",
+          "rows": 2574
+        },
+        {
+          "difficulty": 23,
+          "name": "7a+/V7",
+          "rows": 2045
+        },
+        {
+          "difficulty": 24,
+          "name": "7b/V8",
+          "rows": 1254
+        },
+        {
+          "difficulty": 25,
+          "name": "7b+/V8",
+          "rows": 889
+        },
+        {
+          "difficulty": 26,
+          "name": "7c/V9",
+          "rows": 693
+        },
+        {
+          "difficulty": 27,
+          "name": "7c+/V10",
+          "rows": 414
+        },
+        {
+          "difficulty": 28,
+          "name": "8a/V11",
+          "rows": 184
+        },
+        {
+          "difficulty": 29,
+          "name": "8a+/V12",
+          "rows": 61
+        },
+        {
+          "difficulty": 30,
+          "name": "8b/V13",
+          "rows": 9
+        },
+        {
+          "difficulty": 31,
+          "name": "8b+/V14",
+          "rows": 8
+        }
+      ],
+      "routes": 14251,
+      "rows": 23149,
+      "rows_with_ascents_ge_3": 8496
+    },
+    "train": {
+      "by_angle": {
+        "0": 2385,
+        "10": 4072,
+        "15": 6362,
+        "20": 12210,
+        "25": 9811,
+        "30": 27977,
+        "35": 12855,
+        "40": 55383,
+        "45": 27373,
+        "5": 1682,
+        "50": 20069,
+        "55": 3894,
+        "60": 4086,
+        "65": 623,
+        "70": 1404
+      },
+      "by_grade": [
+        {
+          "difficulty": 10,
+          "name": "4a/V0",
+          "rows": 3250
+        },
+        {
+          "difficulty": 11,
+          "name": "4b/V0",
+          "rows": 3706
+        },
+        {
+          "difficulty": 12,
+          "name": "4c/V0",
+          "rows": 3207
+        },
+        {
+          "difficulty": 13,
+          "name": "5a/V1",
+          "rows": 5076
+        },
+        {
+          "difficulty": 14,
+          "name": "5b/V1",
+          "rows": 6132
+        },
+        {
+          "difficulty": 15,
+          "name": "5c/V2",
+          "rows": 10829
+        },
+        {
+          "difficulty": 16,
+          "name": "6a/V3",
+          "rows": 13072
+        },
+        {
+          "difficulty": 17,
+          "name": "6a+/V3",
+          "rows": 13279
+        },
+        {
+          "difficulty": 18,
+          "name": "6b/V4",
+          "rows": 15631
+        },
+        {
+          "difficulty": 19,
+          "name": "6b+/V4",
+          "rows": 15309
+        },
+        {
+          "difficulty": 20,
+          "name": "6c/V5",
+          "rows": 17095
+        },
+        {
+          "difficulty": 21,
+          "name": "6c+/V5",
+          "rows": 15560
+        },
+        {
+          "difficulty": 22,
+          "name": "7a/V6",
+          "rows": 21056
+        },
+        {
+          "difficulty": 23,
+          "name": "7a+/V7",
+          "rows": 17606
+        },
+        {
+          "difficulty": 24,
+          "name": "7b/V8",
+          "rows": 10836
+        },
+        {
+          "difficulty": 25,
+          "name": "7b+/V8",
+          "rows": 7181
+        },
+        {
+          "difficulty": 26,
+          "name": "7c/V9",
+          "rows": 5745
+        },
+        {
+          "difficulty": 27,
+          "name": "7c+/V10",
+          "rows": 3284
+        },
+        {
+          "difficulty": 28,
+          "name": "8a/V11",
+          "rows": 1543
+        },
+        {
+          "difficulty": 29,
+          "name": "8a+/V12",
+          "rows": 607
+        },
+        {
+          "difficulty": 30,
+          "name": "8b/V13",
+          "rows": 152
+        },
+        {
+          "difficulty": 31,
+          "name": "8b+/V14",
+          "rows": 30
+        }
+      ],
+      "routes": 116058,
+      "rows": 190186,
+      "rows_with_ascents_ge_3": 72089
+    },
+    "val": {
+      "by_angle": {
+        "0": 289,
+        "10": 487,
+        "15": 737,
+        "20": 1469,
+        "25": 1224,
+        "30": 3375,
+        "35": 1575,
+        "40": 6764,
+        "45": 3381,
+        "5": 206,
+        "50": 2420,
+        "55": 465,
+        "60": 496,
+        "65": 57,
+        "70": 161
+      },
+      "by_grade": [
+        {
+          "difficulty": 10,
+          "name": "4a/V0",
+          "rows": 410
+        },
+        {
+          "difficulty": 11,
+          "name": "4b/V0",
+          "rows": 450
+        },
+        {
+          "difficulty": 12,
+          "name": "4c/V0",
+          "rows": 389
+        },
+        {
+          "difficulty": 13,
+          "name": "5a/V1",
+          "rows": 651
+        },
+        {
+          "difficulty": 14,
+          "name": "5b/V1",
+          "rows": 715
+        },
+        {
+          "difficulty": 15,
+          "name": "5c/V2",
+          "rows": 1356
+        },
+        {
+          "difficulty": 16,
+          "name": "6a/V3",
+          "rows": 1625
+        },
+        {
+          "difficulty": 17,
+          "name": "6a+/V3",
+          "rows": 1682
+        },
+        {
+          "difficulty": 18,
+          "name": "6b/V4",
+          "rows": 1859
+        },
+        {
+          "difficulty": 19,
+          "name": "6b+/V4",
+          "rows": 1865
+        },
+        {
+          "difficulty": 20,
+          "name": "6c/V5",
+          "rows": 2075
+        },
+        {
+          "difficulty": 21,
+          "name": "6c+/V5",
+          "rows": 1896
+        },
+        {
+          "difficulty": 22,
+          "name": "7a/V6",
+          "rows": 2518
+        },
+        {
+          "difficulty": 23,
+          "name": "7a+/V7",
+          "rows": 2176
+        },
+        {
+          "difficulty": 24,
+          "name": "7b/V8",
+          "rows": 1270
+        },
+        {
+          "difficulty": 25,
+          "name": "7b+/V8",
+          "rows": 803
+        },
+        {
+          "difficulty": 26,
+          "name": "7c/V9",
+          "rows": 714
+        },
+        {
+          "difficulty": 27,
+          "name": "7c+/V10",
+          "rows": 393
+        },
+        {
+          "difficulty": 28,
+          "name": "8a/V11",
+          "rows": 178
+        },
+        {
+          "difficulty": 29,
+          "name": "8a+/V12",
+          "rows": 61
+        },
+        {
+          "difficulty": 30,
+          "name": "8b/V13",
+          "rows": 16
+        },
+        {
+          "difficulty": 31,
+          "name": "8b+/V14",
+          "rows": 4
+        }
+      ],
+      "routes": 14262,
+      "rows": 23106,
+      "rows_with_ascents_ge_3": 8495
+    }
+  }
+}
