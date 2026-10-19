@@ -67,9 +67,9 @@ def _slice_table(results: dict, model: str, prefix: str, label: str) -> list[str
 
 
 def render() -> str:
-    val_path, val = _one("BC-0203", "val-")
+    val_path, _ = _one("BC-0203", "val-")
     test_path, test = _one("BC-0203", "test-")
-    sweep_path, sweep = _one("BC-0204", "val-sweep-")
+    sweep_path, _ = _one("BC-0204", "val-sweep-")
     ds_test_path, ds_test = _one("BC-0204", "test-")
     rel = lambda p: p.relative_to(REPO).as_posix()
 
@@ -101,8 +101,10 @@ def render() -> str:
         "",
         "## Data",
         "",
-        f"- Dataset `{test['dataset_id']}` (`docs/data-cards/model-a-kilter.md`): train "
-        f"{test['n_train']} rows, test {test['n_eval']} rows (one row = one climb at one angle).",
+        (
+            f"- Dataset `{test['dataset_id']}` (`docs/data-cards/model-a-kilter.md`): train "
+            f"{test['n_train']} rows, test {test['n_eval']} rows (one row = one climb at one angle)."
+        ),
         "- Official uuid splits, with climbs whose hold set (or mirror image) appears in an earlier",
         "  split removed from val and test. Labels are community grades; most rows have fewer than",
         "  3 logged ascents, so results are also reported on ascents ≥ 3 and ≥ 10 subsets",
@@ -141,8 +143,10 @@ def render() -> str:
     lines += [
         "",
         "The gradient-boosting model refitted inside the Deep Sets comparison reproduces the",
-        f"BC-0203 test MAE {'exactly' if same else 'NOT exactly (see reports)'} "
-        f"({gbm_in_ds['all']['mae']:.3f}).",
+        (
+            f"BC-0203 test MAE {'exactly' if same else 'NOT exactly (see reports)'} "
+            f"({gbm_in_ds['all']['mae']:.3f})."
+        ),
         "",
         "## Decision",
         "",

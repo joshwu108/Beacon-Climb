@@ -1,6 +1,6 @@
 """Batch precompute of Model A outputs into route_model_outputs (BC-0207).
 
-    python -I -m app.precompute --dir ../../data/models/registry/<model_version> \
+    python -I app/precompute.py --dir ../../data/models/registry/<model_version> \
         --board kilter-l1-s10 [--batch 2000]
 
 The artifact is verified first (same checks as serving) and must already be registered READY

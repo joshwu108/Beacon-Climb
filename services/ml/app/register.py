@@ -1,6 +1,6 @@
 """Register a packaged model version in Postgres (BC-0205, ``make register-model``).
 
-    python -I -m app.register --dir ../../data/models/registry/<model_version> [--activate]
+    python -I app/register.py --dir ../../data/models/registry/<model_version> [--activate]
 
 Runs ``beacon_ml.registry.verify`` (file hashes, artifact digest, fixture predictions) and
 inserts one ``model_versions`` row with status READY or REJECTED. ``--activate`` makes a READY

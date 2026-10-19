@@ -284,7 +284,7 @@ register-model: .env
 	@if [ -z "$(VERSION)" ]; then echo "usage: make register-model VERSION=model-a-... [ACTIVATE=1]" >&2; exit 2; fi
 	set -a; . ./.env; set +a; \
 	BEACON_ML_DB_URL="postgresql://beacon_app:$${BEACON_APP_DB_PASSWORD}@127.0.0.1:5432/beacon" \
-	uv run --directory services/ml python -I -m app.register --dir ../../data/models/registry/$(VERSION) $(if $(ACTIVATE),--activate,)
+	uv run --directory services/ml python -I app/register.py --dir ../../data/models/registry/$(VERSION) $(if $(ACTIVATE),--activate,)
 
 # BC-0207: batch-precompute a registered model's outputs for every variant of a Kilter board
 # into route_model_outputs (idempotent: a re-run writes nothing new).
@@ -292,7 +292,7 @@ precompute-model: .env
 	@if [ -z "$(VERSION)" ]; then echo "usage: make precompute-model VERSION=model-a-... [BOARD=kilter-l1-s10]" >&2; exit 2; fi
 	set -a; . ./.env; set +a; \
 	BEACON_ML_DB_URL="postgresql://beacon_app:$${BEACON_APP_DB_PASSWORD}@127.0.0.1:5432/beacon" \
-	uv run --directory services/ml python -I -m app.precompute --dir ../../data/models/registry/$(VERSION) --board $(or $(BOARD),kilter-l1-s10)
+	uv run --directory services/ml python -I app/precompute.py --dir ../../data/models/registry/$(VERSION) --board $(or $(BOARD),kilter-l1-s10)
 
 # BC-0212: ML inference service (compose profile `ml`, infra/compose/ml.yml). It serves ONE
 # registry version from data/models/registry/ (read-only mount). With no real model yet, run
