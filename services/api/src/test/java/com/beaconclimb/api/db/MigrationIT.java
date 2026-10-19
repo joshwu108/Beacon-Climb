@@ -41,7 +41,8 @@ class MigrationIT extends AbstractPostgresIT {
           Map.entry("9", "V9__feature_snapshots_stream.sql"),
           Map.entry("10", "V10__reconciliation.sql"),
           Map.entry("11", "V11__decision_feature_provenance.sql"),
-          Map.entry("12", "V12__model_versions.sql"));
+          Map.entry("12", "V12__model_versions.sql"),
+          Map.entry("13", "V13__route_model_outputs.sql"));
 
   private static final List<String> ALL_TABLES =
       List.of(
@@ -64,7 +65,8 @@ class MigrationIT extends AbstractPostgresIT {
           "recommendation_exposures",
           "account_creations",
           "reconciliation_events",
-          "model_versions");
+          "model_versions",
+          "route_model_outputs");
 
   private static final UUID PROVENANCE_ID = UUID.fromString("00000000-0000-7000-8000-000000000001");
   private static final String BOARD_ID = "migration-it-board";
@@ -81,7 +83,7 @@ class MigrationIT extends AbstractPostgresIT {
   }
 
   @Test
-  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionTwelve() {
+  void flywayHistoryRecordsEveryMigrationAsSuccessWithLatestVersionThirteen() {
     List<Map<String, Object>> rows =
         jdbc()
             .queryForList(
@@ -91,7 +93,7 @@ class MigrationIT extends AbstractPostgresIT {
     assertThat(rows)
         .extracting(row -> Map.entry(row.get("version").toString(), row.get("script").toString()))
         .containsExactlyElementsOf(MIGRATIONS);
-    assertThat(rows.getLast().get("version").toString()).isEqualTo("12");
+    assertThat(rows.getLast().get("version").toString()).isEqualTo("13");
   }
 
   @Test
@@ -571,6 +573,30 @@ class MigrationIT extends AbstractPostgresIT {
     insertModelVersion("model-a-bad-3", "REJECTED", "sha256 mismatch", false);
     assertThatThrownBy(() -> insertModelVersion("model-a-bad-2", "REJECTED", null, false))
         .hasMessageContaining("model_versions_reason_only_when_rejected");
+  }
+
+  /** BC-0207 (V13): precomputed outputs are insert-only for the API role, 32-d embeddings. */
+  @Test
+  void routeModelOutputsAreImmutableForTheAppRole() {
+    assertThat(privilegesOf("route_model_outputs")).containsExactly("DELETE", "INSERT", "SELECT");
+    assertThat(indexDefinition("route_model_outputs_pkey")).contains("(variant_id, model_version)");
+  }
+
+  @Test
+  @Transactional
+  void routeModelOutputsRejectAWrongEmbeddingDimension() {
+    seedUserBoardAndVariant();
+    insertModelVersion("model-a-gbm-out", "READY", null, false);
+    assertThatThrownBy(
+            () ->
+                jdbc()
+                    .update(
+                        "insert into route_model_outputs (variant_id, model_version,"
+                            + " predicted_difficulty, embedding) values (?, ?, 18.5, ?::real[])",
+                        VARIANT_ID,
+                        "model-a-gbm-out",
+                        "{1,2,3}"))
+        .hasMessageContaining("route_model_outputs_embedding_dim");
   }
 
   private void insertModelVersion(String version, String status, String reason, boolean active) {

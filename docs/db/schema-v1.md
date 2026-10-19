@@ -232,6 +232,17 @@ CREATE TABLE public.reconciliation_events (
 
 COMMENT ON TABLE public.reconciliation_events IS 'attempts.v1 events the stream job judged late beyond its 24 h window (stream-reconciliation.v1, original payload kept verbatim, one row per event_id); the reconcile profile recomputes the SYNC snapshot of each affected user at W = now and marks the rows RECONCILED or ALREADY_CURRENT (ADR-0004, BC-0309)';
 
+CREATE TABLE public.route_model_outputs (
+    variant_id uuid NOT NULL,
+    model_version text NOT NULL,
+    predicted_difficulty numeric(6,3) NOT NULL,
+    embedding real[],
+    computed_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT route_model_outputs_embedding_dim CHECK (((embedding IS NULL) OR (array_length(embedding, 1) = 32)))
+);
+
+COMMENT ON TABLE public.route_model_outputs IS 'Batch-precomputed Model A outputs (BC-0207): predicted difficulty and optional 32-d embedding per route variant and model version; immutable, idempotent inserts';
+
 CREATE TABLE public.route_placements (
     variant_id uuid NOT NULL,
     hold_id uuid NOT NULL,
@@ -379,6 +390,9 @@ ALTER TABLE ONLY public.reconciliation_events
 ALTER TABLE ONLY public.reconciliation_events
     ADD CONSTRAINT reconciliation_events_pkey PRIMARY KEY (id);
 
+ALTER TABLE ONLY public.route_model_outputs
+    ADD CONSTRAINT route_model_outputs_pkey PRIMARY KEY (variant_id, model_version);
+
 ALTER TABLE ONLY public.route_placements
     ADD CONSTRAINT route_placements_pkey PRIMARY KEY (variant_id, hold_id, role);
 
@@ -425,6 +439,8 @@ CREATE INDEX reconciliation_events_open_idx ON public.reconciliation_events USIN
 
 CREATE INDEX reconciliation_events_user_idx ON public.reconciliation_events USING btree (user_id);
 
+CREATE INDEX route_model_outputs_model_idx ON public.route_model_outputs USING btree (model_version);
+
 CREATE INDEX route_placements_hold_idx ON public.route_placements USING btree (hold_id);
 
 CREATE INDEX route_variants_search_idx ON public.route_variants USING btree (angle_deg, grade_numeric, variant_id) WHERE (validation_status = 'ACTIVE'::text);
@@ -463,6 +479,12 @@ ALTER TABLE ONLY public.recommendation_exposures
 
 ALTER TABLE ONLY public.reconciliation_events
     ADD CONSTRAINT reconciliation_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.route_model_outputs
+    ADD CONSTRAINT route_model_outputs_model_version_fkey FOREIGN KEY (model_version) REFERENCES public.model_versions(model_version);
+
+ALTER TABLE ONLY public.route_model_outputs
+    ADD CONSTRAINT route_model_outputs_variant_id_fkey FOREIGN KEY (variant_id) REFERENCES public.route_variants(variant_id);
 
 ALTER TABLE ONLY public.route_placements
     ADD CONSTRAINT route_placements_hold_id_fkey FOREIGN KEY (hold_id) REFERENCES public.holds(hold_id);
