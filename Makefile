@@ -47,6 +47,22 @@ test-api:
 test-web:
 	pnpm --filter @beacon/web test
 
+# apps/mobile (Expo / React Native): `make mobile` starts the Expo web target on
+# http://127.0.0.1:8081, framed as a phone on wide screens. MOCKS=1 (default) answers every
+# request in-process with apps/web's mocks, so no backend is needed; MOCKS=0 calls the
+# compose stack (`make dev`) through the Metro dev proxy to 127.0.0.1:3000.
+# `make test-mobile` runs typecheck + prettier, Jest and the Playwright smoke test (which
+# exports the web build and serves it on 127.0.0.1:8090).
+.PHONY: mobile test-mobile
+
+mobile:
+	cd apps/mobile && EXPO_PUBLIC_USE_MOCKS=$(if $(filter 0,$(MOCKS)),false,true) pnpm exec expo start --web --port 8081
+
+test-mobile:
+	pnpm --filter @beacon/mobile lint
+	pnpm --filter @beacon/mobile test
+	pnpm --filter @beacon/mobile test:e2e
+
 # BC-0121: Playwright vertical slice against the RUNNING compose stack (`make dev && make
 # seed-demo` first; nothing is started here). Runs from apps/web's Playwright install so there
 # is no second node_modules. Artifacts: test/e2e/test-results (trace, video) and
