@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Beacon Climb",
+    "slug": "beacon-climb",
+    "version": "0.1.0",
+    "scheme": "beaconclimb",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#f6f1e7",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.beaconclimb.mobile.demo"
+    },
+    "web": {
+      "output": "single",
+      "bundler": "metro"
+    },
+    "plugins": ["expo-router", "expo-secure-store", "expo-font"],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

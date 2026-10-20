@@ -1,0 +1,9 @@
+dist/
+node_modules/
+.expo/
+coverage/
+src/api/generated/
+test-results/
+playwright-report/
+ios/
+android/

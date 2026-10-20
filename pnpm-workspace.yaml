@@ -1,2 +1,10 @@
 packages:
   - apps/web
+  - apps/mobile
+
+# apps/mobile: hold the Expo CLI chain at the SDK 58 patch level pinned in its package.json
+# (expo 58.0.6, published 2026-10-06), so its caret ranges do not float past the pins.
+overrides:
+  '@expo/cli': 58.1.5
+  '@expo/router-server': 58.0.10
+  '@react-native/metro-config': 0.88.0-rc.3
