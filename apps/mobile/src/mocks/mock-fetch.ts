@@ -5,6 +5,8 @@
  * The similar-routes handler is listed first: msw takes the first match, and the web
  * handlers' `/v1/routes/:routeVariantId` would not match `/similar` anyway.
  */
+// Must run before msw loads: Hermes lacks MessageEvent (see polyfills.native.ts).
+import './polyfills';
 import { getResponse } from 'msw';
 import { handlers } from '@web/mocks/handlers';
 import { withRequestedPolicy } from './policy';
