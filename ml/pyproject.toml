@@ -18,6 +18,8 @@ torch-cpu = ["torch==2.14.1"]
 # BC-0202/0203 training stack. Exact versions are pinned in uv.lock; exclude-newer below keeps
 # every resolved release at least two weeks old (supply-chain rule in AGENTS.md).
 train = ["numpy>=2.1", "scikit-learn>=1.6"]
+# BC-0213 remote training harness (Modal client); CI never installs or calls it.
+remote = ["modal>=1.0"]
 
 [tool.uv]
 exclude-newer = "2026-10-05T00:00:00Z"

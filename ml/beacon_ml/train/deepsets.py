@@ -109,13 +109,20 @@ class DeepSets(nn.Module):
         return self.head(self.embed(hold_ids, numeric, mask, angle)).squeeze(-1)
 
 
+def _on(device: str, *tensors):
+    return [t.to(device) for t in tensors]
+
+
 def predict(model: DeepSets, data: Encoded, batch: int = 4096) -> np.ndarray:
+    """Predict on whatever device the model lives on; results come back as CPU float64."""
+    device = next(model.parameters()).device
     model.eval()
     out = []
     with torch.no_grad():
         for start in range(0, len(data.grade), batch):
             sl = slice(start, start + batch)
-            out.append(model(data.hold_ids[sl], data.numeric[sl], data.mask[sl], data.angle[sl]))
+            args = _on(device, data.hold_ids[sl], data.numeric[sl], data.mask[sl], data.angle[sl])
+            out.append(model(*args).cpu())
     return torch.cat(out).numpy().astype(np.float64)
 
 
@@ -132,14 +139,18 @@ def train(
     weight_decay: float,
     hidden: int,
     dropout: float = 0.0,
+    device: str = "cpu",
     log=print,
 ) -> tuple[DeepSets, list[dict]]:
-    """Early stopping on val MAE; returns the best-epoch model and the per-epoch history."""
+    """Early stopping on val MAE; returns the best-epoch model (on CPU) and the history.
+
+    ``device`` is "cpu" locally and "cuda" for remote GPU runs (BC-0213); the shuffling
+    generator stays on CPU so the epoch order is the same on every device."""
     torch.manual_seed(seed)
     generator = torch.Generator().manual_seed(seed)
     model = DeepSets(
         vocab_size, hidden=hidden, grade_mean=float(train_data.grade.mean()), dropout=dropout
-    )
+    ).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
     loss_fn = nn.HuberLoss(delta=1.0)
@@ -151,13 +162,16 @@ def train(
         total = 0.0
         for start in range(0, n, batch):
             idx = order[start : start + batch]
-            pred = model(
+            hold_ids, numeric, mask, angle, grade = _on(
+                device,
                 train_data.hold_ids[idx],
                 train_data.numeric[idx],
                 train_data.mask[idx],
                 train_data.angle[idx],
+                train_data.grade[idx],
             )
-            loss = loss_fn(pred, train_data.grade[idx])
+            pred = model(hold_ids, numeric, mask, angle)
+            loss = loss_fn(pred, grade)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -168,10 +182,11 @@ def train(
         log(f"epoch {epoch}: train_huber={total / n:.4f} val_mae={val_mae:.4f}")
         if val_mae < best_mae - 1e-4:
             best_mae, waited = val_mae, 0
-            best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
+            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
         else:
             waited += 1
             if waited >= patience:
                 break
+    model = model.cpu()
     model.load_state_dict(best_state)
     return model, history

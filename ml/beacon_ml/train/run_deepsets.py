@@ -70,6 +70,7 @@ def stage_val(config, manifest, names, run_id, data_root=None, models_dir=MODELS
             weight_decay=variant["weight_decay"],
             hidden=variant["hidden"],
             dropout=dropout,
+            device=variant.get("device", "cpu"),
         )
         result = score(deepsets.predict(model, enc_val), val_split, names, config)
         trial = {

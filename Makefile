@@ -309,3 +309,8 @@ ml-down: .env
 # Model A evaluation pipeline on synthetic data only (freeze, train, test stage, registry).
 test-eval:
 	uv run --directory ml --group train --group torch-cpu python -I -m pytest -q tests/test_model_a_train.py tests/test_model_a_deepsets.py tests/test_registry.py
+
+# BC-0213: remote Deep Sets val-stage training on Modal (docs/runbooks/modal.md). Needs a Modal
+# token (`modal setup`) and RIGHTS_SIGNED=1 for the non-synthetic Kilter dataset; test stays local.
+train-remote:
+	uv run --directory ml --group train --group torch-cpu --group remote python -I -m beacon_ml.remote.modal_train --config $(or $(CONFIG),configs/model_a_deepsets.json) --gpu $(or $(GPU),T4) $(if $(RIGHTS_SIGNED),--rights-signed,)
