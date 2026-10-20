@@ -1,0 +1,24 @@
+{
+  "generated_at" : "2026-10-18T08:37:54.146Z",
+  "commit" : "254b9182b3992b6d270fe8de6d4480c9b77bad95",
+  "users_total" : 1,
+  "users_with_stream_row" : 1,
+  "compared" : 1,
+  "equal" : 1,
+  "diffs" : 0,
+  "same_w_mismatch" : 0,
+  "skipped_no_stream_row" : 0,
+  "synthetic_only" : true,
+  "details" : [ {
+    "user_id" : "01a14e28-977b-7c1c-a155-b99983d3217b",
+    "status" : "EQUAL",
+    "cutoff_w" : "2026-10-18T08:37:26.014Z",
+    "sync_cutoff_w" : "2026-10-18T08:37:26.016Z",
+    "stream_feature_as_of" : "2026-10-18T08:37:26.014Z",
+    "batch_feature_as_of" : "2026-10-18T08:37:26.014Z",
+    "stream_partition" : 5,
+    "stream_offset" : 50,
+    "diff_keys" : [ ],
+    "checksum_differs" : false
+  } ]
+}

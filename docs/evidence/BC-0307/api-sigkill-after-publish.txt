@@ -1,0 +1,84 @@
+# BC-0307 chaos transcript: api-sigkill-after-publish, run 20261018T083513Z, 2026-10-18T08:37:25Z, commit 254b918
+[2026-10-18T08:37:25Z] harness: === scenario api-sigkill-after-publish: start 2026-10-18T08:37:25Z, stream job 79dec750246e541eacff6058e99fd7a0, stream-dlq.v1 records before: 0 ===
+[2026-10-18T08:37:25Z] api-sigkill-after-publish: user synthetic_chaos_killpub_7b1eff id=01a14e28-977b-7c1c-a155-b99983d3217b consent recorded, preferences set, 20 routes
+[2026-10-18T08:37:26Z] api-sigkill-after-publish: burst summary: {"attempt_ids": ["01a14e28-98ba-7c7e-a8b5-11ded968a458", "01a14e28-98d1-7a40-a907-bfec470a7820", "01a14e28-98d6-7d1f-9de2-53dce672036f", "01a14e28-98dc-7b0e-bf51-19af58cae560", "01a14e28-98e1-7cb8-920e-803f96e5a59f", "01a14e28-98e6-7a3e-abd1-7df1a14a4eda", "01a14e28-98eb-7988-a420-ecf69a59e6bf", "01a14e28-98ef-7a6c-a98d-96ef3189898d", "01a14e28-98f3-7f7a-85dd-d4fde3c65039", "01a14e28-98f7-7229-8a66-a65942f9c20c", "01a14e28-98fb-7f96-a45f-be7f53861292", "01a14e28-98ff-77aa-b0aa-12d73a1aa236", "01a14e28-9903-7703-baf7-c2a892abf68a", "01a14e28-9906-7889-9deb-af67a79a9d18", "01a14e28-990a-7662-9cae-9597a37af77d", "01a14e28-990d-73e8-8d2b-add0fa1820c5", "01a14e28-9911-764b-b781-107957671389", "01a14e28-9914-7804-aa9e-63c5ab5ca807", "01a14e28-9918-7d33-b368-8b38cb6c93a8", "01a14e28-991c-76a8-a0e4-e32d3cd29bb8", "01a14e28-9920-7158-93b7-4c0c3cccb168", "01a14e28-9923-7070-a834-060017c8909d", "01a14e28-9929-75cf-971e-742b090c9ff6", "01a14e28-992c-7481-bbe4-b509b53ef1f3", "01a14e28-9930-7577-bca9-2f80e888fb93", "01a14e28-9933-777c-bf76-943329077b74", "01a14e28-9936-7ad6-98bb-1916993b1ac6", "01a14e28-9939-7f82-a502-d7c9b672039a", "01a14e28-993e-70ec-95b4-9e10c419f893", "01a14e28-9941-7746-a299-31812138c365", "01a14e28-9944-7501-a7ab-a3efedf9e8d4", "01a14e28-9947-7263-a6e1-d7b2c22e3888", "01a14e28-994a-7f70-8927-47d3d2959052", "01a14e28-994e-7f52-90cb-e51914cd465d", "01a14e28-9951-7fc8-a25f-b27ae3553618", "01a14e28-9954-717d-8c26-4f8244597fce", "01a14e28-9956-7802-8a6b-191d0aa57973", "01a14e28-995a-737b-ad9a-3548c58b7ee9", "01a14e28-995c-7d95-b2e2-c68c7dbb7417", "01a14e28-995f-7f0f-9a47-225e61299167", "01a14e28-9962-7102-a590-56f939ef7f30", "01a14e28-9965-7fcb-be15-8c7619e713ca", "01a14e28-9968-7d43-b81f-5da8c167f0b5", "01a14e28-996b-7c74-a448-2d7b7e1adfb3", "01a14e28-996e-711b-9d56-e26698368a72", "01a14e28-9971-744e-ba8c-442bad7f85c4", "01a14e28-9974-7609-aca4-9d851159c912", "01a14e28-9977-71dd-bf1d-aa6bfbde5d20", "01a14e28-997b-7564-9b7f-c4de33fbaa32", "01a14e28-997f-7e12-af90-5f1cd554bd74"], "connection_errors": 0, "count": 50, "distinct_keys": 50, "failed": 0, "finished_at": "2026-10-18T08:37:26.017Z", "first_error_at": null, "keys_retried": 0, "last_error_at": null, "ok_200_replay": 0, "ok_201": 50, "out": "/var/folders/th/3b9mvgfs2tz3vgxmn890jdb00000gn/T//beacon-chaos.UGzO9L/burst-after.jsonl", "started_at": "2026-10-18T08:37:25.811Z"}
+[2026-10-18T08:37:26Z] api-sigkill-after-publish: ASSERT PASS every key answered 201 before the kill: 50
+[2026-10-18T08:37:26Z] api-sigkill-after-publish: polling /prometheus beacon_outbox_backlog_rows until it reads 0, then SIGKILL immediately
+[2026-10-18T08:37:26Z] api-sigkill-after-publish: beacon_outbox_backlog_rows=0 at 2026-10-18T08:37:26Z after 0 s; STREAM row at kill: none
+ Container compose-api-1 Killing 
+ Container compose-api-1 Killed 
+[2026-10-18T08:37:26Z] api-sigkill-after-publish: api SIGKILLed at 2026-10-18T08:37:26Z; docker compose up -d --wait api
+ Container compose-postgres-1 Running 
+ Container compose-kafka-1 Running 
+ Container compose-decisions-init-1 Starting 
+ Container compose-postgres-1 Waiting 
+ Container compose-kafka-1 Waiting 
+ Container compose-decisions-init-1 Started 
+ Container compose-postgres-1 Healthy 
+ Container compose-kafka-1 Healthy 
+ Container compose-migrate-1 Starting 
+ Container compose-kafka-init-1 Starting 
+ Container compose-kafka-init-1 Started 
+ Container compose-migrate-1 Started 
+ Container compose-kafka-init-1 Waiting 
+ Container compose-migrate-1 Waiting 
+ Container compose-decisions-init-1 Waiting 
+ Container compose-postgres-1 Waiting 
+ Container compose-decisions-init-1 Exited 
+ Container compose-postgres-1 Healthy 
+ Container compose-migrate-1 Exited 
+ Container compose-kafka-init-1 Exited 
+ Container compose-api-1 Starting 
+ Container compose-api-1 Started 
+ Container compose-postgres-1 Waiting 
+ Container compose-kafka-1 Waiting 
+ Container compose-kafka-init-1 Waiting 
+ Container compose-api-1 Waiting 
+ Container compose-decisions-init-1 Waiting 
+ Container compose-migrate-1 Waiting 
+ Container compose-kafka-init-1 Exited 
+ Container compose-decisions-init-1 Exited 
+ Container compose-kafka-1 Healthy 
+ Container compose-postgres-1 Healthy 
+ Container compose-migrate-1 Exited 
+ Container compose-api-1 Healthy 
+[2026-10-18T08:37:40Z] api-sigkill-after-publish: api healthy again after 14 s
+[2026-10-18T08:37:40Z] api-sigkill-after-publish: ASSERT PASS attempt rows for the user: 50
+[2026-10-18T08:37:40Z] api-sigkill-after-publish: wait 'outbox backlog 0 after the restart' satisfied after 0 s
+[2026-10-18T08:37:44Z] api-sigkill-after-publish: STREAM row reached checksum 27ed18210099.. after 4 s
+[2026-10-18T08:37:44Z] api-sigkill-after-publish: STREAM row after convergence: offset 50 (at kill: none)
+[2026-10-18T08:37:45Z] api-sigkill-after-publish: result written to /var/folders/th/3b9mvgfs2tz3vgxmn890jdb00000gn/T//beacon-chaos.UGzO9L/api-sigkill-after-publish.result: user=01a14e28-977b-7c1c-a155-b99983d3217b active=50 last_occurred_at=2026-10-18T08:37:26.014Z parity=zero dlq_growth=0
+[2026-10-18T08:37:45Z] api-sigkill-after-publish: --- harness: convergence ---
+[2026-10-18T08:37:45Z] api-sigkill-after-publish: converge: waiting (<= 120 s) for user 01a14e28-977b-7c1c-a155-b99983d3217b through occurred_at >= 2026-10-18T08:37:26.014Z
+[2026-10-18T08:37:52Z] api-sigkill-after-publish: converge: ok after 7 s
+[2026-10-18T08:37:52Z] api-sigkill-after-publish: STREAM row: cutoff_w=2026-10-18T08:37:26.014Z checksum=27ed18210099cf46988c098b3d7f62bdb47d5f14e6013d07b99ee8669fcccd59 partition=5 offset=50 feature_as_of=2026-10-18T08:37:26.014Z aggregates={"sends_7d": 25, "sends_30d": 25, "sends_90d": 25, "attempts_7d": 50, "attempts_30d": 50, "attempts_90d": 50, "last_session_at": "2026-10-18T08:37:26.014Z", "recent_variant_ids": ["syn-route-0215:40", "syn-route-0198:40", "syn-route-0049:40", "syn-route-0140:40", "syn-route-0020:40", "syn-route-0059:40", "syn-route-0274:40", "syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40", "syn-route-0174:40", "syn-route-0014:40", "syn-route-0075:40", "syn-route-0004:40", "syn-route-0255:40", "syn-route-0163:40", "syn-route-0210:40", "syn-route-0234:40", "syn-route-0262:40", "syn-route-0221:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19.7, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 25, "attempts": 50}}}
+[2026-10-18T08:37:52Z] api-sigkill-after-publish: --- harness: parity oracle (mode zero) ---
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 359ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/parity/parity.sh --user 01a14e28-977b-7c1c-a155-b99983d3217b --out /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-api-sigkill-after-publish.json
+03:37:54.147  INFO ParityService - parity outcome=RAN users=1 compared=1 equal=1 diffs=0 same_w_mismatch=0
+parity summary users=1 with_stream_row=1 compared=1 equal=1 diffs=0 same_w_mismatch=0 skipped_no_stream_row=0 synthetic_only=true out=/Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-api-sigkill-after-publish.json
+[2026-10-18T08:37:54Z] api-sigkill-after-publish: parity report /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-api-sigkill-after-publish.json: status=EQUAL diff_keys=- checksum_differs=false (exit 0)
+[2026-10-18T08:37:54Z] api-sigkill-after-publish: ASSERT PASS parity: exit 0, status EQUAL
+[2026-10-18T08:37:54Z] api-sigkill-after-publish: --- harness: no canonical attempt lost ---
+[2026-10-18T08:37:54Z] api-sigkill-after-publish: ASSERT PASS ACTIVE attempts: 50 == 50
+[2026-10-18T08:37:59Z] api-sigkill-after-publish: ASSERT PASS every expected attempt row present at its final revision/status (50 rows checked)
+[2026-10-18T08:37:59Z] api-sigkill-after-publish: --- harness: DLQ growth ---
+[2026-10-18T08:38:00Z] api-sigkill-after-publish: ASSERT PASS stream-dlq.v1 growth: 0 == 0 (0 -> 0)
+[2026-10-18T08:38:00Z] api-sigkill-after-publish: === scenario api-sigkill-after-publish: PASS in 35 s ===

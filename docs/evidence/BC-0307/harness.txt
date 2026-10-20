@@ -1,0 +1,711 @@
+[2026-10-18T08:35:13Z] harness: === BC-0307 chaos run 20261018T083513Z: scenarios dup-publish late-2h-inside-window late-3d-reconciliation correction-then-retraction api-sigkill-during-burst api-sigkill-after-publish flink-taskmanager-restart kafka-restart same-watermark-correction invalid-events-to-dlq (PARITY=run, CHAOS_INVOKE=make) ===
+[2026-10-18T08:35:13Z] harness: api is up at http://127.0.0.1:8080
+[2026-10-18T08:35:14Z] harness: wait 'flink job 79dec750246e541eacff6058e99fd7a0 RUNNING' satisfied after 0 s
+[2026-10-18T08:35:14Z] harness: stream job 79dec750246e541eacff6058e99fd7a0 RUNNING, checkpoints completed so far: 30
+[2026-10-18T08:35:14Z] harness: api jar sha256 94fa8bf59a9f.. (2026-10-18T03:32:33), git 254b918, CHAOS_INVOKE=make PARITY=run
+[2026-10-18T08:35:14Z] harness: accounts created from this address today (cap beacon.auth.register-per-ip-per-day=20 by default): 4
+[2026-10-18T08:35:15Z] harness: === scenario dup-publish: start 2026-10-18T08:35:15Z, stream job 79dec750246e541eacff6058e99fd7a0, stream-dlq.v1 records before: 0 ===
+[2026-10-18T08:35:16Z] dup-publish: user synthetic_chaos_dup_454f06 id=01a14e26-9e55-735f-845b-9c0028b1b815 consent recorded, preferences set, 20 routes
+[2026-10-18T08:35:16Z] dup-publish: POST /v1/me/attempts -> 201 attempt_id=01a14e26-9f6b-7dfd-9ed6-7d3be8d3ebb3 occurred_at=2026-10-18T08:35:16.456Z sent=true requests=1
+[2026-10-18T08:35:16Z] dup-publish: POST /v1/me/attempts -> 201 attempt_id=01a14e26-9fe5-7bcf-a2db-ab7f1da93c34 occurred_at=2026-10-18T08:35:16.577Z sent=false requests=1
+[2026-10-18T08:35:16Z] dup-publish: POST /v1/me/attempts -> 201 attempt_id=01a14e26-a05e-7e4d-98c7-9a4ec471408f occurred_at=2026-10-18T08:35:16.698Z sent=true requests=1
+[2026-10-18T08:35:16Z] dup-publish: POST /v1/me/attempts -> 201 attempt_id=01a14e26-a0da-7f57-a361-ff0168d89eb0 occurred_at=2026-10-18T08:35:16.821Z sent=false requests=1
+[2026-10-18T08:35:17Z] dup-publish: POST /v1/me/attempts -> 201 attempt_id=01a14e26-a156-7a9e-b6b0-8185d55700a8 occurred_at=2026-10-18T08:35:16.948Z sent=true requests=1
+[2026-10-18T08:35:19Z] dup-publish: STREAM row reached checksum eb84dd869f4e.. after 2 s
+[2026-10-18T08:35:19Z] dup-publish: STREAM row: cutoff_w=2026-10-18T08:35:16.948Z checksum=eb84dd869f4e714323f81844659fe9a3db93b08f911a444b20052a3a3d1d6574 partition=2 offset=4 feature_as_of=2026-10-18T08:35:16.948Z aggregates={"sends_7d": 3, "sends_30d": 3, "sends_90d": 3, "attempts_7d": 5, "attempts_30d": 5, "attempts_90d": 5, "last_session_at": "2026-10-18T08:35:16.948Z", "recent_variant_ids": ["syn-route-0059:40", "syn-route-0274:40", "syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19.1, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 3, "attempts": 5}}}
+[2026-10-18T08:35:19Z] dup-publish: wait 'outbox published for 01a14e26-9e55-735f-845b-9c0028b1b815' satisfied after 0 s
+[2026-10-18T08:35:19Z] dup-publish: flink attempts_stale_revision before re-publish: 0
+[2026-10-18T08:35:31Z] dup-publish: attempts.v1 records keyed by the user before re-publish: 5
+[2026-10-18T08:35:31Z] dup-publish: re-publishing 3 outbox rows: UPDATE attempt_event_outbox SET published_at = NULL WHERE aggregate_id IN ('01a14e26-9f6b-7dfd-9ed6-7d3be8d3ebb3','01a14e26-9fe5-7bcf-a2db-ab7f1da93c34','01a14e26-a05e-7e4d-98c7-9a4ec471408f')
+[2026-10-18T08:35:32Z] dup-publish: ASSERT PASS outbox rows reset: 3
+[2026-10-18T08:35:33Z] dup-publish: wait 'the 3 rows published again' satisfied after 1 s
+  outbox row: 01a14e26-9f6c-74f5-ae5b-e7d5ee6d3273|01a14e26-9f6b-7dfd-9ed6-7d3be8d3ebb3|1|08:35:32.523
+  outbox row: 01a14e26-9fe6-7cf2-bb95-e6706ee93ca7|01a14e26-9fe5-7bcf-a2db-ab7f1da93c34|1|08:35:32.523
+  outbox row: 01a14e26-a05f-73ac-98c8-57f16f5cffb5|01a14e26-a05e-7e4d-98c7-9a4ec471408f|1|08:35:32.523
+[2026-10-18T08:35:47Z] dup-publish: wait 'beacon-stream (Flink) lag 0' satisfied after 14 s
+[2026-10-18T08:35:48Z] dup-publish: wait 'beacon-materializer lag 0' satisfied after 1 s
+[2026-10-18T08:36:00Z] dup-publish: ASSERT PASS attempts.v1 records for the user after re-publish (5 + 3 duplicates): 8
+[2026-10-18T08:36:00Z] dup-publish: ASSERT PASS flink attempts_stale_revision delta (duplicates ignored by the operator): 3 >= 3
+[2026-10-18T08:36:00Z] dup-publish: ASSERT PASS STREAM row unchanged by the duplicates (cutoff_w|checksum|partition|offset): 2026-10-18T08:35:16.948Z|eb84dd869f4e714323f81844659fe9a3db93b08f911a444b20052a3a3d1d6574|2|4
+[2026-10-18T08:36:00Z] dup-publish: STREAM row: cutoff_w=2026-10-18T08:35:16.948Z checksum=eb84dd869f4e714323f81844659fe9a3db93b08f911a444b20052a3a3d1d6574 partition=2 offset=4 feature_as_of=2026-10-18T08:35:16.948Z aggregates={"sends_7d": 3, "sends_30d": 3, "sends_90d": 3, "attempts_7d": 5, "attempts_30d": 5, "attempts_90d": 5, "last_session_at": "2026-10-18T08:35:16.948Z", "recent_variant_ids": ["syn-route-0059:40", "syn-route-0274:40", "syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19.1, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 3, "attempts": 5}}}
+[2026-10-18T08:36:00Z] dup-publish: result written to /var/folders/th/3b9mvgfs2tz3vgxmn890jdb00000gn/T//beacon-chaos.UGzO9L/dup-publish.result: user=01a14e26-9e55-735f-845b-9c0028b1b815 active=5 last_occurred_at=2026-10-18T08:35:16.948Z parity=zero dlq_growth=0
+[2026-10-18T08:36:00Z] dup-publish: --- harness: convergence ---
+[2026-10-18T08:36:00Z] dup-publish: converge: waiting (<= 120 s) for user 01a14e26-9e55-735f-845b-9c0028b1b815 through occurred_at >= 2026-10-18T08:35:16.948Z
+[2026-10-18T08:36:03Z] dup-publish: converge: ok after 3 s
+[2026-10-18T08:36:03Z] dup-publish: STREAM row: cutoff_w=2026-10-18T08:35:16.948Z checksum=eb84dd869f4e714323f81844659fe9a3db93b08f911a444b20052a3a3d1d6574 partition=2 offset=4 feature_as_of=2026-10-18T08:35:16.948Z aggregates={"sends_7d": 3, "sends_30d": 3, "sends_90d": 3, "attempts_7d": 5, "attempts_30d": 5, "attempts_90d": 5, "last_session_at": "2026-10-18T08:35:16.948Z", "recent_variant_ids": ["syn-route-0059:40", "syn-route-0274:40", "syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19.1, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 3, "attempts": 5}}}
+[2026-10-18T08:36:03Z] dup-publish: --- harness: parity oracle (mode zero) ---
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 454ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/parity/parity.sh --user 01a14e26-9e55-735f-845b-9c0028b1b815 --out /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-dup-publish.json
+03:36:05.541  INFO ParityService - parity outcome=RAN users=1 compared=1 equal=1 diffs=0 same_w_mismatch=0
+parity summary users=1 with_stream_row=1 compared=1 equal=1 diffs=0 same_w_mismatch=0 skipped_no_stream_row=0 synthetic_only=true out=/Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-dup-publish.json
+[2026-10-18T08:36:05Z] dup-publish: parity report /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-dup-publish.json: status=EQUAL diff_keys=- checksum_differs=false (exit 0)
+[2026-10-18T08:36:05Z] dup-publish: ASSERT PASS parity: exit 0, status EQUAL
+[2026-10-18T08:36:05Z] dup-publish: --- harness: no canonical attempt lost ---
+[2026-10-18T08:36:05Z] dup-publish: ASSERT PASS ACTIVE attempts: 5 == 5
+[2026-10-18T08:36:06Z] dup-publish: ASSERT PASS every expected attempt row present at its final revision/status (5 rows checked)
+[2026-10-18T08:36:06Z] dup-publish: --- harness: DLQ growth ---
+[2026-10-18T08:36:07Z] dup-publish: ASSERT PASS stream-dlq.v1 growth: 0 == 0 (0 -> 0)
+[2026-10-18T08:36:07Z] dup-publish: === scenario dup-publish: PASS in 52 s ===
+[2026-10-18T08:36:07Z] harness: scenario dup-publish PASS
+[2026-10-18T08:36:08Z] harness: === scenario late-2h-inside-window: start 2026-10-18T08:36:08Z, stream job 79dec750246e541eacff6058e99fd7a0, stream-dlq.v1 records before: 0 ===
+[2026-10-18T08:36:08Z] late-2h-inside-window: user synthetic_chaos_late2h_0525b9 id=01a14e27-6b99-792e-825a-1c8ae0f0e4f7 consent recorded, preferences set, 20 routes
+[2026-10-18T08:36:09Z] late-2h-inside-window: POST /v1/me/attempts -> 201 attempt_id=01a14e27-6ca4-7773-bf73-5227f5fbedd6 occurred_at=2026-10-18T08:36:08.992Z sent=true requests=1
+[2026-10-18T08:36:09Z] late-2h-inside-window: POST /v1/me/attempts -> 201 attempt_id=01a14e27-6d1d-7442-a28a-4c32653f58b9 occurred_at=2026-10-18T08:36:09.113Z sent=true requests=1
+[2026-10-18T08:36:09Z] late-2h-inside-window: POST /v1/me/attempts -> 201 attempt_id=01a14e27-6d99-7852-92d5-cee0be17b36a occurred_at=2026-10-18T08:36:09.234Z sent=true requests=1
+[2026-10-18T08:36:09Z] late-2h-inside-window: STREAM row reached checksum c1b65db98af5.. after 0 s
+[2026-10-18T08:36:09Z] late-2h-inside-window: STREAM row: cutoff_w=2026-10-18T08:36:09.234Z checksum=c1b65db98af5d466370fceb78fca1ba99f99c50cbc6f3c7367815d8e73d0c20b partition=4 offset=2 feature_as_of=2026-10-18T08:36:09.234Z aggregates={"sends_7d": 3, "sends_30d": 3, "sends_90d": 3, "attempts_7d": 3, "attempts_30d": 3, "attempts_90d": 3, "last_session_at": "2026-10-18T08:36:09.234Z", "recent_variant_ids": ["syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 18.9, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 3, "attempts": 3}}}
+[2026-10-18T08:36:09Z] late-2h-inside-window: posting an attempt 2 h in the past: occurred_at=2026-10-18T06:36:09.672Z (watermark ~ 2026-10-18T08:36:09.234Z - 24 h, late threshold = watermark - 24 h, so this is inside the window)
+[2026-10-18T08:36:09Z] late-2h-inside-window: POST /v1/me/attempts -> 201 attempt_id=01a14e27-6f7b-778d-880f-71508173dcc3 occurred_at=2026-10-18T06:36:09.672Z sent=true requests=1
+[2026-10-18T08:36:09Z] late-2h-inside-window: STREAM row reached checksum 891867442ed6.. after 0 s
+[2026-10-18T08:36:10Z] late-2h-inside-window: ASSERT PASS STREAM cutoff_w == the late event's occurred_at (W = max(watermark, occurred_at)): t
+[2026-10-18T08:36:10Z] late-2h-inside-window: ASSERT PASS STREAM row at W = now-2h includes only the late attempt (checksum == sha256('01a14e27-6f7b-778d-880f-71508173dcc3:1')): 891867442ed65ae7a3e18340ba49891d3bd5db2be395ff9672919c2617e4e4c5
+[2026-10-18T08:36:10Z] late-2h-inside-window: ASSERT PASS aggregates.attempts_90d at W = now-2h: 1
+[2026-10-18T08:36:10Z] late-2h-inside-window: STREAM row: cutoff_w=2026-10-18T06:36:09.672Z checksum=891867442ed65ae7a3e18340ba49891d3bd5db2be395ff9672919c2617e4e4c5 partition=4 offset=3 feature_as_of=2026-10-18T06:36:09.672Z aggregates={"sends_7d": 1, "sends_30d": 1, "sends_90d": 1, "attempts_7d": 1, "attempts_30d": 1, "attempts_90d": 1, "last_session_at": "2026-10-18T06:36:09.672Z", "recent_variant_ids": ["syn-route-0274:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 1, "attempts": 1}}}
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 316ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/parity/parity.sh --user 01a14e27-6b99-792e-825a-1c8ae0f0e4f7 --out /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-2h-inside-window-at-late-W.json
+03:36:12.314  INFO ParityService - parity outcome=RAN users=1 compared=1 equal=1 diffs=0 same_w_mismatch=0
+parity summary users=1 with_stream_row=1 compared=1 equal=1 diffs=0 same_w_mismatch=0 skipped_no_stream_row=0 synthetic_only=true out=/Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-2h-inside-window-at-late-W.json
+[2026-10-18T08:36:12Z] late-2h-inside-window: parity report /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-2h-inside-window-at-late-W.json: status=EQUAL diff_keys=- checksum_differs=false (exit 0)
+[2026-10-18T08:36:12Z] late-2h-inside-window: ASSERT PASS parity EQUAL at the regressed W = now-2h
+[2026-10-18T08:36:12Z] late-2h-inside-window: POST /v1/me/attempts -> 201 attempt_id=01a14e27-7a85-7a39-8343-4863b33ab0e3 occurred_at=2026-10-18T08:36:12.541Z sent=false requests=1
+[2026-10-18T08:36:14Z] late-2h-inside-window: STREAM row reached checksum 76348bb37c5b.. after 2 s
+[2026-10-18T08:36:15Z] late-2h-inside-window: ASSERT PASS aggregates.attempts_90d once W moved past every attempt: 5
+[2026-10-18T08:36:15Z] late-2h-inside-window: ASSERT PASS reconciliation_events rows for the user (a 2 h event is inside the window): 0
+[2026-10-18T08:36:15Z] late-2h-inside-window: STREAM row: cutoff_w=2026-10-18T08:36:12.541Z checksum=76348bb37c5b228e6708ba3dfd0d61f4df6567519d2aa0f4f3dd988d9fbc400a partition=4 offset=4 feature_as_of=2026-10-18T08:36:12.541Z aggregates={"sends_7d": 4, "sends_30d": 4, "sends_90d": 4, "attempts_7d": 5, "attempts_30d": 5, "attempts_90d": 5, "last_session_at": "2026-10-18T08:36:12.541Z", "recent_variant_ids": ["syn-route-0059:40", "syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40", "syn-route-0274:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 4, "attempts": 5}}}
+[2026-10-18T08:36:15Z] late-2h-inside-window: result written to /var/folders/th/3b9mvgfs2tz3vgxmn890jdb00000gn/T//beacon-chaos.UGzO9L/late-2h-inside-window.result: user=01a14e27-6b99-792e-825a-1c8ae0f0e4f7 active=5 last_occurred_at=2026-10-18T08:36:12.541Z parity=zero dlq_growth=0
+[2026-10-18T08:36:15Z] late-2h-inside-window: --- harness: convergence ---
+[2026-10-18T08:36:15Z] late-2h-inside-window: converge: waiting (<= 120 s) for user 01a14e27-6b99-792e-825a-1c8ae0f0e4f7 through occurred_at >= 2026-10-18T08:36:12.541Z
+[2026-10-18T08:36:26Z] late-2h-inside-window: converge: ok after 11 s
+[2026-10-18T08:36:26Z] late-2h-inside-window: STREAM row: cutoff_w=2026-10-18T08:36:12.541Z checksum=76348bb37c5b228e6708ba3dfd0d61f4df6567519d2aa0f4f3dd988d9fbc400a partition=4 offset=4 feature_as_of=2026-10-18T08:36:12.541Z aggregates={"sends_7d": 4, "sends_30d": 4, "sends_90d": 4, "attempts_7d": 5, "attempts_30d": 5, "attempts_90d": 5, "last_session_at": "2026-10-18T08:36:12.541Z", "recent_variant_ids": ["syn-route-0059:40", "syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40", "syn-route-0274:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 4, "attempts": 5}}}
+[2026-10-18T08:36:26Z] late-2h-inside-window: --- harness: parity oracle (mode zero) ---
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 299ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/parity/parity.sh --user 01a14e27-6b99-792e-825a-1c8ae0f0e4f7 --out /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-2h-inside-window.json
+03:36:28.650  INFO ParityService - parity outcome=RAN users=1 compared=1 equal=1 diffs=0 same_w_mismatch=0
+parity summary users=1 with_stream_row=1 compared=1 equal=1 diffs=0 same_w_mismatch=0 skipped_no_stream_row=0 synthetic_only=true out=/Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-2h-inside-window.json
+[2026-10-18T08:36:28Z] late-2h-inside-window: parity report /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-2h-inside-window.json: status=EQUAL diff_keys=- checksum_differs=false (exit 0)
+[2026-10-18T08:36:28Z] late-2h-inside-window: ASSERT PASS parity: exit 0, status EQUAL
+[2026-10-18T08:36:28Z] late-2h-inside-window: --- harness: no canonical attempt lost ---
+[2026-10-18T08:36:28Z] late-2h-inside-window: ASSERT PASS ACTIVE attempts: 5 == 5
+[2026-10-18T08:36:29Z] late-2h-inside-window: ASSERT PASS every expected attempt row present at its final revision/status (5 rows checked)
+[2026-10-18T08:36:29Z] late-2h-inside-window: --- harness: DLQ growth ---
+[2026-10-18T08:36:30Z] late-2h-inside-window: ASSERT PASS stream-dlq.v1 growth: 0 == 0 (0 -> 0)
+[2026-10-18T08:36:30Z] late-2h-inside-window: === scenario late-2h-inside-window: PASS in 22 s ===
+[2026-10-18T08:36:30Z] harness: scenario late-2h-inside-window PASS
+[2026-10-18T08:36:31Z] harness: === scenario late-3d-reconciliation: start 2026-10-18T08:36:31Z, stream job 79dec750246e541eacff6058e99fd7a0, stream-dlq.v1 records before: 0 ===
+[2026-10-18T08:36:32Z] late-3d-reconciliation: user synthetic_chaos_late3d_896524 id=01a14e27-c597-74cd-90db-70d35affcfac consent recorded, preferences set, 20 routes
+[2026-10-18T08:36:32Z] late-3d-reconciliation: POST /v1/me/attempts -> 201 attempt_id=01a14e27-c6b0-7a7e-b5e8-04a3c544b7ea occurred_at=2026-10-18T08:36:32.045Z sent=true requests=1
+[2026-10-18T08:36:32Z] late-3d-reconciliation: POST /v1/me/attempts -> 201 attempt_id=01a14e27-c728-74e7-95a3-27927fb522ef occurred_at=2026-10-18T08:36:32.166Z sent=false requests=1
+[2026-10-18T08:36:34Z] late-3d-reconciliation: STREAM row reached checksum 0ce37b235b3d.. after 2 s
+[2026-10-18T08:36:34Z] late-3d-reconciliation: STREAM row: cutoff_w=2026-10-18T08:36:32.166Z checksum=0ce37b235b3dc435ffe882f381942781d123286e6736539b5794bdc034e49d13 partition=3 offset=3 feature_as_of=2026-10-18T08:36:32.166Z aggregates={"sends_7d": 1, "sends_30d": 1, "sends_90d": 1, "attempts_7d": 2, "attempts_30d": 2, "attempts_90d": 2, "last_session_at": "2026-10-18T08:36:32.166Z", "recent_variant_ids": ["syn-route-0121:40", "syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 18.2, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 1, "attempts": 2}}}
+[2026-10-18T08:36:34Z] late-3d-reconciliation: posting an attempt 3 d in the past: occurred_at=2026-10-15T08:36:34.789Z (beyond watermark - 24 h)
+[2026-10-18T08:36:34Z] late-3d-reconciliation: POST /v1/me/attempts -> 201 attempt_id=01a14e27-d195-7185-8393-fb100a10e92c occurred_at=2026-10-15T08:36:34.789Z sent=true requests=1
+[2026-10-18T08:36:37Z] late-3d-reconciliation: wait 'reconciliation_events row for 01a14e27-d195-7185-8393-fb100a10e92c revision 1' satisfied after 3 s
+  reconciliation row (id|attempt|rev|type|reason|resolution|resolved): 01a14e27-d285-70c6-b888-c5bcfeb1ee96|01a14e27-d195-7185-8393-fb100a10e92c|1|ATTEMPT_RECORDED|LATE_BEYOND_WINDOW|OPEN|f
+[2026-10-18T08:36:37Z] late-3d-reconciliation: ASSERT PASS reconciliation row reason: LATE_BEYOND_WINDOW
+[2026-10-18T08:36:37Z] late-3d-reconciliation: ASSERT PASS reconciliation row open before reconcile: f
+[2026-10-18T08:36:37Z] late-3d-reconciliation: ASSERT PASS STREAM row unchanged by the late event (cutoff_w|checksum|offset): 2026-10-18T08:36:32.166Z|0ce37b235b3dc435ffe882f381942781d123286e6736539b5794bdc034e49d13|3
+[2026-10-18T08:36:37Z] late-3d-reconciliation: ASSERT PASS batch at W=T2 WITHOUT the late attempt == STREAM checksum: 0ce37b235b3dc435ffe882f381942781d123286e6736539b5794bdc034e49d13
+[2026-10-18T08:36:37Z] late-3d-reconciliation: ASSERT PASS batch at W=T2 WITH the late attempt differs from the STREAM checksum (the expected DIFF is exactly 01a14e27-d195-7185-8393-fb100a10e92c): 'f50e0ab65db5718095bca79406a0867bb148bfc984a92e689f732a5903dca4bb' != '0ce37b235b3dc435ffe882f381942781d123286e6736539b5794bdc034e49d13'
+[2026-10-18T08:36:37Z] late-3d-reconciliation: ASSERT PASS SYNC row (attempts hook) already includes all 3: f50e0ab65db5718095bca79406a0867bb148bfc984a92e689f732a5903dca4bb
+[2026-10-18T08:36:38Z] late-3d-reconciliation: SYNC row: cutoff_w=2026-10-18T08:36:34.838Z checksum=f50e0ab65db5718095bca79406a0867bb148bfc984a92e689f732a5903dca4bb feature_as_of=2026-10-18T08:36:32.166Z aggregates={"sends_7d": 2, "sends_30d": 2, "sends_90d": 2, "attempts_7d": 3, "attempts_30d": 3, "attempts_90d": 3, "last_session_at": "2026-10-18T08:36:32.166Z", "recent_variant_ids": ["syn-route-0121:40", "syn-route-0164:40", "syn-route-0046:40"], "distinct_sessions_30d": 2, "max_sent_grade_numeric_90d": 18.9, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 2, "attempts": 3}}}
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 293ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/parity/parity.sh --user 01a14e27-c597-74cd-90db-70d35affcfac --out /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-3d-reconciliation-before-reconcile.json
+03:36:39.830  INFO ParityService - parity outcome=RAN users=1 compared=1 equal=0 diffs=1 same_w_mismatch=0
+parity summary users=1 with_stream_row=1 compared=1 equal=0 diffs=1 same_w_mismatch=0 skipped_no_stream_row=0 synthetic_only=true out=/Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-3d-reconciliation-before-reconcile.json
+make[1]: *** [test-parity] Error 1
+[2026-10-18T08:36:40Z] late-3d-reconciliation: parity report /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-3d-reconciliation-before-reconcile.json: status=DIFF diff_keys=attempts_30d,attempts_7d,attempts_90d,distinct_sessions_30d,max_sent_grade_numeric_90d,recent_variant_ids,send_rate_by_grade_band_90d,sends_30d,sends_7d,sends_90d checksum_differs=true (exit 2)
+[2026-10-18T08:36:40Z] late-3d-reconciliation: FAIL: parity before reconcile: expected exit 1/DIFF/checksum_differs, got exit 2 status DIFF checksum_differs=true
+[2026-10-18T08:36:40Z] harness: FAIL: scenario script scripts/chaos/late-3d-reconciliation.sh exited non-zero
+[2026-10-18T08:36:40Z] harness: scenario late-3d-reconciliation FAIL
+[2026-10-18T08:36:41Z] harness: === scenario correction-then-retraction: start 2026-10-18T08:36:41Z, stream job 79dec750246e541eacff6058e99fd7a0, stream-dlq.v1 records before: 0 ===
+[2026-10-18T08:36:41Z] correction-then-retraction: user synthetic_chaos_corr_21b855 id=01a14e27-eacf-78a1-8e07-0179fbd3274d consent recorded, preferences set, 20 routes
+[2026-10-18T08:36:41Z] correction-then-retraction: POST /v1/me/attempts -> 201 attempt_id=01a14e27-ebe7-7ac3-9e73-15f1af875ec7 occurred_at=2026-10-18T08:36:41.571Z sent=true requests=1
+[2026-10-18T08:36:44Z] correction-then-retraction: STREAM row reached checksum 7283e20c14e2.. after 3 s
+[2026-10-18T08:36:44Z] correction-then-retraction: STREAM row: cutoff_w=2026-10-18T08:36:41.571Z checksum=7283e20c14e220f32943a992c24f149e638bda4c355ac2fcc8fd5949f12afaf5 partition=1 offset=0 feature_as_of=2026-10-18T08:36:41.571Z aggregates={"sends_7d": 1, "sends_30d": 1, "sends_90d": 1, "attempts_7d": 1, "attempts_30d": 1, "attempts_90d": 1, "last_session_at": "2026-10-18T08:36:41.571Z", "recent_variant_ids": ["syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 18.2, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 1, "attempts": 1}}}
+[2026-10-18T08:36:44Z] correction-then-retraction: PATCH /v1/me/attempts/01a14e27-ebe7-7ac3-9e73-15f1af875ec7 If-Match "1" {"sent": false} -> 200 revision=2 status=ACTIVE
+[2026-10-18T08:36:44Z] correction-then-retraction: ASSERT PASS revision after correction: 2
+[2026-10-18T08:36:46Z] correction-then-retraction: STREAM row reached checksum 3293bb00305f.. after 2 s
+[2026-10-18T08:36:46Z] correction-then-retraction: ASSERT PASS sends_90d after sent=false: 0
+[2026-10-18T08:36:46Z] correction-then-retraction: STREAM row: cutoff_w=2026-10-18T08:36:41.571Z checksum=3293bb00305f39ba11442b3ef045684afa4edba2eabfb05fe90296136b04d3d9 partition=1 offset=1 feature_as_of=2026-10-18T08:36:41.571Z aggregates={"sends_7d": 0, "sends_30d": 0, "sends_90d": 0, "attempts_7d": 1, "attempts_30d": 1, "attempts_90d": 1, "last_session_at": "2026-10-18T08:36:41.571Z", "recent_variant_ids": ["syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": null, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 0, "attempts": 1}}}
+[2026-10-18T08:36:46Z] correction-then-retraction: PATCH /v1/me/attempts/01a14e27-ebe7-7ac3-9e73-15f1af875ec7 If-Match "2" {"retract": true} -> 200 revision=3 status=RETRACTED
+[2026-10-18T08:36:46Z] correction-then-retraction: ASSERT PASS revision after retraction: 3
+[2026-10-18T08:36:49Z] correction-then-retraction: STREAM row reached checksum e3b0c44298fc.. after 3 s
+[2026-10-18T08:36:49Z] correction-then-retraction: ASSERT PASS STREAM cutoff_w == the attempt's occurred_at: t
+[2026-10-18T08:36:49Z] correction-then-retraction: ASSERT PASS STREAM attempts_90d after retraction: 0
+[2026-10-18T08:36:49Z] correction-then-retraction: ASSERT PASS STREAM last_session_at after retraction: null
+[2026-10-18T08:36:49Z] correction-then-retraction: ASSERT PASS STREAM recent_variant_ids after retraction: []
+[2026-10-18T08:36:49Z] correction-then-retraction: ASSERT PASS STREAM feature_as_of == source_watermark for the empty set: 2026-10-18T08:36:41.571Z
+[2026-10-18T08:36:49Z] correction-then-retraction: ASSERT PASS SYNC feature_as_of null for the empty set: null
+[2026-10-18T08:36:49Z] correction-then-retraction: ASSERT PASS SYNC checksum == empty-set checksum: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+[2026-10-18T08:36:49Z] correction-then-retraction: ASSERT PASS attempt row revision:status: 3:RETRACTED
+[2026-10-18T08:36:49Z] correction-then-retraction: STREAM row: cutoff_w=2026-10-18T08:36:41.571Z checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 partition=1 offset=2 feature_as_of=2026-10-18T08:36:41.571Z aggregates={"sends_7d": 0, "sends_30d": 0, "sends_90d": 0, "attempts_7d": 0, "attempts_30d": 0, "attempts_90d": 0, "last_session_at": null, "recent_variant_ids": [], "distinct_sessions_30d": 0, "max_sent_grade_numeric_90d": null, "send_rate_by_grade_band_90d": {}}
+[2026-10-18T08:36:49Z] correction-then-retraction: SYNC row: cutoff_w=2026-10-18T08:36:46.834Z checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 feature_as_of=null aggregates={"sends_7d": 0, "sends_30d": 0, "sends_90d": 0, "attempts_7d": 0, "attempts_30d": 0, "attempts_90d": 0, "last_session_at": null, "recent_variant_ids": [], "distinct_sessions_30d": 0, "max_sent_grade_numeric_90d": null, "send_rate_by_grade_band_90d": {}}
+[2026-10-18T08:36:49Z] correction-then-retraction: result written to /var/folders/th/3b9mvgfs2tz3vgxmn890jdb00000gn/T//beacon-chaos.UGzO9L/correction-then-retraction.result: user=01a14e27-eacf-78a1-8e07-0179fbd3274d active=0 last_occurred_at=2026-10-18T08:36:41.571Z parity=zero dlq_growth=0
+[2026-10-18T08:36:50Z] correction-then-retraction: --- harness: convergence ---
+[2026-10-18T08:36:50Z] correction-then-retraction: converge: waiting (<= 120 s) for user 01a14e27-eacf-78a1-8e07-0179fbd3274d through occurred_at >= 2026-10-18T08:36:41.571Z
+[2026-10-18T08:36:52Z] correction-then-retraction: converge: ok after 2 s
+[2026-10-18T08:36:52Z] correction-then-retraction: STREAM row: cutoff_w=2026-10-18T08:36:41.571Z checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 partition=1 offset=2 feature_as_of=2026-10-18T08:36:41.571Z aggregates={"sends_7d": 0, "sends_30d": 0, "sends_90d": 0, "attempts_7d": 0, "attempts_30d": 0, "attempts_90d": 0, "last_session_at": null, "recent_variant_ids": [], "distinct_sessions_30d": 0, "max_sent_grade_numeric_90d": null, "send_rate_by_grade_band_90d": {}}
+[2026-10-18T08:36:52Z] correction-then-retraction: --- harness: parity oracle (mode zero) ---
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 414ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/parity/parity.sh --user 01a14e27-eacf-78a1-8e07-0179fbd3274d --out /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-correction-then-retraction.json
+03:36:54.789  INFO ParityService - parity outcome=RAN users=1 compared=1 equal=1 diffs=0 same_w_mismatch=0
+parity summary users=1 with_stream_row=1 compared=1 equal=1 diffs=0 same_w_mismatch=0 skipped_no_stream_row=0 synthetic_only=true out=/Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-correction-then-retraction.json
+[2026-10-18T08:36:54Z] correction-then-retraction: parity report /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-correction-then-retraction.json: status=EQUAL diff_keys=- checksum_differs=false (exit 0)
+[2026-10-18T08:36:54Z] correction-then-retraction: ASSERT PASS parity: exit 0, status EQUAL
+[2026-10-18T08:36:54Z] correction-then-retraction: --- harness: no canonical attempt lost ---
+[2026-10-18T08:36:55Z] correction-then-retraction: ASSERT PASS ACTIVE attempts: 0 == 0
+[2026-10-18T08:36:55Z] correction-then-retraction: ASSERT PASS every expected attempt row present at its final revision/status (1 rows checked)
+[2026-10-18T08:36:55Z] correction-then-retraction: --- harness: DLQ growth ---
+[2026-10-18T08:36:56Z] correction-then-retraction: ASSERT PASS stream-dlq.v1 growth: 0 == 0 (0 -> 0)
+[2026-10-18T08:36:56Z] correction-then-retraction: === scenario correction-then-retraction: PASS in 15 s ===
+[2026-10-18T08:36:56Z] harness: scenario correction-then-retraction PASS
+[2026-10-18T08:36:57Z] harness: === scenario api-sigkill-during-burst: start 2026-10-18T08:36:57Z, stream job 79dec750246e541eacff6058e99fd7a0, stream-dlq.v1 records before: 0 ===
+[2026-10-18T08:36:57Z] api-sigkill-during-burst: user synthetic_chaos_killburst_4accdf id=01a14e28-29f9-7cf8-934b-d89cbdcb1c85 consent recorded, preferences set, 20 routes
+[2026-10-18T08:36:57Z] api-sigkill-during-burst: starting a burst of 50 attempts in the background (retry deadline 150 s per key)
+[2026-10-18T08:36:58Z] api-sigkill-during-burst: docker compose kill -s SIGKILL api at 2026-10-18T08:36:58Z (burst rows written so far: 50)
+ Container compose-api-1 Killing 
+ Container compose-api-1 Killed 
+[2026-10-18T08:36:58Z] api-sigkill-during-burst: api killed; docker compose up -d --wait api
+ Container compose-postgres-1 Running 
+ Container compose-kafka-1 Running 
+ Container compose-decisions-init-1 Starting 
+ Container compose-postgres-1 Waiting 
+ Container compose-kafka-1 Waiting 
+ Container compose-decisions-init-1 Started 
+ Container compose-kafka-1 Healthy 
+ Container compose-postgres-1 Healthy 
+ Container compose-kafka-init-1 Starting 
+ Container compose-migrate-1 Starting 
+ Container compose-kafka-init-1 Started 
+ Container compose-migrate-1 Started 
+ Container compose-kafka-init-1 Waiting 
+ Container compose-postgres-1 Waiting 
+ Container compose-migrate-1 Waiting 
+ Container compose-decisions-init-1 Waiting 
+ Container compose-decisions-init-1 Exited 
+ Container compose-postgres-1 Healthy 
+ Container compose-migrate-1 Exited 
+ Container compose-kafka-init-1 Exited 
+ Container compose-api-1 Starting 
+ Container compose-api-1 Started 
+ Container compose-postgres-1 Waiting 
+ Container compose-kafka-init-1 Waiting 
+ Container compose-migrate-1 Waiting 
+ Container compose-kafka-1 Waiting 
+ Container compose-api-1 Waiting 
+ Container compose-decisions-init-1 Waiting 
+ Container compose-kafka-init-1 Exited 
+ Container compose-migrate-1 Exited 
+ Container compose-decisions-init-1 Exited 
+ Container compose-kafka-1 Healthy 
+ Container compose-postgres-1 Healthy 
+ Container compose-api-1 Healthy 
+[2026-10-18T08:37:12Z] api-sigkill-during-burst: api healthy again after 14 s
+[2026-10-18T08:37:12Z] api-sigkill-during-burst: burst summary: {"attempt_ids": ["01a14e28-2b23-7c38-8700-ddc46d226f67", "01a14e28-2b26-7e9e-8b6f-38c15ff35fa6", "01a14e28-2b2a-7ae2-a074-afa169f87092", "01a14e28-2b2c-7365-b942-bd6fa162d175", "01a14e28-2b2f-7c46-894b-b65e55263e7c", "01a14e28-2b32-723e-af87-80a9d8f05fa6", "01a14e28-2b35-7123-b4e7-80186c9803a9", "01a14e28-2b38-79d3-a7ae-d556335aa7ed", "01a14e28-2b3b-7e52-bf44-59f352c0830e", "01a14e28-2b3e-748e-958f-33e4a28ca652", "01a14e28-2b41-7278-945a-23d5a84e411a", "01a14e28-2b45-7a08-bb1a-769bd2bb87bb", "01a14e28-2b4e-7d2f-adf0-6d0b657ec580", "01a14e28-2b51-78c9-b698-4342a46d9e68", "01a14e28-2b54-73b8-8f52-5fda3c6cee1e", "01a14e28-2b56-704f-8f3d-960a9825a56e", "01a14e28-2b59-746f-9e5f-643037dd7515", "01a14e28-2b5c-7683-a933-998a19f60db6", "01a14e28-2b5f-74ff-8eb5-144b6ad6f32d", "01a14e28-2b62-7fc5-b562-d5a7aa86b2ba", "01a14e28-2b64-7ad2-ae82-c02b3a08a5c0", "01a14e28-2b67-7fdb-91dd-490289dfba1c", "01a14e28-2b69-72e7-a294-25a17fb17084", "01a14e28-2b6c-72d6-8acd-d1a7a683b86c", "01a14e28-2b6e-7bed-988d-840f1aff1182", "01a14e28-2b71-721f-b5cc-3afc8db3b224", "01a14e28-2b73-7a56-9879-af032af1b108", "01a14e28-2b76-7601-a877-8fbd91f89eaf", "01a14e28-2b78-70ad-a66d-c1716e0d70c0", "01a14e28-2b7b-7024-a199-d662804bea6e", "01a14e28-2b7d-7888-9bbf-679a5cd04a92", "01a14e28-2b80-72ba-86de-bd411aef42a3", "01a14e28-2b82-755a-b8ef-202adcb73fd9", "01a14e28-2b84-722a-a40b-438be8bde5ce", "01a14e28-2b87-702b-9117-6e995386eda1", "01a14e28-2b89-752c-86db-3b95bd8b4eb7", "01a14e28-2b8c-703c-bfc7-dc03ededcd39", "01a14e28-2b8f-776e-acb5-d1c638f5fb24", "01a14e28-2b92-7160-84bf-c12fe4e82e09", "01a14e28-2b95-7cf0-8027-7683e8a45f19", "01a14e28-2b97-736d-9694-30a7894440e2", "01a14e28-2b9a-7405-93e3-d7c981bf7509", "01a14e28-2b9c-7d65-b38b-d1289f1c5e27", "01a14e28-2b9e-70ae-8456-8398cb30f4ed", "01a14e28-2ba0-776f-a4d8-10c521e3f67b", "01a14e28-2ba4-7496-8f8f-d3ad649ce61e", "01a14e28-2ba7-7c0c-9254-738f6e800514", "01a14e28-2baa-7294-83be-a9fe0f5e4830", "01a14e28-2bac-772a-9b7f-5149c9922acc", "01a14e28-2baf-73a3-9dbf-9ebfc4d5fc23"], "connection_errors": 0, "count": 50, "distinct_keys": 50, "failed": 0, "finished_at": "2026-10-18T08:36:57.905Z", "first_error_at": null, "keys_retried": 0, "last_error_at": null, "ok_200_replay": 0, "ok_201": 50, "out": "/var/folders/th/3b9mvgfs2tz3vgxmn890jdb00000gn/T//beacon-chaos.UGzO9L/burst-during.jsonl", "started_at": "2026-10-18T08:36:57.760Z"}
+[2026-10-18T08:37:12Z] api-sigkill-during-burst: ASSERT PASS distinct idempotency keys: 50
+[2026-10-18T08:37:12Z] api-sigkill-during-burst: ASSERT PASS keys answered 201 + 200 (replay after a lost response): 50
+[2026-10-18T08:37:12Z] api-sigkill-during-burst: keys retried after a connection error: 0, connection errors: 0, outage seen by the client:  .. , replays (200): 0
+[2026-10-18T08:37:12Z] api-sigkill-during-burst: ASSERT PASS attempt rows for the user == distinct keys: 50
+[2026-10-18T08:37:12Z] api-sigkill-during-burst: ASSERT PASS attempt rows with a distinct idempotency key: 50
+[2026-10-18T08:37:12Z] api-sigkill-during-burst: wait 'outbox backlog drained after the restart' satisfied after 0 s
+[2026-10-18T08:37:12Z] api-sigkill-during-burst: result written to /var/folders/th/3b9mvgfs2tz3vgxmn890jdb00000gn/T//beacon-chaos.UGzO9L/api-sigkill-during-burst.result: user=01a14e28-29f9-7cf8-934b-d89cbdcb1c85 active=50 last_occurred_at=2026-10-18T08:36:57.903Z parity=zero dlq_growth=0
+[2026-10-18T08:37:12Z] api-sigkill-during-burst: --- harness: convergence ---
+[2026-10-18T08:37:12Z] api-sigkill-during-burst: converge: waiting (<= 120 s) for user 01a14e28-29f9-7cf8-934b-d89cbdcb1c85 through occurred_at >= 2026-10-18T08:36:57.903Z
+[2026-10-18T08:37:15Z] api-sigkill-during-burst: converge: ok after 3 s
+[2026-10-18T08:37:15Z] api-sigkill-during-burst: STREAM row: cutoff_w=2026-10-18T08:36:57.903Z checksum=aad60505c97ec52882b03e2a95e4320788df3db9cdeace43a8f7cc5be57a49b1 partition=4 offset=54 feature_as_of=2026-10-18T08:36:57.903Z aggregates={"sends_7d": 25, "sends_30d": 25, "sends_90d": 25, "attempts_7d": 50, "attempts_30d": 50, "attempts_90d": 50, "last_session_at": "2026-10-18T08:36:57.903Z", "recent_variant_ids": ["syn-route-0215:40", "syn-route-0198:40", "syn-route-0049:40", "syn-route-0140:40", "syn-route-0020:40", "syn-route-0059:40", "syn-route-0274:40", "syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40", "syn-route-0174:40", "syn-route-0014:40", "syn-route-0075:40", "syn-route-0004:40", "syn-route-0255:40", "syn-route-0163:40", "syn-route-0210:40", "syn-route-0234:40", "syn-route-0262:40", "syn-route-0221:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19.7, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 25, "attempts": 50}}}
+[2026-10-18T08:37:15Z] api-sigkill-during-burst: --- harness: parity oracle (mode zero) ---
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 395ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/parity/parity.sh --user 01a14e28-29f9-7cf8-934b-d89cbdcb1c85 --out /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-api-sigkill-during-burst.json
+03:37:17.813  INFO ParityService - parity outcome=RAN users=1 compared=1 equal=1 diffs=0 same_w_mismatch=0
+parity summary users=1 with_stream_row=1 compared=1 equal=1 diffs=0 same_w_mismatch=0 skipped_no_stream_row=0 synthetic_only=true out=/Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-api-sigkill-during-burst.json
+[2026-10-18T08:37:17Z] api-sigkill-during-burst: parity report /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-api-sigkill-during-burst.json: status=EQUAL diff_keys=- checksum_differs=false (exit 0)
+[2026-10-18T08:37:17Z] api-sigkill-during-burst: ASSERT PASS parity: exit 0, status EQUAL
+[2026-10-18T08:37:17Z] api-sigkill-during-burst: --- harness: no canonical attempt lost ---
+[2026-10-18T08:37:18Z] api-sigkill-during-burst: ASSERT PASS ACTIVE attempts: 50 == 50
+[2026-10-18T08:37:23Z] api-sigkill-during-burst: ASSERT PASS every expected attempt row present at its final revision/status (50 rows checked)
+[2026-10-18T08:37:23Z] api-sigkill-during-burst: --- harness: DLQ growth ---
+[2026-10-18T08:37:24Z] api-sigkill-during-burst: ASSERT PASS stream-dlq.v1 growth: 0 == 0 (0 -> 0)
+[2026-10-18T08:37:24Z] api-sigkill-during-burst: === scenario api-sigkill-during-burst: PASS in 27 s ===
+[2026-10-18T08:37:24Z] harness: scenario api-sigkill-during-burst PASS
+[2026-10-18T08:37:25Z] harness: === scenario api-sigkill-after-publish: start 2026-10-18T08:37:25Z, stream job 79dec750246e541eacff6058e99fd7a0, stream-dlq.v1 records before: 0 ===
+[2026-10-18T08:37:25Z] api-sigkill-after-publish: user synthetic_chaos_killpub_7b1eff id=01a14e28-977b-7c1c-a155-b99983d3217b consent recorded, preferences set, 20 routes
+[2026-10-18T08:37:26Z] api-sigkill-after-publish: burst summary: {"attempt_ids": ["01a14e28-98ba-7c7e-a8b5-11ded968a458", "01a14e28-98d1-7a40-a907-bfec470a7820", "01a14e28-98d6-7d1f-9de2-53dce672036f", "01a14e28-98dc-7b0e-bf51-19af58cae560", "01a14e28-98e1-7cb8-920e-803f96e5a59f", "01a14e28-98e6-7a3e-abd1-7df1a14a4eda", "01a14e28-98eb-7988-a420-ecf69a59e6bf", "01a14e28-98ef-7a6c-a98d-96ef3189898d", "01a14e28-98f3-7f7a-85dd-d4fde3c65039", "01a14e28-98f7-7229-8a66-a65942f9c20c", "01a14e28-98fb-7f96-a45f-be7f53861292", "01a14e28-98ff-77aa-b0aa-12d73a1aa236", "01a14e28-9903-7703-baf7-c2a892abf68a", "01a14e28-9906-7889-9deb-af67a79a9d18", "01a14e28-990a-7662-9cae-9597a37af77d", "01a14e28-990d-73e8-8d2b-add0fa1820c5", "01a14e28-9911-764b-b781-107957671389", "01a14e28-9914-7804-aa9e-63c5ab5ca807", "01a14e28-9918-7d33-b368-8b38cb6c93a8", "01a14e28-991c-76a8-a0e4-e32d3cd29bb8", "01a14e28-9920-7158-93b7-4c0c3cccb168", "01a14e28-9923-7070-a834-060017c8909d", "01a14e28-9929-75cf-971e-742b090c9ff6", "01a14e28-992c-7481-bbe4-b509b53ef1f3", "01a14e28-9930-7577-bca9-2f80e888fb93", "01a14e28-9933-777c-bf76-943329077b74", "01a14e28-9936-7ad6-98bb-1916993b1ac6", "01a14e28-9939-7f82-a502-d7c9b672039a", "01a14e28-993e-70ec-95b4-9e10c419f893", "01a14e28-9941-7746-a299-31812138c365", "01a14e28-9944-7501-a7ab-a3efedf9e8d4", "01a14e28-9947-7263-a6e1-d7b2c22e3888", "01a14e28-994a-7f70-8927-47d3d2959052", "01a14e28-994e-7f52-90cb-e51914cd465d", "01a14e28-9951-7fc8-a25f-b27ae3553618", "01a14e28-9954-717d-8c26-4f8244597fce", "01a14e28-9956-7802-8a6b-191d0aa57973", "01a14e28-995a-737b-ad9a-3548c58b7ee9", "01a14e28-995c-7d95-b2e2-c68c7dbb7417", "01a14e28-995f-7f0f-9a47-225e61299167", "01a14e28-9962-7102-a590-56f939ef7f30", "01a14e28-9965-7fcb-be15-8c7619e713ca", "01a14e28-9968-7d43-b81f-5da8c167f0b5", "01a14e28-996b-7c74-a448-2d7b7e1adfb3", "01a14e28-996e-711b-9d56-e26698368a72", "01a14e28-9971-744e-ba8c-442bad7f85c4", "01a14e28-9974-7609-aca4-9d851159c912", "01a14e28-9977-71dd-bf1d-aa6bfbde5d20", "01a14e28-997b-7564-9b7f-c4de33fbaa32", "01a14e28-997f-7e12-af90-5f1cd554bd74"], "connection_errors": 0, "count": 50, "distinct_keys": 50, "failed": 0, "finished_at": "2026-10-18T08:37:26.017Z", "first_error_at": null, "keys_retried": 0, "last_error_at": null, "ok_200_replay": 0, "ok_201": 50, "out": "/var/folders/th/3b9mvgfs2tz3vgxmn890jdb00000gn/T//beacon-chaos.UGzO9L/burst-after.jsonl", "started_at": "2026-10-18T08:37:25.811Z"}
+[2026-10-18T08:37:26Z] api-sigkill-after-publish: ASSERT PASS every key answered 201 before the kill: 50
+[2026-10-18T08:37:26Z] api-sigkill-after-publish: polling /prometheus beacon_outbox_backlog_rows until it reads 0, then SIGKILL immediately
+[2026-10-18T08:37:26Z] api-sigkill-after-publish: beacon_outbox_backlog_rows=0 at 2026-10-18T08:37:26Z after 0 s; STREAM row at kill: none
+ Container compose-api-1 Killing 
+ Container compose-api-1 Killed 
+[2026-10-18T08:37:26Z] api-sigkill-after-publish: api SIGKILLed at 2026-10-18T08:37:26Z; docker compose up -d --wait api
+ Container compose-postgres-1 Running 
+ Container compose-kafka-1 Running 
+ Container compose-decisions-init-1 Starting 
+ Container compose-postgres-1 Waiting 
+ Container compose-kafka-1 Waiting 
+ Container compose-decisions-init-1 Started 
+ Container compose-postgres-1 Healthy 
+ Container compose-kafka-1 Healthy 
+ Container compose-migrate-1 Starting 
+ Container compose-kafka-init-1 Starting 
+ Container compose-kafka-init-1 Started 
+ Container compose-migrate-1 Started 
+ Container compose-kafka-init-1 Waiting 
+ Container compose-migrate-1 Waiting 
+ Container compose-decisions-init-1 Waiting 
+ Container compose-postgres-1 Waiting 
+ Container compose-decisions-init-1 Exited 
+ Container compose-postgres-1 Healthy 
+ Container compose-migrate-1 Exited 
+ Container compose-kafka-init-1 Exited 
+ Container compose-api-1 Starting 
+ Container compose-api-1 Started 
+ Container compose-postgres-1 Waiting 
+ Container compose-kafka-1 Waiting 
+ Container compose-kafka-init-1 Waiting 
+ Container compose-api-1 Waiting 
+ Container compose-decisions-init-1 Waiting 
+ Container compose-migrate-1 Waiting 
+ Container compose-kafka-init-1 Exited 
+ Container compose-decisions-init-1 Exited 
+ Container compose-kafka-1 Healthy 
+ Container compose-postgres-1 Healthy 
+ Container compose-migrate-1 Exited 
+ Container compose-api-1 Healthy 
+[2026-10-18T08:37:40Z] api-sigkill-after-publish: api healthy again after 14 s
+[2026-10-18T08:37:40Z] api-sigkill-after-publish: ASSERT PASS attempt rows for the user: 50
+[2026-10-18T08:37:40Z] api-sigkill-after-publish: wait 'outbox backlog 0 after the restart' satisfied after 0 s
+[2026-10-18T08:37:44Z] api-sigkill-after-publish: STREAM row reached checksum 27ed18210099.. after 4 s
+[2026-10-18T08:37:44Z] api-sigkill-after-publish: STREAM row after convergence: offset 50 (at kill: none)
+[2026-10-18T08:37:45Z] api-sigkill-after-publish: result written to /var/folders/th/3b9mvgfs2tz3vgxmn890jdb00000gn/T//beacon-chaos.UGzO9L/api-sigkill-after-publish.result: user=01a14e28-977b-7c1c-a155-b99983d3217b active=50 last_occurred_at=2026-10-18T08:37:26.014Z parity=zero dlq_growth=0
+[2026-10-18T08:37:45Z] api-sigkill-after-publish: --- harness: convergence ---
+[2026-10-18T08:37:45Z] api-sigkill-after-publish: converge: waiting (<= 120 s) for user 01a14e28-977b-7c1c-a155-b99983d3217b through occurred_at >= 2026-10-18T08:37:26.014Z
+[2026-10-18T08:37:52Z] api-sigkill-after-publish: converge: ok after 7 s
+[2026-10-18T08:37:52Z] api-sigkill-after-publish: STREAM row: cutoff_w=2026-10-18T08:37:26.014Z checksum=27ed18210099cf46988c098b3d7f62bdb47d5f14e6013d07b99ee8669fcccd59 partition=5 offset=50 feature_as_of=2026-10-18T08:37:26.014Z aggregates={"sends_7d": 25, "sends_30d": 25, "sends_90d": 25, "attempts_7d": 50, "attempts_30d": 50, "attempts_90d": 50, "last_session_at": "2026-10-18T08:37:26.014Z", "recent_variant_ids": ["syn-route-0215:40", "syn-route-0198:40", "syn-route-0049:40", "syn-route-0140:40", "syn-route-0020:40", "syn-route-0059:40", "syn-route-0274:40", "syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40", "syn-route-0174:40", "syn-route-0014:40", "syn-route-0075:40", "syn-route-0004:40", "syn-route-0255:40", "syn-route-0163:40", "syn-route-0210:40", "syn-route-0234:40", "syn-route-0262:40", "syn-route-0221:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19.7, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 25, "attempts": 50}}}
+[2026-10-18T08:37:52Z] api-sigkill-after-publish: --- harness: parity oracle (mode zero) ---
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 359ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/parity/parity.sh --user 01a14e28-977b-7c1c-a155-b99983d3217b --out /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-api-sigkill-after-publish.json
+03:37:54.147  INFO ParityService - parity outcome=RAN users=1 compared=1 equal=1 diffs=0 same_w_mismatch=0
+parity summary users=1 with_stream_row=1 compared=1 equal=1 diffs=0 same_w_mismatch=0 skipped_no_stream_row=0 synthetic_only=true out=/Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-api-sigkill-after-publish.json
+[2026-10-18T08:37:54Z] api-sigkill-after-publish: parity report /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-api-sigkill-after-publish.json: status=EQUAL diff_keys=- checksum_differs=false (exit 0)
+[2026-10-18T08:37:54Z] api-sigkill-after-publish: ASSERT PASS parity: exit 0, status EQUAL
+[2026-10-18T08:37:54Z] api-sigkill-after-publish: --- harness: no canonical attempt lost ---
+[2026-10-18T08:37:54Z] api-sigkill-after-publish: ASSERT PASS ACTIVE attempts: 50 == 50
+[2026-10-18T08:37:59Z] api-sigkill-after-publish: ASSERT PASS every expected attempt row present at its final revision/status (50 rows checked)
+[2026-10-18T08:37:59Z] api-sigkill-after-publish: --- harness: DLQ growth ---
+[2026-10-18T08:38:00Z] api-sigkill-after-publish: ASSERT PASS stream-dlq.v1 growth: 0 == 0 (0 -> 0)
+[2026-10-18T08:38:00Z] api-sigkill-after-publish: === scenario api-sigkill-after-publish: PASS in 35 s ===
+[2026-10-18T08:38:00Z] harness: scenario api-sigkill-after-publish PASS
+[2026-10-18T08:38:01Z] harness: === scenario flink-taskmanager-restart: start 2026-10-18T08:38:01Z, stream job 79dec750246e541eacff6058e99fd7a0, stream-dlq.v1 records before: 0 ===
+[2026-10-18T08:38:01Z] flink-taskmanager-restart: user synthetic_chaos_tmrst_b247d6 id=01a14e29-24f8-7b2a-b6c0-47ddcf491de8 consent recorded, preferences set, 20 routes
+[2026-10-18T08:38:02Z] flink-taskmanager-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-262c-7ebb-8a7d-34ce708f7638 occurred_at=2026-10-18T08:38:02.022Z sent=true requests=1
+[2026-10-18T08:38:02Z] flink-taskmanager-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-26b7-78b9-9df3-336cab8861b7 occurred_at=2026-10-18T08:38:02.163Z sent=true requests=1
+[2026-10-18T08:38:02Z] flink-taskmanager-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-2736-7553-a731-40429634f553 occurred_at=2026-10-18T08:38:02.287Z sent=false requests=1
+[2026-10-18T08:38:02Z] flink-taskmanager-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-27b9-7404-aa96-d9e6e08bdb38 occurred_at=2026-10-18T08:38:02.416Z sent=true requests=1
+[2026-10-18T08:38:02Z] flink-taskmanager-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-283d-760b-9849-153485b62498 occurred_at=2026-10-18T08:38:02.548Z sent=true requests=1
+[2026-10-18T08:38:02Z] flink-taskmanager-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-28be-72dd-904f-2cf294468b4e occurred_at=2026-10-18T08:38:02.678Z sent=false requests=1
+[2026-10-18T08:38:02Z] flink-taskmanager-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-293e-7f14-b202-20a0c64ceb59 occurred_at=2026-10-18T08:38:02.806Z sent=true requests=1
+[2026-10-18T08:38:03Z] flink-taskmanager-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-29c2-74ec-aec5-80dcfc5e5ad6 occurred_at=2026-10-18T08:38:02.936Z sent=true requests=1
+[2026-10-18T08:38:03Z] flink-taskmanager-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-2a45-7d27-95e4-e7f1b059a54d occurred_at=2026-10-18T08:38:03.070Z sent=false requests=1
+[2026-10-18T08:38:03Z] flink-taskmanager-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-2ac6-7654-97e5-ec271f598c6d occurred_at=2026-10-18T08:38:03.200Z sent=true requests=1
+[2026-10-18T08:38:03Z] flink-taskmanager-restart: STREAM row reached checksum d713cafb7385.. after 0 s
+[2026-10-18T08:38:03Z] flink-taskmanager-restart: STREAM row: cutoff_w=2026-10-18T08:38:03.200Z checksum=d713cafb738522a2d9653b3c6a2d88d7b2ce4ae75db17816051733ff66bfc996 partition=4 offset=64 feature_as_of=2026-10-18T08:38:03.200Z aggregates={"sends_7d": 7, "sends_30d": 7, "sends_90d": 7, "attempts_7d": 10, "attempts_30d": 10, "attempts_90d": 10, "last_session_at": "2026-10-18T08:38:03.200Z", "recent_variant_ids": ["syn-route-0215:40", "syn-route-0198:40", "syn-route-0049:40", "syn-route-0140:40", "syn-route-0020:40", "syn-route-0059:40", "syn-route-0274:40", "syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19.2, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 7, "attempts": 10}}}
+[2026-10-18T08:38:11Z] flink-taskmanager-restart: wait 'a checkpoint completed after the 10 attempts (> 47)' satisfied after 8 s
+[2026-10-18T08:38:11Z] flink-taskmanager-restart: checkpoints completed: 48; restored before: 
+[2026-10-18T08:38:11Z] flink-taskmanager-restart: docker compose restart taskmanager
+ Container compose-taskmanager-1 Restarting 
+ Container compose-taskmanager-1 Started 
+[2026-10-18T08:38:18Z] flink-taskmanager-restart: wait 'flink job 79dec750246e541eacff6058e99fd7a0 RUNNING' satisfied after 6 s
+[2026-10-18T08:38:18Z] flink-taskmanager-restart: job 79dec750246e541eacff6058e99fd7a0 RUNNING again, latest restored checkpoint id: 48; exception history entries: 1
+[2026-10-18T08:38:18Z] flink-taskmanager-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-66b6-7b97-a654-d4e53a10b637 occurred_at=2026-10-18T08:38:18.541Z sent=true requests=1
+[2026-10-18T08:38:18Z] flink-taskmanager-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-6733-7d79-a480-90e92326af8a occurred_at=2026-10-18T08:38:18.667Z sent=true requests=1
+[2026-10-18T08:38:18Z] flink-taskmanager-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-67ae-727a-9d9a-183e948e2c9a occurred_at=2026-10-18T08:38:18.792Z sent=true requests=1
+[2026-10-18T08:38:18Z] flink-taskmanager-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-6828-71d8-9970-46d9fd0175fd occurred_at=2026-10-18T08:38:18.914Z sent=true requests=1
+[2026-10-18T08:38:19Z] flink-taskmanager-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-68a0-7a94-88d6-dbf078356e89 occurred_at=2026-10-18T08:38:19.037Z sent=true requests=1
+[2026-10-18T08:38:21Z] flink-taskmanager-restart: STREAM row reached checksum 717b20f1bc02.. after 2 s
+[2026-10-18T08:38:21Z] flink-taskmanager-restart: STREAM row: cutoff_w=2026-10-18T08:38:19.037Z checksum=717b20f1bc02a56dc73e2f346807ce5cf038f9447a7558f59180d20341767ea7 partition=4 offset=69 feature_as_of=2026-10-18T08:38:19.037Z aggregates={"sends_7d": 12, "sends_30d": 12, "sends_90d": 12, "attempts_7d": 15, "attempts_30d": 15, "attempts_90d": 15, "last_session_at": "2026-10-18T08:38:19.037Z", "recent_variant_ids": ["syn-route-0163:40", "syn-route-0210:40", "syn-route-0234:40", "syn-route-0262:40", "syn-route-0221:40", "syn-route-0215:40", "syn-route-0198:40", "syn-route-0049:40", "syn-route-0140:40", "syn-route-0020:40", "syn-route-0059:40", "syn-route-0274:40", "syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19.6, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 12, "attempts": 15}}}
+[2026-10-18T08:38:21Z] flink-taskmanager-restart: restored_checkpoint_id=48
+[2026-10-18T08:38:21Z] flink-taskmanager-restart: result written to /var/folders/th/3b9mvgfs2tz3vgxmn890jdb00000gn/T//beacon-chaos.UGzO9L/flink-taskmanager-restart.result: user=01a14e29-24f8-7b2a-b6c0-47ddcf491de8 active=15 last_occurred_at=2026-10-18T08:38:19.037Z parity=zero dlq_growth=0
+[2026-10-18T08:38:21Z] flink-taskmanager-restart: --- harness: convergence ---
+[2026-10-18T08:38:21Z] flink-taskmanager-restart: converge: waiting (<= 120 s) for user 01a14e29-24f8-7b2a-b6c0-47ddcf491de8 through occurred_at >= 2026-10-18T08:38:19.037Z
+[2026-10-18T08:38:33Z] flink-taskmanager-restart: converge: ok after 12 s
+[2026-10-18T08:38:33Z] flink-taskmanager-restart: STREAM row: cutoff_w=2026-10-18T08:38:19.037Z checksum=717b20f1bc02a56dc73e2f346807ce5cf038f9447a7558f59180d20341767ea7 partition=4 offset=69 feature_as_of=2026-10-18T08:38:19.037Z aggregates={"sends_7d": 12, "sends_30d": 12, "sends_90d": 12, "attempts_7d": 15, "attempts_30d": 15, "attempts_90d": 15, "last_session_at": "2026-10-18T08:38:19.037Z", "recent_variant_ids": ["syn-route-0163:40", "syn-route-0210:40", "syn-route-0234:40", "syn-route-0262:40", "syn-route-0221:40", "syn-route-0215:40", "syn-route-0198:40", "syn-route-0049:40", "syn-route-0140:40", "syn-route-0020:40", "syn-route-0059:40", "syn-route-0274:40", "syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19.6, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 12, "attempts": 15}}}
+[2026-10-18T08:38:33Z] flink-taskmanager-restart: --- harness: parity oracle (mode zero) ---
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 364ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/parity/parity.sh --user 01a14e29-24f8-7b2a-b6c0-47ddcf491de8 --out /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-flink-taskmanager-restart.json
+03:38:35.188  INFO ParityService - parity outcome=RAN users=1 compared=1 equal=1 diffs=0 same_w_mismatch=0
+parity summary users=1 with_stream_row=1 compared=1 equal=1 diffs=0 same_w_mismatch=0 skipped_no_stream_row=0 synthetic_only=true out=/Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-flink-taskmanager-restart.json
+[2026-10-18T08:38:35Z] flink-taskmanager-restart: parity report /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-flink-taskmanager-restart.json: status=EQUAL diff_keys=- checksum_differs=false (exit 0)
+[2026-10-18T08:38:35Z] flink-taskmanager-restart: ASSERT PASS parity: exit 0, status EQUAL
+[2026-10-18T08:38:35Z] flink-taskmanager-restart: --- harness: no canonical attempt lost ---
+[2026-10-18T08:38:35Z] flink-taskmanager-restart: ASSERT PASS ACTIVE attempts: 15 == 15
+[2026-10-18T08:38:37Z] flink-taskmanager-restart: ASSERT PASS every expected attempt row present at its final revision/status (15 rows checked)
+[2026-10-18T08:38:37Z] flink-taskmanager-restart: --- harness: DLQ growth ---
+[2026-10-18T08:38:38Z] flink-taskmanager-restart: ASSERT PASS stream-dlq.v1 growth: 0 == 0 (0 -> 0)
+[2026-10-18T08:38:38Z] flink-taskmanager-restart: === scenario flink-taskmanager-restart: PASS in 37 s ===
+[2026-10-18T08:38:38Z] harness: scenario flink-taskmanager-restart PASS
+[2026-10-18T08:38:39Z] harness: === scenario kafka-restart: start 2026-10-18T08:38:39Z, stream job 79dec750246e541eacff6058e99fd7a0, stream-dlq.v1 records before: 0 ===
+[2026-10-18T08:38:39Z] kafka-restart: user synthetic_chaos_kafkarst_2fe8a8 id=01a14e29-b7d8-7f54-bfb0-4531ae5ddd7a consent recorded, preferences set, 20 routes
+[2026-10-18T08:38:39Z] kafka-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-b8ec-72fe-acab-eba28f3aeb1b occurred_at=2026-10-18T08:38:39.594Z sent=true requests=1
+[2026-10-18T08:38:39Z] kafka-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-b965-7b6b-919f-a8d96ba4c5e7 occurred_at=2026-10-18T08:38:39.715Z sent=true requests=1
+[2026-10-18T08:38:39Z] kafka-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-b9e2-7d7c-aabb-6ac7e018ac78 occurred_at=2026-10-18T08:38:39.836Z sent=true requests=1
+[2026-10-18T08:38:40Z] kafka-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-ba5e-7ba1-b321-9b8f04b37d5b occurred_at=2026-10-18T08:38:39.959Z sent=true requests=1
+[2026-10-18T08:38:40Z] kafka-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-bada-7a45-957a-a86a33c69876 occurred_at=2026-10-18T08:38:40.084Z sent=true requests=1
+[2026-10-18T08:38:40Z] kafka-restart: STREAM row reached checksum 0b843bc6282c.. after 0 s
+[2026-10-18T08:38:40Z] kafka-restart: STREAM row: cutoff_w=2026-10-18T08:38:40.084Z checksum=0b843bc6282c798c792ce71efa8a7c68467f6be73ac281a30bfba5d8dbc0d2d9 partition=2 offset=9 feature_as_of=2026-10-18T08:38:40.084Z aggregates={"sends_7d": 5, "sends_30d": 5, "sends_90d": 5, "attempts_7d": 5, "attempts_30d": 5, "attempts_90d": 5, "last_session_at": "2026-10-18T08:38:40.084Z", "recent_variant_ids": ["syn-route-0059:40", "syn-route-0274:40", "syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19.1, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 5, "attempts": 5}}}
+[2026-10-18T08:38:40Z] kafka-restart: docker compose stop kafka
+ Container compose-kafka-1 Stopping 
+ Container compose-kafka-1 Stopped 
+[2026-10-18T08:38:41Z] kafka-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-c004-7e01-b929-3b029a73de56 occurred_at=2026-10-18T08:38:41.409Z sent=false requests=1
+[2026-10-18T08:38:41Z] kafka-restart: ASSERT PASS POST during the broker outage: 201
+[2026-10-18T08:38:41Z] kafka-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-c083-7d5d-81d6-6a4d35cadc37 occurred_at=2026-10-18T08:38:41.536Z sent=false requests=1
+[2026-10-18T08:38:41Z] kafka-restart: ASSERT PASS POST during the broker outage: 201
+[2026-10-18T08:38:41Z] kafka-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-c103-7170-8699-0288668ceb8a occurred_at=2026-10-18T08:38:41.664Z sent=false requests=1
+[2026-10-18T08:38:41Z] kafka-restart: ASSERT PASS POST during the broker outage: 201
+[2026-10-18T08:38:41Z] kafka-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-c182-74e1-8a8c-0ea2f233d53a occurred_at=2026-10-18T08:38:41.787Z sent=false requests=1
+[2026-10-18T08:38:41Z] kafka-restart: ASSERT PASS POST during the broker outage: 201
+[2026-10-18T08:38:42Z] kafka-restart: POST /v1/me/attempts -> 201 attempt_id=01a14e29-c203-796f-9c15-d26cc6a26c2a occurred_at=2026-10-18T08:38:41.916Z sent=false requests=1
+[2026-10-18T08:38:42Z] kafka-restart: ASSERT PASS POST during the broker outage: 201
+[2026-10-18T08:38:44Z] kafka-restart: ASSERT PASS outbox rows of the user unpublished during the outage: 5 >= 1
+[2026-10-18T08:38:44Z] kafka-restart: beacon_outbox_backlog_rows on /prometheus: 0.0; outbox-status: 5 unpublished, oldest 3 s
+[2026-10-18T08:38:44Z] kafka-restart: docker compose start kafka (outage began 2026-10-18T08:38:41Z)
+ Container compose-kafka-1 Starting 
+ Container compose-kafka-1 Started 
+[2026-10-18T08:38:50Z] kafka-restart: wait 'kafka container healthy' satisfied after 6 s
+[2026-10-18T08:38:50Z] kafka-restart: wait 'outbox backlog drained after the broker came back' satisfied after 0 s
+[2026-10-18T08:38:50Z] kafka-restart: wait 'flink job 79dec750246e541eacff6058e99fd7a0 RUNNING' satisfied after 0 s
+[2026-10-18T08:38:50Z] kafka-restart: job 79dec750246e541eacff6058e99fd7a0 RUNNING; exception history entries (restarts during the outage): 1; restored: 48
+[2026-10-18T08:38:50Z] kafka-restart: STREAM row reached checksum c4066c618da1.. after 0 s
+[2026-10-18T08:38:51Z] kafka-restart: STREAM row: cutoff_w=2026-10-18T08:38:41.916Z checksum=c4066c618da15a649039dbbd810c10bf807971600b248c3bc4b25551735e808f partition=2 offset=14 feature_as_of=2026-10-18T08:38:41.916Z aggregates={"sends_7d": 5, "sends_30d": 5, "sends_90d": 5, "attempts_7d": 10, "attempts_30d": 10, "attempts_90d": 10, "last_session_at": "2026-10-18T08:38:41.916Z", "recent_variant_ids": ["syn-route-0215:40", "syn-route-0198:40", "syn-route-0049:40", "syn-route-0140:40", "syn-route-0020:40", "syn-route-0059:40", "syn-route-0274:40", "syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19.1, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 5, "attempts": 10}}}
+[2026-10-18T08:38:51Z] kafka-restart: result written to /var/folders/th/3b9mvgfs2tz3vgxmn890jdb00000gn/T//beacon-chaos.UGzO9L/kafka-restart.result: user=01a14e29-b7d8-7f54-bfb0-4531ae5ddd7a active=10 last_occurred_at=2026-10-18T08:38:41.916Z parity=zero dlq_growth=0
+[2026-10-18T08:38:51Z] kafka-restart: --- harness: convergence ---
+[2026-10-18T08:38:51Z] kafka-restart: converge: waiting (<= 120 s) for user 01a14e29-b7d8-7f54-bfb0-4531ae5ddd7a through occurred_at >= 2026-10-18T08:38:41.916Z
+[2026-10-18T08:39:02Z] kafka-restart: converge: ok after 11 s
+[2026-10-18T08:39:02Z] kafka-restart: STREAM row: cutoff_w=2026-10-18T08:38:41.916Z checksum=c4066c618da15a649039dbbd810c10bf807971600b248c3bc4b25551735e808f partition=2 offset=14 feature_as_of=2026-10-18T08:38:41.916Z aggregates={"sends_7d": 5, "sends_30d": 5, "sends_90d": 5, "attempts_7d": 10, "attempts_30d": 10, "attempts_90d": 10, "last_session_at": "2026-10-18T08:38:41.916Z", "recent_variant_ids": ["syn-route-0215:40", "syn-route-0198:40", "syn-route-0049:40", "syn-route-0140:40", "syn-route-0020:40", "syn-route-0059:40", "syn-route-0274:40", "syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19.1, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 5, "attempts": 10}}}
+[2026-10-18T08:39:02Z] kafka-restart: --- harness: parity oracle (mode zero) ---
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 364ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/parity/parity.sh --user 01a14e29-b7d8-7f54-bfb0-4531ae5ddd7a --out /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-kafka-restart.json
+03:39:05.004  INFO ParityService - parity outcome=RAN users=1 compared=1 equal=1 diffs=0 same_w_mismatch=0
+parity summary users=1 with_stream_row=1 compared=1 equal=1 diffs=0 same_w_mismatch=0 skipped_no_stream_row=0 synthetic_only=true out=/Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-kafka-restart.json
+[2026-10-18T08:39:05Z] kafka-restart: parity report /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-kafka-restart.json: status=EQUAL diff_keys=- checksum_differs=false (exit 0)
+[2026-10-18T08:39:05Z] kafka-restart: ASSERT PASS parity: exit 0, status EQUAL
+[2026-10-18T08:39:05Z] kafka-restart: --- harness: no canonical attempt lost ---
+[2026-10-18T08:39:05Z] kafka-restart: ASSERT PASS ACTIVE attempts: 10 == 10
+[2026-10-18T08:39:06Z] kafka-restart: ASSERT PASS every expected attempt row present at its final revision/status (10 rows checked)
+[2026-10-18T08:39:06Z] kafka-restart: --- harness: DLQ growth ---
+[2026-10-18T08:39:07Z] kafka-restart: ASSERT PASS stream-dlq.v1 growth: 0 == 0 (0 -> 0)
+[2026-10-18T08:39:07Z] kafka-restart: === scenario kafka-restart: PASS in 28 s ===
+[2026-10-18T08:39:07Z] harness: scenario kafka-restart PASS
+[2026-10-18T08:39:08Z] harness: === scenario same-watermark-correction: start 2026-10-18T08:39:08Z, stream job 79dec750246e541eacff6058e99fd7a0, stream-dlq.v1 records before: 0 ===
+[2026-10-18T08:39:08Z] same-watermark-correction: user synthetic_chaos_samew_7a8e5c id=01a14e2a-2a20-723c-8cae-f5dbfeb636c9 consent recorded, preferences set, 20 routes
+[2026-10-18T08:39:08Z] same-watermark-correction: POST /v1/me/attempts -> 201 attempt_id=01a14e2a-2b29-79aa-937d-7b821cee4bcb occurred_at=2026-10-18T08:39:08.838Z sent=true requests=1
+[2026-10-18T08:39:11Z] same-watermark-correction: STREAM row reached checksum ad05b813b873.. after 2 s
+[2026-10-18T08:39:11Z] same-watermark-correction: STREAM row: cutoff_w=2026-10-18T08:39:08.838Z checksum=ad05b813b873db782b380484156a3af8df289215a74753a7a14696e41271cb5d partition=4 offset=70 feature_as_of=2026-10-18T08:39:08.838Z aggregates={"sends_7d": 1, "sends_30d": 1, "sends_90d": 1, "attempts_7d": 1, "attempts_30d": 1, "attempts_90d": 1, "last_session_at": "2026-10-18T08:39:08.838Z", "recent_variant_ids": ["syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 18.2, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 1, "attempts": 1}}}
+[2026-10-18T08:39:11Z] same-watermark-correction: PATCH /v1/me/attempts/01a14e2a-2b29-79aa-937d-7b821cee4bcb If-Match "1" {"sent": false} -> 200 revision=2 status=ACTIVE
+[2026-10-18T08:39:11Z] same-watermark-correction: ASSERT PASS revision after correction: 2
+[2026-10-18T08:39:13Z] same-watermark-correction: STREAM row reached checksum 454c5f7b4ef4.. after 2 s
+[2026-10-18T08:39:14Z] same-watermark-correction: STREAM row: cutoff_w=2026-10-18T08:39:08.838Z checksum=454c5f7b4ef4cba8c175cc55d4ad6a011efa6d0dccda9954ba361a20808b86e0 partition=4 offset=71 feature_as_of=2026-10-18T08:39:08.838Z aggregates={"sends_7d": 0, "sends_30d": 0, "sends_90d": 0, "attempts_7d": 1, "attempts_30d": 1, "attempts_90d": 1, "last_session_at": "2026-10-18T08:39:08.838Z", "recent_variant_ids": ["syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": null, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 0, "attempts": 1}}}
+[2026-10-18T08:39:14Z] same-watermark-correction: ASSERT PASS cutoff_w unchanged (same source_watermark): 2026-10-18T08:39:08.838Z
+[2026-10-18T08:39:14Z] same-watermark-correction: ASSERT PASS partition unchanged: 4
+[2026-10-18T08:39:14Z] same-watermark-correction: ASSERT PASS source_offset advanced: 70 -> 71
+[2026-10-18T08:39:14Z] same-watermark-correction: ASSERT PASS provenance_checksum changed: '454c5f7b4ef4cba8c175cc55d4ad6a011efa6d0dccda9954ba361a20808b86e0' != 'ad05b813b873db782b380484156a3af8df289215a74753a7a14696e41271cb5d'
+[2026-10-18T08:39:14Z] same-watermark-correction: ASSERT PASS checksum == sha256('01a14e2a-2b29-79aa-937d-7b821cee4bcb:2'): 454c5f7b4ef4cba8c175cc55d4ad6a011efa6d0dccda9954ba361a20808b86e0
+[2026-10-18T08:39:14Z] same-watermark-correction: ASSERT PASS sends_90d before: 1
+[2026-10-18T08:39:14Z] same-watermark-correction: ASSERT PASS sends_90d after: 0
+[2026-10-18T08:39:14Z] same-watermark-correction: result written to /var/folders/th/3b9mvgfs2tz3vgxmn890jdb00000gn/T//beacon-chaos.UGzO9L/same-watermark-correction.result: user=01a14e2a-2a20-723c-8cae-f5dbfeb636c9 active=1 last_occurred_at=2026-10-18T08:39:08.838Z parity=zero dlq_growth=0
+[2026-10-18T08:39:14Z] same-watermark-correction: --- harness: convergence ---
+[2026-10-18T08:39:14Z] same-watermark-correction: converge: waiting (<= 120 s) for user 01a14e2a-2a20-723c-8cae-f5dbfeb636c9 through occurred_at >= 2026-10-18T08:39:08.838Z
+[2026-10-18T08:39:25Z] same-watermark-correction: converge: ok after 11 s
+[2026-10-18T08:39:25Z] same-watermark-correction: STREAM row: cutoff_w=2026-10-18T08:39:08.838Z checksum=454c5f7b4ef4cba8c175cc55d4ad6a011efa6d0dccda9954ba361a20808b86e0 partition=4 offset=71 feature_as_of=2026-10-18T08:39:08.838Z aggregates={"sends_7d": 0, "sends_30d": 0, "sends_90d": 0, "attempts_7d": 1, "attempts_30d": 1, "attempts_90d": 1, "last_session_at": "2026-10-18T08:39:08.838Z", "recent_variant_ids": ["syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": null, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 0, "attempts": 1}}}
+[2026-10-18T08:39:25Z] same-watermark-correction: --- harness: parity oracle (mode zero) ---
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 351ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/parity/parity.sh --user 01a14e2a-2a20-723c-8cae-f5dbfeb636c9 --out /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-same-watermark-correction.json
+03:39:27.492  INFO ParityService - parity outcome=RAN users=1 compared=1 equal=1 diffs=0 same_w_mismatch=0
+parity summary users=1 with_stream_row=1 compared=1 equal=1 diffs=0 same_w_mismatch=0 skipped_no_stream_row=0 synthetic_only=true out=/Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-same-watermark-correction.json
+[2026-10-18T08:39:27Z] same-watermark-correction: parity report /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-same-watermark-correction.json: status=EQUAL diff_keys=- checksum_differs=false (exit 0)
+[2026-10-18T08:39:27Z] same-watermark-correction: ASSERT PASS parity: exit 0, status EQUAL
+[2026-10-18T08:39:27Z] same-watermark-correction: --- harness: no canonical attempt lost ---
+[2026-10-18T08:39:27Z] same-watermark-correction: ASSERT PASS ACTIVE attempts: 1 == 1
+[2026-10-18T08:39:27Z] same-watermark-correction: ASSERT PASS every expected attempt row present at its final revision/status (1 rows checked)
+[2026-10-18T08:39:27Z] same-watermark-correction: --- harness: DLQ growth ---
+[2026-10-18T08:39:28Z] same-watermark-correction: ASSERT PASS stream-dlq.v1 growth: 0 == 0 (0 -> 0)
+[2026-10-18T08:39:28Z] same-watermark-correction: === scenario same-watermark-correction: PASS in 20 s ===
+[2026-10-18T08:39:28Z] harness: scenario same-watermark-correction PASS
+[2026-10-18T08:39:29Z] harness: === scenario invalid-events-to-dlq: start 2026-10-18T08:39:29Z, stream job 79dec750246e541eacff6058e99fd7a0, stream-dlq.v1 records before: 0 ===
+[2026-10-18T08:39:30Z] invalid-events-to-dlq: user synthetic_chaos_dlq_28c48e id=01a14e2a-7eba-7b1a-82b1-8ca90a70ab92 consent recorded, preferences set, 20 routes
+[2026-10-18T08:39:31Z] invalid-events-to-dlq: producing an attempts.v1 record with attributes.notes (NOTES_PRESENT) keyed by 01a14e2a-7eba-7b1a-82b1-8ca90a70ab92
+[2026-10-18T08:39:32Z] invalid-events-to-dlq: producing a climber-features.v1 record with provenance_checksum='not-a-sha256-checksum' (SCHEMA_VIOLATION) keyed by 01a14e2a-7eba-7b1a-82b1-8ca90a70ab92
+[2026-10-18T08:39:34Z] invalid-events-to-dlq: wait 'stream-dlq.v1 grew by 2 (from 0)' satisfied after 1 s
+  dlq record (event_id topic error_code consumer): 01a14e2a-86b0-7d73-8416-dd6cb14b8b26 attempts.v1 NOTES_PRESENT stream attempt=1
+  dlq record (event_id topic error_code consumer): 01a14e2a-8ade-7f3f-a252-99831868c4d2 climber-features.v1 SCHEMA_VIOLATION api attempt=1
+[2026-10-18T08:39:49Z] invalid-events-to-dlq: ASSERT PASS stream-dlq.v1 records keyed by the user: 2
+[2026-10-18T08:39:49Z] invalid-events-to-dlq: ASSERT PASS attempts.v1 rejection: 1
+[2026-10-18T08:39:49Z] invalid-events-to-dlq: ASSERT PASS climber-features.v1 rejection: 1
+[2026-10-18T08:39:49Z] invalid-events-to-dlq: ASSERT PASS no STREAM row was written from the invalid feature record: 
+[2026-10-18T08:39:49Z] invalid-events-to-dlq: both consumers keep processing: a real attempt must converge
+[2026-10-18T08:39:49Z] invalid-events-to-dlq: POST /v1/me/attempts -> 201 attempt_id=01a14e2a-c8db-765e-975c-83bc9038fc03 occurred_at=2026-10-18T08:39:49.207Z sent=true requests=1
+[2026-10-18T08:39:51Z] invalid-events-to-dlq: STREAM row reached checksum 7b6907aa3580.. after 2 s
+[2026-10-18T08:39:51Z] invalid-events-to-dlq: STREAM row: cutoff_w=2026-10-18T08:39:49.207Z checksum=7b6907aa3580d7506ae61f6228e4c7f0918e5f49e51ff6b07b6ab2feccbe612f partition=4 offset=73 feature_as_of=2026-10-18T08:39:49.207Z aggregates={"sends_7d": 1, "sends_30d": 1, "sends_90d": 1, "attempts_7d": 1, "attempts_30d": 1, "attempts_90d": 1, "last_session_at": "2026-10-18T08:39:49.207Z", "recent_variant_ids": ["syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 18.2, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 1, "attempts": 1}}}
+[2026-10-18T08:39:51Z] invalid-events-to-dlq: make dlq-redrive EVENTS=01a14e2a-86b0-7d73-8416-dd6cb14b8b26,01a14e2a-8ade-7f3f-a252-99831868c4d2 DRY_RUN=1 (audit lines only; a NOTES_PRESENT record is never really redriven, docs/runbooks/dlq.md)
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 381ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/dlq-redrive.sh --events "01a14e2a-86b0-7d73-8416-dd6cb14b8b26,01a14e2a-8ade-7f3f-a252-99831868c4d2" --dry-run 
+redrive event_id=01a14e2a-86b0-7d73-8416-dd6cb14b8b26 original_topic=attempts.v1 original_key=01a14e2a-7eba-7b1a-82b1-8ca90a70ab92 attempt=2 result=DRY_RUN
+redrive event_id=01a14e2a-8ade-7f3f-a252-99831868c4d2 original_topic=climber-features.v1 original_key=01a14e2a-7eba-7b1a-82b1-8ca90a70ab92 attempt=2 result=DRY_RUN
+redrive summary topic=stream-dlq.v1 scanned=2 selected=2 published=0 dry_run=2 skipped=0
+[2026-10-18T08:39:53Z] invalid-events-to-dlq: ASSERT PASS dry-run audit lines with result=DRY_RUN: 2
+[2026-10-18T08:39:53Z] invalid-events-to-dlq: ASSERT PASS dry run published nothing: 1
+[2026-10-18T08:39:54Z] invalid-events-to-dlq: ASSERT PASS attempts.v1 record count unchanged by the dry run (DLQ growth only): 2
+[2026-10-18T08:39:54Z] invalid-events-to-dlq: result written to /var/folders/th/3b9mvgfs2tz3vgxmn890jdb00000gn/T//beacon-chaos.UGzO9L/invalid-events-to-dlq.result: user=01a14e2a-7eba-7b1a-82b1-8ca90a70ab92 active=1 last_occurred_at=2026-10-18T08:39:49.207Z parity=zero dlq_growth=2
+[2026-10-18T08:39:54Z] invalid-events-to-dlq: --- harness: convergence ---
+[2026-10-18T08:39:54Z] invalid-events-to-dlq: converge: waiting (<= 120 s) for user 01a14e2a-7eba-7b1a-82b1-8ca90a70ab92 through occurred_at >= 2026-10-18T08:39:49.207Z
+[2026-10-18T08:40:02Z] invalid-events-to-dlq: converge: ok after 8 s
+[2026-10-18T08:40:02Z] invalid-events-to-dlq: STREAM row: cutoff_w=2026-10-18T08:39:49.207Z checksum=7b6907aa3580d7506ae61f6228e4c7f0918e5f49e51ff6b07b6ab2feccbe612f partition=4 offset=73 feature_as_of=2026-10-18T08:39:49.207Z aggregates={"sends_7d": 1, "sends_30d": 1, "sends_90d": 1, "attempts_7d": 1, "attempts_30d": 1, "attempts_90d": 1, "last_session_at": "2026-10-18T08:39:49.207Z", "recent_variant_ids": ["syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 18.2, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 1, "attempts": 1}}}
+[2026-10-18T08:40:02Z] invalid-events-to-dlq: --- harness: parity oracle (mode zero) ---
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 304ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/parity/parity.sh --user 01a14e2a-7eba-7b1a-82b1-8ca90a70ab92 --out /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-invalid-events-to-dlq.json
+03:40:04.077  INFO ParityService - parity outcome=RAN users=1 compared=1 equal=1 diffs=0 same_w_mismatch=0
+parity summary users=1 with_stream_row=1 compared=1 equal=1 diffs=0 same_w_mismatch=0 skipped_no_stream_row=0 synthetic_only=true out=/Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-invalid-events-to-dlq.json
+[2026-10-18T08:40:04Z] invalid-events-to-dlq: parity report /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-invalid-events-to-dlq.json: status=EQUAL diff_keys=- checksum_differs=false (exit 0)
+[2026-10-18T08:40:04Z] invalid-events-to-dlq: ASSERT PASS parity: exit 0, status EQUAL
+[2026-10-18T08:40:04Z] invalid-events-to-dlq: --- harness: no canonical attempt lost ---
+[2026-10-18T08:40:04Z] invalid-events-to-dlq: ASSERT PASS ACTIVE attempts: 1 == 1
+[2026-10-18T08:40:04Z] invalid-events-to-dlq: ASSERT PASS every expected attempt row present at its final revision/status (1 rows checked)
+[2026-10-18T08:40:04Z] invalid-events-to-dlq: --- harness: DLQ growth ---
+[2026-10-18T08:40:05Z] invalid-events-to-dlq: ASSERT PASS stream-dlq.v1 growth: 2 == 2 (0 -> 2)
+[2026-10-18T08:40:05Z] invalid-events-to-dlq: === scenario invalid-events-to-dlq: PASS in 36 s ===
+[2026-10-18T08:40:05Z] harness: scenario invalid-events-to-dlq PASS
+[2026-10-18T08:40:05Z] harness: --- final parity over every user with a STREAM row ---
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 305ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/parity/parity.sh --user all --out /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-all-users.json
+03:40:07.360  INFO ParityService - parity outcome=RAN users=14 compared=12 equal=11 diffs=1 same_w_mismatch=0
+parity summary users=14 with_stream_row=12 compared=12 equal=11 diffs=1 same_w_mismatch=0 skipped_no_stream_row=2 synthetic_only=true out=/Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-all-users.json
+make[1]: *** [test-parity] Error 1
+[2026-10-18T08:40:07Z] harness: FAIL all-users parity exit 2: users=14 with_stream_row=12 compared=12 equal=11 diffs=1 same_w_mismatch=0
+[2026-10-18T08:40:07Z] harness: --- docker stats --no-stream ---
+NAME                    MEM USAGE / LIMIT   MEM %     CPU %
+compose-web-1           9.09MiB / 128MiB    7.10%     1.20%
+compose-taskmanager-1   648.2MiB / 1.5GiB   42.20%    2.01%
+compose-api-1           445.9MiB / 1GiB     43.55%    2.78%
+compose-jobmanager-1    652.4MiB / 768MiB   84.95%    2.10%
+compose-postgres-1      49.37MiB / 512MiB   9.64%     0.16%
+compose-kafka-1         376.9MiB / 1GiB     36.80%    3.06%
+[2026-10-18T08:40:09Z] harness: === run 20261018T083513Z done in 296 s, failures: 2; summary: /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/summary.md ===

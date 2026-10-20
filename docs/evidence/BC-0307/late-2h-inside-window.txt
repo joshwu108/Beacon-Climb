@@ -1,0 +1,78 @@
+# BC-0307 chaos transcript: late-2h-inside-window, run 20261018T083513Z, 2026-10-18T08:36:08Z, commit 254b918
+[2026-10-18T08:36:08Z] harness: === scenario late-2h-inside-window: start 2026-10-18T08:36:08Z, stream job 79dec750246e541eacff6058e99fd7a0, stream-dlq.v1 records before: 0 ===
+[2026-10-18T08:36:08Z] late-2h-inside-window: user synthetic_chaos_late2h_0525b9 id=01a14e27-6b99-792e-825a-1c8ae0f0e4f7 consent recorded, preferences set, 20 routes
+[2026-10-18T08:36:09Z] late-2h-inside-window: POST /v1/me/attempts -> 201 attempt_id=01a14e27-6ca4-7773-bf73-5227f5fbedd6 occurred_at=2026-10-18T08:36:08.992Z sent=true requests=1
+[2026-10-18T08:36:09Z] late-2h-inside-window: POST /v1/me/attempts -> 201 attempt_id=01a14e27-6d1d-7442-a28a-4c32653f58b9 occurred_at=2026-10-18T08:36:09.113Z sent=true requests=1
+[2026-10-18T08:36:09Z] late-2h-inside-window: POST /v1/me/attempts -> 201 attempt_id=01a14e27-6d99-7852-92d5-cee0be17b36a occurred_at=2026-10-18T08:36:09.234Z sent=true requests=1
+[2026-10-18T08:36:09Z] late-2h-inside-window: STREAM row reached checksum c1b65db98af5.. after 0 s
+[2026-10-18T08:36:09Z] late-2h-inside-window: STREAM row: cutoff_w=2026-10-18T08:36:09.234Z checksum=c1b65db98af5d466370fceb78fca1ba99f99c50cbc6f3c7367815d8e73d0c20b partition=4 offset=2 feature_as_of=2026-10-18T08:36:09.234Z aggregates={"sends_7d": 3, "sends_30d": 3, "sends_90d": 3, "attempts_7d": 3, "attempts_30d": 3, "attempts_90d": 3, "last_session_at": "2026-10-18T08:36:09.234Z", "recent_variant_ids": ["syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 18.9, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 3, "attempts": 3}}}
+[2026-10-18T08:36:09Z] late-2h-inside-window: posting an attempt 2 h in the past: occurred_at=2026-10-18T06:36:09.672Z (watermark ~ 2026-10-18T08:36:09.234Z - 24 h, late threshold = watermark - 24 h, so this is inside the window)
+[2026-10-18T08:36:09Z] late-2h-inside-window: POST /v1/me/attempts -> 201 attempt_id=01a14e27-6f7b-778d-880f-71508173dcc3 occurred_at=2026-10-18T06:36:09.672Z sent=true requests=1
+[2026-10-18T08:36:09Z] late-2h-inside-window: STREAM row reached checksum 891867442ed6.. after 0 s
+[2026-10-18T08:36:10Z] late-2h-inside-window: ASSERT PASS STREAM cutoff_w == the late event's occurred_at (W = max(watermark, occurred_at)): t
+[2026-10-18T08:36:10Z] late-2h-inside-window: ASSERT PASS STREAM row at W = now-2h includes only the late attempt (checksum == sha256('01a14e27-6f7b-778d-880f-71508173dcc3:1')): 891867442ed65ae7a3e18340ba49891d3bd5db2be395ff9672919c2617e4e4c5
+[2026-10-18T08:36:10Z] late-2h-inside-window: ASSERT PASS aggregates.attempts_90d at W = now-2h: 1
+[2026-10-18T08:36:10Z] late-2h-inside-window: STREAM row: cutoff_w=2026-10-18T06:36:09.672Z checksum=891867442ed65ae7a3e18340ba49891d3bd5db2be395ff9672919c2617e4e4c5 partition=4 offset=3 feature_as_of=2026-10-18T06:36:09.672Z aggregates={"sends_7d": 1, "sends_30d": 1, "sends_90d": 1, "attempts_7d": 1, "attempts_30d": 1, "attempts_90d": 1, "last_session_at": "2026-10-18T06:36:09.672Z", "recent_variant_ids": ["syn-route-0274:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 1, "attempts": 1}}}
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 316ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/parity/parity.sh --user 01a14e27-6b99-792e-825a-1c8ae0f0e4f7 --out /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-2h-inside-window-at-late-W.json
+03:36:12.314  INFO ParityService - parity outcome=RAN users=1 compared=1 equal=1 diffs=0 same_w_mismatch=0
+parity summary users=1 with_stream_row=1 compared=1 equal=1 diffs=0 same_w_mismatch=0 skipped_no_stream_row=0 synthetic_only=true out=/Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-2h-inside-window-at-late-W.json
+[2026-10-18T08:36:12Z] late-2h-inside-window: parity report /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-2h-inside-window-at-late-W.json: status=EQUAL diff_keys=- checksum_differs=false (exit 0)
+[2026-10-18T08:36:12Z] late-2h-inside-window: ASSERT PASS parity EQUAL at the regressed W = now-2h
+[2026-10-18T08:36:12Z] late-2h-inside-window: POST /v1/me/attempts -> 201 attempt_id=01a14e27-7a85-7a39-8343-4863b33ab0e3 occurred_at=2026-10-18T08:36:12.541Z sent=false requests=1
+[2026-10-18T08:36:14Z] late-2h-inside-window: STREAM row reached checksum 76348bb37c5b.. after 2 s
+[2026-10-18T08:36:15Z] late-2h-inside-window: ASSERT PASS aggregates.attempts_90d once W moved past every attempt: 5
+[2026-10-18T08:36:15Z] late-2h-inside-window: ASSERT PASS reconciliation_events rows for the user (a 2 h event is inside the window): 0
+[2026-10-18T08:36:15Z] late-2h-inside-window: STREAM row: cutoff_w=2026-10-18T08:36:12.541Z checksum=76348bb37c5b228e6708ba3dfd0d61f4df6567519d2aa0f4f3dd988d9fbc400a partition=4 offset=4 feature_as_of=2026-10-18T08:36:12.541Z aggregates={"sends_7d": 4, "sends_30d": 4, "sends_90d": 4, "attempts_7d": 5, "attempts_30d": 5, "attempts_90d": 5, "last_session_at": "2026-10-18T08:36:12.541Z", "recent_variant_ids": ["syn-route-0059:40", "syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40", "syn-route-0274:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 4, "attempts": 5}}}
+[2026-10-18T08:36:15Z] late-2h-inside-window: result written to /var/folders/th/3b9mvgfs2tz3vgxmn890jdb00000gn/T//beacon-chaos.UGzO9L/late-2h-inside-window.result: user=01a14e27-6b99-792e-825a-1c8ae0f0e4f7 active=5 last_occurred_at=2026-10-18T08:36:12.541Z parity=zero dlq_growth=0
+[2026-10-18T08:36:15Z] late-2h-inside-window: --- harness: convergence ---
+[2026-10-18T08:36:15Z] late-2h-inside-window: converge: waiting (<= 120 s) for user 01a14e27-6b99-792e-825a-1c8ae0f0e4f7 through occurred_at >= 2026-10-18T08:36:12.541Z
+[2026-10-18T08:36:26Z] late-2h-inside-window: converge: ok after 11 s
+[2026-10-18T08:36:26Z] late-2h-inside-window: STREAM row: cutoff_w=2026-10-18T08:36:12.541Z checksum=76348bb37c5b228e6708ba3dfd0d61f4df6567519d2aa0f4f3dd988d9fbc400a partition=4 offset=4 feature_as_of=2026-10-18T08:36:12.541Z aggregates={"sends_7d": 4, "sends_30d": 4, "sends_90d": 4, "attempts_7d": 5, "attempts_30d": 5, "attempts_90d": 5, "last_session_at": "2026-10-18T08:36:12.541Z", "recent_variant_ids": ["syn-route-0059:40", "syn-route-0046:40", "syn-route-0121:40", "syn-route-0164:40", "syn-route-0274:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 19, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 4, "attempts": 5}}}
+[2026-10-18T08:36:26Z] late-2h-inside-window: --- harness: parity oracle (mode zero) ---
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 299ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/parity/parity.sh --user 01a14e27-6b99-792e-825a-1c8ae0f0e4f7 --out /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-2h-inside-window.json
+03:36:28.650  INFO ParityService - parity outcome=RAN users=1 compared=1 equal=1 diffs=0 same_w_mismatch=0
+parity summary users=1 with_stream_row=1 compared=1 equal=1 diffs=0 same_w_mismatch=0 skipped_no_stream_row=0 synthetic_only=true out=/Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-2h-inside-window.json
+[2026-10-18T08:36:28Z] late-2h-inside-window: parity report /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-2h-inside-window.json: status=EQUAL diff_keys=- checksum_differs=false (exit 0)
+[2026-10-18T08:36:28Z] late-2h-inside-window: ASSERT PASS parity: exit 0, status EQUAL
+[2026-10-18T08:36:28Z] late-2h-inside-window: --- harness: no canonical attempt lost ---
+[2026-10-18T08:36:28Z] late-2h-inside-window: ASSERT PASS ACTIVE attempts: 5 == 5
+[2026-10-18T08:36:29Z] late-2h-inside-window: ASSERT PASS every expected attempt row present at its final revision/status (5 rows checked)
+[2026-10-18T08:36:29Z] late-2h-inside-window: --- harness: DLQ growth ---
+[2026-10-18T08:36:30Z] late-2h-inside-window: ASSERT PASS stream-dlq.v1 growth: 0 == 0 (0 -> 0)
+[2026-10-18T08:36:30Z] late-2h-inside-window: === scenario late-2h-inside-window: PASS in 22 s ===

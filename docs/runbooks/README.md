@@ -11,7 +11,7 @@ Operational procedures for running, diagnosing and recovering Beacon Climb. None
 | Demo seed and reset (`make seed-demo`) | E01 (BC-0120) | planned |
 | Kilter import (local only, rights-gated) | E01 (BC-0105) | planned, blocked on `docs/data-source-audit.md` |
 | Erasure request end to end (30-day grace, all stores) | E04 (BC-0412) | planned, policy in `docs/privacy-and-retention.md` |
-| Kafka and Flink: restart, checkpoint recovery, DLQ drain | E03 | planned |
+| Kafka and Flink: bring-up, restart, checkpoint recovery, redrive, reconcile, parity (`make stream-*`, `make test-parity`) | E03 (BC-0312) | [streaming.md](streaming.md) (written 2026-10-18 from the BC-0303/BC-0308 proofs, not executed end to end as written); DLQ detail in [dlq.md](dlq.md) |
 | Observability: Prometheus, Grafana dashboard, Tempo traces, alert rules (`make observability-up`) | E03 (BC-0308) | [observability.md](observability.md), part 1 executed 2026-10-18 |
 | Model rollout, canary and rollback | E04 | planned |
 | Replay a decision and compare | E04 | planned |

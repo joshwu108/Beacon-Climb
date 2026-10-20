@@ -241,6 +241,19 @@ test-parity: .env
 	./gradlew :api:bootJar
 	bash scripts/parity/parity.sh --user $(if $(filter command line,$(origin USER)),$(USER),all) $(if $(OUT),--out $(OUT),)
 
+# BC-0307: `make test-chaos [SCENARIOS=a,b] [PARITY=skip]` runs the fault scenario suite
+# (test/chaos/stream/run.sh, scenarios in scripts/chaos/*.sh, docs in test/chaos/README.md)
+# against the compose stream stack on 127.0.0.1 (`make stream-up` + `make stream-submit` are run
+# when the stack or the job is missing). Per scenario: a fresh synthetic_ user, the fault, the
+# convergence wait, `make test-parity USER=<uuid> OUT=docs/evidence/BC-0307/parity-<scenario>.json`
+# (PARITY=skip runs the mechanics without the oracle), the no-lost-attempt and DLQ-growth checks;
+# transcripts and summary.md with the hardware block go to docs/evidence/BC-0307/. Exit 0 iff every
+# scenario and the final all-users parity passed. CHAOS_INVOKE=direct runs the api jar profiles
+# without the Gradle rebuild the make targets perform (see the README "Jar hazard").
+.PHONY: test-chaos
+
+test-chaos: .env
+	SCENARIOS="$(SCENARIOS)" PARITY="$(or $(PARITY),run)" bash test/chaos/stream/run.sh
 
 # BC-0103: Kilter splits sqlite -> catalog v1 under data/catalog/kilter-<sha12>/ (gitignored,
 # LOCAL RESEARCH ONLY; docs/data-source-audit.md section 7). Never commit the output.

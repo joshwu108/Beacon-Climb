@@ -1,0 +1,7 @@
+NAME                    MEM USAGE / LIMIT   MEM %     CPU %
+compose-web-1           9.09MiB / 128MiB    7.10%     1.20%
+compose-taskmanager-1   648.2MiB / 1.5GiB   42.20%    2.01%
+compose-api-1           445.9MiB / 1GiB     43.55%    2.78%
+compose-jobmanager-1    652.4MiB / 768MiB   84.95%    2.10%
+compose-postgres-1      49.37MiB / 512MiB   9.64%     0.16%
+compose-kafka-1         376.9MiB / 1GiB     36.80%    3.06%

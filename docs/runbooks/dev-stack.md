@@ -110,7 +110,8 @@ Host listener `127.0.0.1:9094` (loopback only); the broker runs with `cap_drop: 
 the oldest unpublished age and the rows unpublished for more than 60 s through psql; the same
 numbers are the `beacon_outbox_*` gauges on `http://127.0.0.1:8080/prometheus`. `make
 stream-down` stops everything; `make reset-db` now also removes the `kafkadata` (and `flink-checkpoints`) volumes. The
-streaming runbook (job submission, parity, chaos, recovery) is BC-0312.
+streaming runbook (job submission, parity, chaos, recovery) is BC-0312. Fault scenarios against this
+stack: `make test-chaos [SCENARIOS=a,b] [PARITY=skip]` (BC-0307, test/chaos/README.md; evidence in docs/evidence/BC-0307/).
 
 ## Credentials policy
 

@@ -1,0 +1,77 @@
+# BC-0307 chaos transcript: invalid-events-to-dlq, run 20261018T083513Z, 2026-10-18T08:39:29Z, commit 254b918
+[2026-10-18T08:39:29Z] harness: === scenario invalid-events-to-dlq: start 2026-10-18T08:39:29Z, stream job 79dec750246e541eacff6058e99fd7a0, stream-dlq.v1 records before: 0 ===
+[2026-10-18T08:39:30Z] invalid-events-to-dlq: user synthetic_chaos_dlq_28c48e id=01a14e2a-7eba-7b1a-82b1-8ca90a70ab92 consent recorded, preferences set, 20 routes
+[2026-10-18T08:39:31Z] invalid-events-to-dlq: producing an attempts.v1 record with attributes.notes (NOTES_PRESENT) keyed by 01a14e2a-7eba-7b1a-82b1-8ca90a70ab92
+[2026-10-18T08:39:32Z] invalid-events-to-dlq: producing a climber-features.v1 record with provenance_checksum='not-a-sha256-checksum' (SCHEMA_VIOLATION) keyed by 01a14e2a-7eba-7b1a-82b1-8ca90a70ab92
+[2026-10-18T08:39:34Z] invalid-events-to-dlq: wait 'stream-dlq.v1 grew by 2 (from 0)' satisfied after 1 s
+  dlq record (event_id topic error_code consumer): 01a14e2a-86b0-7d73-8416-dd6cb14b8b26 attempts.v1 NOTES_PRESENT stream attempt=1
+  dlq record (event_id topic error_code consumer): 01a14e2a-8ade-7f3f-a252-99831868c4d2 climber-features.v1 SCHEMA_VIOLATION api attempt=1
+[2026-10-18T08:39:49Z] invalid-events-to-dlq: ASSERT PASS stream-dlq.v1 records keyed by the user: 2
+[2026-10-18T08:39:49Z] invalid-events-to-dlq: ASSERT PASS attempts.v1 rejection: 1
+[2026-10-18T08:39:49Z] invalid-events-to-dlq: ASSERT PASS climber-features.v1 rejection: 1
+[2026-10-18T08:39:49Z] invalid-events-to-dlq: ASSERT PASS no STREAM row was written from the invalid feature record: 
+[2026-10-18T08:39:49Z] invalid-events-to-dlq: both consumers keep processing: a real attempt must converge
+[2026-10-18T08:39:49Z] invalid-events-to-dlq: POST /v1/me/attempts -> 201 attempt_id=01a14e2a-c8db-765e-975c-83bc9038fc03 occurred_at=2026-10-18T08:39:49.207Z sent=true requests=1
+[2026-10-18T08:39:51Z] invalid-events-to-dlq: STREAM row reached checksum 7b6907aa3580.. after 2 s
+[2026-10-18T08:39:51Z] invalid-events-to-dlq: STREAM row: cutoff_w=2026-10-18T08:39:49.207Z checksum=7b6907aa3580d7506ae61f6228e4c7f0918e5f49e51ff6b07b6ab2feccbe612f partition=4 offset=73 feature_as_of=2026-10-18T08:39:49.207Z aggregates={"sends_7d": 1, "sends_30d": 1, "sends_90d": 1, "attempts_7d": 1, "attempts_30d": 1, "attempts_90d": 1, "last_session_at": "2026-10-18T08:39:49.207Z", "recent_variant_ids": ["syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 18.2, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 1, "attempts": 1}}}
+[2026-10-18T08:39:51Z] invalid-events-to-dlq: make dlq-redrive EVENTS=01a14e2a-86b0-7d73-8416-dd6cb14b8b26,01a14e2a-8ade-7f3f-a252-99831868c4d2 DRY_RUN=1 (audit lines only; a NOTES_PRESENT record is never really redriven, docs/runbooks/dlq.md)
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 381ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/dlq-redrive.sh --events "01a14e2a-86b0-7d73-8416-dd6cb14b8b26,01a14e2a-8ade-7f3f-a252-99831868c4d2" --dry-run 
+redrive event_id=01a14e2a-86b0-7d73-8416-dd6cb14b8b26 original_topic=attempts.v1 original_key=01a14e2a-7eba-7b1a-82b1-8ca90a70ab92 attempt=2 result=DRY_RUN
+redrive event_id=01a14e2a-8ade-7f3f-a252-99831868c4d2 original_topic=climber-features.v1 original_key=01a14e2a-7eba-7b1a-82b1-8ca90a70ab92 attempt=2 result=DRY_RUN
+redrive summary topic=stream-dlq.v1 scanned=2 selected=2 published=0 dry_run=2 skipped=0
+[2026-10-18T08:39:53Z] invalid-events-to-dlq: ASSERT PASS dry-run audit lines with result=DRY_RUN: 2
+[2026-10-18T08:39:53Z] invalid-events-to-dlq: ASSERT PASS dry run published nothing: 1
+[2026-10-18T08:39:54Z] invalid-events-to-dlq: ASSERT PASS attempts.v1 record count unchanged by the dry run (DLQ growth only): 2
+[2026-10-18T08:39:54Z] invalid-events-to-dlq: result written to /var/folders/th/3b9mvgfs2tz3vgxmn890jdb00000gn/T//beacon-chaos.UGzO9L/invalid-events-to-dlq.result: user=01a14e2a-7eba-7b1a-82b1-8ca90a70ab92 active=1 last_occurred_at=2026-10-18T08:39:49.207Z parity=zero dlq_growth=2
+[2026-10-18T08:39:54Z] invalid-events-to-dlq: --- harness: convergence ---
+[2026-10-18T08:39:54Z] invalid-events-to-dlq: converge: waiting (<= 120 s) for user 01a14e2a-7eba-7b1a-82b1-8ca90a70ab92 through occurred_at >= 2026-10-18T08:39:49.207Z
+[2026-10-18T08:40:02Z] invalid-events-to-dlq: converge: ok after 8 s
+[2026-10-18T08:40:02Z] invalid-events-to-dlq: STREAM row: cutoff_w=2026-10-18T08:39:49.207Z checksum=7b6907aa3580d7506ae61f6228e4c7f0918e5f49e51ff6b07b6ab2feccbe612f partition=4 offset=73 feature_as_of=2026-10-18T08:39:49.207Z aggregates={"sends_7d": 1, "sends_30d": 1, "sends_90d": 1, "attempts_7d": 1, "attempts_30d": 1, "attempts_90d": 1, "last_session_at": "2026-10-18T08:39:49.207Z", "recent_variant_ids": ["syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 18.2, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 1, "attempts": 1}}}
+[2026-10-18T08:40:02Z] invalid-events-to-dlq: --- harness: parity oracle (mode zero) ---
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 304ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/parity/parity.sh --user 01a14e2a-7eba-7b1a-82b1-8ca90a70ab92 --out /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-invalid-events-to-dlq.json
+03:40:04.077  INFO ParityService - parity outcome=RAN users=1 compared=1 equal=1 diffs=0 same_w_mismatch=0
+parity summary users=1 with_stream_row=1 compared=1 equal=1 diffs=0 same_w_mismatch=0 skipped_no_stream_row=0 synthetic_only=true out=/Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-invalid-events-to-dlq.json
+[2026-10-18T08:40:04Z] invalid-events-to-dlq: parity report /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-invalid-events-to-dlq.json: status=EQUAL diff_keys=- checksum_differs=false (exit 0)
+[2026-10-18T08:40:04Z] invalid-events-to-dlq: ASSERT PASS parity: exit 0, status EQUAL
+[2026-10-18T08:40:04Z] invalid-events-to-dlq: --- harness: no canonical attempt lost ---
+[2026-10-18T08:40:04Z] invalid-events-to-dlq: ASSERT PASS ACTIVE attempts: 1 == 1
+[2026-10-18T08:40:04Z] invalid-events-to-dlq: ASSERT PASS every expected attempt row present at its final revision/status (1 rows checked)
+[2026-10-18T08:40:04Z] invalid-events-to-dlq: --- harness: DLQ growth ---
+[2026-10-18T08:40:05Z] invalid-events-to-dlq: ASSERT PASS stream-dlq.v1 growth: 2 == 2 (0 -> 2)
+[2026-10-18T08:40:05Z] invalid-events-to-dlq: === scenario invalid-events-to-dlq: PASS in 36 s ===

@@ -13,9 +13,9 @@ meant to share.
 | `AttemptFeatureRow` | verbatim port | input row `(attempt_id, revision, route_variant_public_id, occurred_at, sent, grade_numeric nullable)` |
 | `Jcs`, `Timestamps` | copies of the api's canonicaliser and RFC 3339 formatter | what `toJson()` and the checksum need |
 
-"Verbatim" means only the `package` line and imports differ from the api sources (BC-0304 ported
-them; the api still carries its own copy until the switch-over follow-up replaces it with a
-dependency on this module). Until then any change must be made in both places.
+"Verbatim" means only the `package` line and imports differed from the api sources when BC-0304
+ported them; since commit 998e274 (BC-0306) the api depends on this module and its own copies are
+deleted, so this is the single implementation and any change is made here only.
 
 ## Tests
 

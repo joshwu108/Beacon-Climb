@@ -1,0 +1,43 @@
+# BC-0307 chaos transcript: late-3d-reconciliation, run 20261018T083513Z, 2026-10-18T08:36:31Z, commit 254b918
+[2026-10-18T08:36:31Z] harness: === scenario late-3d-reconciliation: start 2026-10-18T08:36:31Z, stream job 79dec750246e541eacff6058e99fd7a0, stream-dlq.v1 records before: 0 ===
+[2026-10-18T08:36:32Z] late-3d-reconciliation: user synthetic_chaos_late3d_896524 id=01a14e27-c597-74cd-90db-70d35affcfac consent recorded, preferences set, 20 routes
+[2026-10-18T08:36:32Z] late-3d-reconciliation: POST /v1/me/attempts -> 201 attempt_id=01a14e27-c6b0-7a7e-b5e8-04a3c544b7ea occurred_at=2026-10-18T08:36:32.045Z sent=true requests=1
+[2026-10-18T08:36:32Z] late-3d-reconciliation: POST /v1/me/attempts -> 201 attempt_id=01a14e27-c728-74e7-95a3-27927fb522ef occurred_at=2026-10-18T08:36:32.166Z sent=false requests=1
+[2026-10-18T08:36:34Z] late-3d-reconciliation: STREAM row reached checksum 0ce37b235b3d.. after 2 s
+[2026-10-18T08:36:34Z] late-3d-reconciliation: STREAM row: cutoff_w=2026-10-18T08:36:32.166Z checksum=0ce37b235b3dc435ffe882f381942781d123286e6736539b5794bdc034e49d13 partition=3 offset=3 feature_as_of=2026-10-18T08:36:32.166Z aggregates={"sends_7d": 1, "sends_30d": 1, "sends_90d": 1, "attempts_7d": 2, "attempts_30d": 2, "attempts_90d": 2, "last_session_at": "2026-10-18T08:36:32.166Z", "recent_variant_ids": ["syn-route-0121:40", "syn-route-0164:40"], "distinct_sessions_30d": 1, "max_sent_grade_numeric_90d": 18.2, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 1, "attempts": 2}}}
+[2026-10-18T08:36:34Z] late-3d-reconciliation: posting an attempt 3 d in the past: occurred_at=2026-10-15T08:36:34.789Z (beyond watermark - 24 h)
+[2026-10-18T08:36:34Z] late-3d-reconciliation: POST /v1/me/attempts -> 201 attempt_id=01a14e27-d195-7185-8393-fb100a10e92c occurred_at=2026-10-15T08:36:34.789Z sent=true requests=1
+[2026-10-18T08:36:37Z] late-3d-reconciliation: wait 'reconciliation_events row for 01a14e27-d195-7185-8393-fb100a10e92c revision 1' satisfied after 3 s
+  reconciliation row (id|attempt|rev|type|reason|resolution|resolved): 01a14e27-d285-70c6-b888-c5bcfeb1ee96|01a14e27-d195-7185-8393-fb100a10e92c|1|ATTEMPT_RECORDED|LATE_BEYOND_WINDOW|OPEN|f
+[2026-10-18T08:36:37Z] late-3d-reconciliation: ASSERT PASS reconciliation row reason: LATE_BEYOND_WINDOW
+[2026-10-18T08:36:37Z] late-3d-reconciliation: ASSERT PASS reconciliation row open before reconcile: f
+[2026-10-18T08:36:37Z] late-3d-reconciliation: ASSERT PASS STREAM row unchanged by the late event (cutoff_w|checksum|offset): 2026-10-18T08:36:32.166Z|0ce37b235b3dc435ffe882f381942781d123286e6736539b5794bdc034e49d13|3
+[2026-10-18T08:36:37Z] late-3d-reconciliation: ASSERT PASS batch at W=T2 WITHOUT the late attempt == STREAM checksum: 0ce37b235b3dc435ffe882f381942781d123286e6736539b5794bdc034e49d13
+[2026-10-18T08:36:37Z] late-3d-reconciliation: ASSERT PASS batch at W=T2 WITH the late attempt differs from the STREAM checksum (the expected DIFF is exactly 01a14e27-d195-7185-8393-fb100a10e92c): 'f50e0ab65db5718095bca79406a0867bb148bfc984a92e689f732a5903dca4bb' != '0ce37b235b3dc435ffe882f381942781d123286e6736539b5794bdc034e49d13'
+[2026-10-18T08:36:37Z] late-3d-reconciliation: ASSERT PASS SYNC row (attempts hook) already includes all 3: f50e0ab65db5718095bca79406a0867bb148bfc984a92e689f732a5903dca4bb
+[2026-10-18T08:36:38Z] late-3d-reconciliation: SYNC row: cutoff_w=2026-10-18T08:36:34.838Z checksum=f50e0ab65db5718095bca79406a0867bb148bfc984a92e689f732a5903dca4bb feature_as_of=2026-10-18T08:36:32.166Z aggregates={"sends_7d": 2, "sends_30d": 2, "sends_90d": 2, "attempts_7d": 3, "attempts_30d": 3, "attempts_90d": 3, "last_session_at": "2026-10-18T08:36:32.166Z", "recent_variant_ids": ["syn-route-0121:40", "syn-route-0164:40", "syn-route-0046:40"], "distinct_sessions_30d": 2, "max_sent_grade_numeric_90d": 18.9, "send_rate_by_grade_band_90d": {"INTERMEDIATE": {"sends": 2, "attempts": 3}}}
+./gradlew :api:bootJar
+> Task :events:compileJava UP-TO-DATE
+> Task :features:compileJava UP-TO-DATE
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources UP-TO-DATE
+> Task :api:classes UP-TO-DATE
+> Task :api:resolveMainClassName UP-TO-DATE
+> Task :events:processResources UP-TO-DATE
+> Task :events:classes UP-TO-DATE
+> Task :events:jar UP-TO-DATE
+> Task :features:processResources NO-SOURCE
+> Task :features:classes UP-TO-DATE
+> Task :features:jar UP-TO-DATE
+> Task :api:bootJar UP-TO-DATE
+
+BUILD SUCCESSFUL in 293ms
+9 actionable tasks: 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.1/userguide/configuration_cache_enabling.html
+bash scripts/parity/parity.sh --user 01a14e27-c597-74cd-90db-70d35affcfac --out /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-3d-reconciliation-before-reconcile.json
+03:36:39.830  INFO ParityService - parity outcome=RAN users=1 compared=1 equal=0 diffs=1 same_w_mismatch=0
+parity summary users=1 with_stream_row=1 compared=1 equal=0 diffs=1 same_w_mismatch=0 skipped_no_stream_row=0 synthetic_only=true out=/Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-3d-reconciliation-before-reconcile.json
+make[1]: *** [test-parity] Error 1
+[2026-10-18T08:36:40Z] late-3d-reconciliation: parity report /Users/joshuawu/beacon-climb/docs/evidence/BC-0307/parity-late-3d-reconciliation-before-reconcile.json: status=DIFF diff_keys=attempts_30d,attempts_7d,attempts_90d,distinct_sessions_30d,max_sent_grade_numeric_90d,recent_variant_ids,send_rate_by_grade_band_90d,sends_30d,sends_7d,sends_90d checksum_differs=true (exit 2)
+[2026-10-18T08:36:40Z] late-3d-reconciliation: FAIL: parity before reconcile: expected exit 1/DIFF/checksum_differs, got exit 2 status DIFF checksum_differs=true
+[2026-10-18T08:36:40Z] harness: FAIL: scenario script scripts/chaos/late-3d-reconciliation.sh exited non-zero

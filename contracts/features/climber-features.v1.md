@@ -149,10 +149,10 @@ rows of different versions coexist under the composite primary key.
 The Flink job (`services/stream`, `com.beaconclimb.stream.features.ClimberFeaturesFunction`) and
 the api recompute share one implementation of §1–§6: the plain-Java module `services/features`
 (`com.beaconclimb.features.FeatureComputer`, `FeatureAggregates`, `GradeBandBuckets`,
-`AttemptFeatureRow`), a verbatim port of the api classes. The api still runs its own copy until
-the switch-over follow-up makes it depend on the module; until then the committed golden fixtures
-(`services/features/src/test/resources/golden/climber-features-v1`, format in
-`services/features/README.md`) are what both copies are held to.
+`AttemptFeatureRow`), originally a verbatim port of the api classes. Since commit 998e274
+(BC-0306) the api depends on the module and its own copies are deleted; the committed golden
+fixtures (`services/features/src/test/resources/golden/climber-features-v1`, format in
+`services/features/README.md`) are what both consumers are held to.
 
 * **State.** Keyed by `user_id`; `MapState<attempt_id, AttemptState(revision, tombstone,
   occurred_at, route_variant_id, sent, grade_numeric)>` holds the highest revision seen per attempt.
