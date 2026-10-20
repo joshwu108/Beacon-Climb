@@ -23,9 +23,13 @@ export const createAuthMiddleware = (store: TokenStore): Middleware => ({
   },
 });
 
-/** Mock mode: load apps/web's MSW handlers on first use so the real-stack bundle path stays lean. */
-const mockFetch: FetchLike = async (request) => {
-  const { handleMockRequest } = await import('../mocks/mock-fetch');
+/**
+ * Mock mode: apps/web's MSW handlers, loaded on first use. A lazy require rather than
+ * import(): Jest (babel-preset-expo) cannot run a dynamic import without VM modules.
+ */
+const mockFetch: FetchLike = (request) => {
+  const { handleMockRequest } =
+    require('../mocks/mock-fetch') as typeof import('../mocks/mock-fetch');
   return handleMockRequest(request);
 };
 

@@ -1,3 +1,6 @@
-// Jest setup: mock mode is the test transport (in-process MSW handlers), and every test
-// starts from fresh mock state and an empty session.
-process.env.EXPO_PUBLIC_USE_MOCKS = 'true';
+// Jest setup. Mock mode itself is switched on in jest.config.js (see there).
+
+// expo-crypto's native module is absent under Jest; Node's crypto has the same function.
+jest.mock('expo-crypto', () => ({
+  randomUUID: () => require('node:crypto').randomUUID(),
+}));

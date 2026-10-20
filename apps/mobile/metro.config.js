@@ -6,9 +6,18 @@
 // then calls its own origin, so no CORS change in the API is needed (the API only allows the
 // 5173 and 3000 origins). Native builds call EXPO_PUBLIC_API_BASE_URL directly (no CORS).
 const http = require('node:http');
+const path = require('node:path');
 const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
+
+// pnpm keeps each package's dependencies isolated, so a transitive Expo package (e.g.
+// expo-asset importing react-native-web on web) cannot see the app's own dependencies.
+// Fall back to this app's node_modules, the way a hoisted install would resolve them.
+config.resolver.nodeModulesPaths = [
+  path.resolve(__dirname, 'node_modules'),
+  ...(config.resolver.nodeModulesPaths ?? []),
+];
 
 const PROXY_TARGET = new URL(
   process.env.BEACON_API_PROXY_TARGET || 'http://127.0.0.1:3000',

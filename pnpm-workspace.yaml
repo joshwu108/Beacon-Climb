@@ -2,9 +2,44 @@ packages:
   - apps/web
   - apps/mobile
 
-# apps/mobile: hold the Expo CLI chain at the SDK 58 patch level pinned in its package.json
-# (expo 58.0.6, published 2026-10-06), so its caret ranges do not float past the pins.
+# apps/mobile (Expo SDK 58): hold every Expo / React Native package at its newest release
+# published on or before 2026-10-06 (the 14-day cutoff the direct pins in
+# apps/mobile/package.json follow), so caret ranges inside the SDK do not float to
+# releases from the last two weeks. apps/web uses none of these packages.
 overrides:
   '@expo/cli': 58.1.5
+  '@expo/config': 58.0.3
+  '@expo/config-plugins': 58.0.6
+  '@expo/config-types': 58.0.2
+  '@expo/env': 2.5.1
+  '@expo/fingerprint': 0.21.3
+  '@expo/image-utils': 0.12.4
+  '@expo/inline-modules': 0.2.3
+  '@expo/local-build-cache-provider': 58.0.3
+  '@expo/log-box': 58.0.11
+  '@expo/log-box-utils': 58.0.1
+  '@expo/metro': 58.0.0-rc.0
+  '@expo/metro-config': 58.0.10
+  '@expo/metro-file-map': 58.0.4
+  '@expo/package-manager': 1.14.1
+  '@expo/prebuild-config': 58.0.10
+  '@expo/require-utils': 58.0.3
   '@expo/router-server': 58.0.10
+  '@expo/schema-utils': 58.0.1
+  '@expo/xcpretty': 4.4.6
+  '@react-native/babel-plugin-codegen': 0.88.0-rc.3
+  '@react-native/codegen': 0.88.0-rc.3
+  '@react-native/js-polyfills': 0.88.0-rc.3
   '@react-native/metro-config': 0.88.0-rc.3
+  '@react-native/normalize-colors': 0.88.0-rc.3
+  'babel-preset-expo': 58.0.11
+  'expo-asset': 58.0.13
+  'expo-constants': 58.0.10
+  'expo-file-system': 58.0.7
+  'expo-glass-effect': 58.0.3
+  'expo-modules-autolinking': 58.0.10
+  'expo-modules-core': 58.0.14
+  'expo-modules-jsi': 58.0.9
+  'expo-server': 58.0.3
+  'react-native-drawer-layout': 4.2.11
+  'react-native-gesture-handler': 3.2.1

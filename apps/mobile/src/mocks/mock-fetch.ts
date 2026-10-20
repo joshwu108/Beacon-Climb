@@ -7,6 +7,7 @@
  */
 import { getResponse } from 'msw';
 import { handlers } from '@web/mocks/handlers';
+import { withRequestedPolicy } from './policy';
 import { similarHandler } from './similar';
 
 export const mockHandlers = [similarHandler, ...handlers];
@@ -29,5 +30,17 @@ const notImplemented = (request: Request): Response =>
     },
   );
 
-export const handleMockRequest = async (request: Request): Promise<Response> =>
-  (await getResponse(mockHandlers, request)) ?? notImplemented(request);
+const RECOMMENDATIONS_PATH = '/v1/me/sessions/recommendations';
+
+export const handleMockRequest = async (
+  request: Request,
+): Promise<Response> => {
+  const isRecommendation =
+    request.method === 'POST' &&
+    new URL(request.url).pathname === RECOMMENDATIONS_PATH;
+  // getResponse consumes the body; keep a copy for the policy echo.
+  const original = isRecommendation ? request.clone() : null;
+  const response =
+    (await getResponse(mockHandlers, request)) ?? notImplemented(request);
+  return original === null ? response : withRequestedPolicy(original, response);
+};

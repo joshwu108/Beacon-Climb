@@ -1,6 +1,11 @@
 import { resetMockState } from '@web/mocks/state';
 import { handleMockRequest } from '../mock-fetch';
-import { holdOverlapDistance, similarFor } from '../similar';
+import {
+  MOCK_SIMILAR_MODEL_VERSION,
+  holdOverlapDistance,
+  similarFor,
+  standInDistance,
+} from '../similar';
 import { CATALOG, findVariant } from '@web/mocks/catalog';
 
 const BASE = 'http://mock.beacon.local';
@@ -83,9 +88,21 @@ describe('similarFor (generated neighbours)', () => {
     expect([...distances].sort((a, b) => a - b)).toEqual(distances);
   });
 
-  it('distance is 0 for identical hold sets and 1 for disjoint ones', () => {
+  it('hold overlap is 0 for identical placements and 1 for disjoint ones', () => {
     const route = CATALOG[1]!;
     expect(holdOverlapDistance(route, route)).toBe(0);
     expect(holdOverlapDistance(route, { ...route, placements: [] })).toBe(1);
+  });
+
+  it('the stand-in distance mixes hold overlap with the grade gap and labels itself', () => {
+    const route = { ...CATALOG[1]!, grade_numeric: 10 };
+    expect(standInDistance(route, route)).toBe(0);
+    expect(standInDistance(route, { ...route, grade_numeric: 20 })).toBe(0.25);
+    expect(standInDistance(route, { ...route, grade_numeric: null })).toBe(
+      0.25,
+    );
+    expect(
+      similarFor(findVariant('synthetic-route-004:40')!, 3).model_version,
+    ).toBe(MOCK_SIMILAR_MODEL_VERSION);
   });
 });
