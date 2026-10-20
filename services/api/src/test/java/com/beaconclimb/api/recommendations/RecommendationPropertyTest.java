@@ -19,6 +19,7 @@ import com.beaconclimb.api.identity.preferences.GradeBand;
 import com.beaconclimb.api.identity.preferences.PreferencesRepository;
 import com.beaconclimb.api.identity.preferences.PreferencesService;
 import com.beaconclimb.api.identity.preferences.PreferencesView;
+import com.beaconclimb.api.modeloutputs.ModelOutputRepository;
 import com.beaconclimb.api.ranking.PolicyLoader;
 import com.beaconclimb.api.ranking.PolicyRegistry;
 import com.beaconclimb.api.ranking.ReasonCode;
@@ -123,7 +124,9 @@ class RecommendationPropertyTest {
     json = JsonMapper.builder().build();
     CatalogSeed.seed(
         new CatalogImporter(new CatalogSchema(), new CatalogRepository(jdbc), tx, clock), jdbc);
-    PolicyRegistry registry = new PolicyRegistry(new PolicyLoader(), jdbc, tx, clock);
+    // Pinned to heuristic-v1: the property compares against ReferenceHeuristic (v1).
+    PolicyRegistry registry =
+        new PolicyRegistry(new PolicyLoader(), jdbc, tx, clock, "heuristic-v1");
     registry.register();
     FeatureSnapshotRepository snapshots = new FeatureSnapshotRepository(jdbc);
     preferences = new PreferencesService(new PreferencesRepository(jdbc, json), clock);
@@ -143,7 +146,8 @@ class RecommendationPropertyTest {
             ledger,
             tx,
             clock,
-            false);
+            false,
+            new ModelOutputRepository(jdbc));
     visible =
         new HashSet<>(
             jdbc.sql(

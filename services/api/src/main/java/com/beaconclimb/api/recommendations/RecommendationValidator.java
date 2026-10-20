@@ -27,6 +27,7 @@ final class RecommendationValidator {
   static final int MIN_ROUTES = 1;
   static final int MAX_ROUTES = 20;
   static final int MAX_EXCLUDED = 100;
+  static final List<String> POLICY_VERSIONS = List.of("heuristic-v1", "heuristic-v2");
   private static final Pattern UUID_CANONICAL =
       Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 
@@ -41,10 +42,30 @@ final class RecommendationValidator {
     Integer maxRoutes = maxRoutes(request.maxRoutes(), errors);
     UUID sessionId = sessionId(request.sessionId(), errors);
     List<String> exclude = exclude(request.excludeRouteVariantIds(), errors);
+    String policyVersion = policyVersion(request.policyVersion(), errors);
     if (!errors.isEmpty()) {
       throw ApiException.validationFailed(errors);
     }
-    return new ValidatedRequest(boardId, angle, goal, maxRoutes, sessionId, exclude);
+    return new ValidatedRequest(boardId, angle, goal, maxRoutes, sessionId, exclude, policyVersion);
+  }
+
+  /** Optional (1.3.0): absent or null means the server default. */
+  private static String policyVersion(JsonNode node, List<FieldError> errors) {
+    if (node == null || node.isNull()) {
+      return null;
+    }
+    if (!node.isString()) {
+      errors.add(new FieldError("policy_version", "type", "must be string"));
+      return null;
+    }
+    String value = node.asString();
+    if (!POLICY_VERSIONS.contains(value)) {
+      errors.add(
+          new FieldError(
+              "policy_version", "enum", "must be one of " + String.join(", ", POLICY_VERSIONS)));
+      return null;
+    }
+    return value;
   }
 
   private static String boardId(JsonNode node, List<FieldError> errors) {

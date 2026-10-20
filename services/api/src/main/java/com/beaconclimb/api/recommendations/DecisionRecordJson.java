@@ -39,7 +39,10 @@ final class DecisionRecordJson {
       String rngSeed,
       List<Ranked> ranked,
       String environmentDigest,
-      String catalogVersion) {}
+      String catalogVersion,
+      String modelVersion,
+      String modelArtifactDigest,
+      List<ModelUse.Artifact> modelArtifacts) {}
 
   private DecisionRecordJson() {}
 
@@ -55,8 +58,23 @@ final class DecisionRecordJson {
     root.put("policy_version", in.policyVersion());
     root.set("policy_config", in.policyConfig());
     root.put("policy_code_digest", in.policyCodeDigest());
-    root.put("model_version", MODEL_VERSION_NONE);
-    root.putNull("model_artifact_digest");
+    root.put("model_version", in.modelVersion());
+    if (in.modelArtifactDigest() == null) {
+      root.putNull("model_artifact_digest");
+    } else {
+      root.put("model_artifact_digest", in.modelArtifactDigest());
+    }
+    if (!in.modelArtifacts().isEmpty()) {
+      // decision-record v1.1, optional: written only when model outputs were read, so a
+      // heuristic-v1 record stays byte-identical to v1.0.
+      ArrayNode artifacts = root.putArray("model_artifacts");
+      for (ModelUse.Artifact artifact : in.modelArtifacts()) {
+        ObjectNode a = artifacts.addObject();
+        a.put("role", artifact.role());
+        a.put("model_version", artifact.modelVersion());
+        a.put("artifact_digest", artifact.artifactDigest());
+      }
+    }
     root.put("feature_snapshot_id", in.featureSnapshotId().toString());
     root.put("feature_as_of", Timestamps.format(in.featureAsOf()));
     root.put("feature_schema_version", CandidateSnapshotJson.FEATURE_SCHEMA_VERSION);

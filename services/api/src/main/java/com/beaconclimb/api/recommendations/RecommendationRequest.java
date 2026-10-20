@@ -14,7 +14,8 @@ public record RecommendationRequest(
     JsonNode goal,
     @JsonProperty("max_routes") JsonNode maxRoutes,
     @JsonProperty("session_id") JsonNode sessionId,
-    @JsonProperty("exclude_route_variant_ids") JsonNode excludeRouteVariantIds) {
+    @JsonProperty("exclude_route_variant_ids") JsonNode excludeRouteVariantIds,
+    @JsonProperty("policy_version") JsonNode policyVersion) {
 
   /** Spring MVC logs request bodies at DEBUG; raw client input never reaches the log (TM-16). */
   @Override

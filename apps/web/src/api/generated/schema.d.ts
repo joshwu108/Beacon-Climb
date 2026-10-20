@@ -153,6 +153,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/routes/{route_variant_id}/similar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Routes most similar to this one ("more like this")
+         * @description Nearest route variants at the same board and angle by cosine distance between precomputed Model A route embeddings (BC-0210; route_model_outputs, the embedding model named by the default ranking policy). Model estimates of hold-layout similarity, not advice. 200 with model_version null and no items when no embedding exists for this route or model.
+         */
+        get: operations["listSimilarRoutes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -458,6 +478,16 @@ export interface components {
             grade_label: string | null;
             grade_observation_count: number;
         };
+        SimilarRoutes: {
+            /** @description Public route variant id `<provider_route_uuid>:<angle_deg>`; split at the final colon (ADR-0002). */
+            route_variant_id: string;
+            model_version: string | null;
+            items: {
+                route: components["schemas"]["RouteVariantSummary"];
+                /** @description Cosine distance (0 = same direction, 2 = opposite). */
+                distance: number;
+            }[];
+        };
         Placement: {
             hold_id: string;
             x: number;
@@ -583,6 +613,11 @@ export interface components {
             /** Format: uuid */
             session_id: string;
             exclude_route_variant_ids: string[];
+            /**
+             * @description Optional (1.3.0, BC-0210). Ranking policy to use; omitted means the server default (heuristic-v2). heuristic-v1 stays selectable so earlier decisions can be compared and replayed under the policy that made them.
+             * @enum {string}
+             */
+            policy_version?: "heuristic-v1" | "heuristic-v2";
         };
         Recommendation: {
             /** @description Public route variant id `<provider_route_uuid>:<angle_deg>`; split at the final colon (ADR-0002). */
@@ -1031,6 +1066,43 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["RateLimited"];
+        };
+    };
+    listSimilarRoutes: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                route_variant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful response */
+            200: {
+                headers: {
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimilarRoutes"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            /** @description Codes: VALIDATION_FAILED (limit outside 1..50). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             429: components["responses"]["RateLimited"];
         };
     };

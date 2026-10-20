@@ -525,7 +525,8 @@ test('onboard -> browse -> recommend -> log twice -> history -> cold start ends'
     ).toBeVisible();
     const about = page.getByRole('complementary', { name: 'About this list' });
     await expect(about).toBeVisible();
-    await expect(about.getByText('heuristic-v1')).toBeVisible();
+    // BC-0210: heuristic-v2 is the server default (contract 1.3.0).
+    await expect(about.getByText('heuristic-v2')).toBeVisible();
     await expect(
       page
         .getByText('This route exists on your board at your selected angle.')

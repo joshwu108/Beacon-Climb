@@ -1,0 +1,36 @@
+{
+  "status": 200,
+  "headers": {
+    "X-Request-Id": "fixture-request-1"
+  },
+  "body": {
+    "route_variant_id": "synthetic-route-001:40",
+    "model_version": "model-a-deepsets-fixture",
+    "items": [
+      {
+        "route": {
+          "route_variant_id": "synthetic-route-002:40",
+          "board_id": "synthetic-demo-1",
+          "angle_deg": 40,
+          "name": "Synthetic Traverse 2",
+          "grade_numeric": 18,
+          "grade_label": "V3",
+          "grade_observation_count": 4
+        },
+        "distance": 0.08
+      },
+      {
+        "route": {
+          "route_variant_id": "synthetic-route-003:40",
+          "board_id": "synthetic-demo-1",
+          "angle_deg": 40,
+          "name": "Synthetic Traverse 3",
+          "grade_numeric": 21,
+          "grade_label": "V5",
+          "grade_observation_count": 12
+        },
+        "distance": 0.31
+      }
+    ]
+  }
+}

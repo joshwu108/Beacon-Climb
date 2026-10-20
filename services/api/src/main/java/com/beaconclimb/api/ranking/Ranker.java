@@ -31,6 +31,19 @@ public final class Ranker {
 
   public static RankResult rank(
       List<Candidate> candidateInput, UserContext context, Policy policy, int maxRoutes) {
+    return rank(candidateInput, context, policy, maxRoutes, ModelSignals.EMPTY);
+  }
+
+  /**
+   * As above with precomputed model outputs; a policy without a {@code model} block ignores them
+   * (heuristic-v1 is unchanged).
+   */
+  public static RankResult rank(
+      List<Candidate> candidateInput,
+      UserContext context,
+      Policy policy,
+      int maxRoutes,
+      ModelSignals signals) {
     List<Candidate> candidates = distinctById(candidateInput);
     List<FilterOutcome> rejected = new ArrayList<>();
     List<Candidate> survivors = new ArrayList<>();
@@ -53,7 +66,7 @@ public final class Ranker {
     }
     List<Scored> scored = new ArrayList<>(survivors.size());
     for (Candidate candidate : survivors) {
-      scored.add(score(candidate, context, policy));
+      scored.add(score(candidate, context, policy, signals));
     }
     scored.sort(Comparator.comparingDouble(Scored::score).reversed().thenComparing(Scored::tieKey));
     boolean coldStart = context.isColdStart();
@@ -89,8 +102,9 @@ public final class Ranker {
     return widened;
   }
 
-  private static Scored score(Candidate candidate, UserContext context, Policy policy) {
-    ScoreInputs inputs = Scoring.inputs(candidate, context, policy);
+  private static Scored score(
+      Candidate candidate, UserContext context, Policy policy, ModelSignals signals) {
+    ScoreInputs inputs = Scoring.inputs(candidate, context, policy, signals);
     return new Scored(
         candidate,
         inputs,

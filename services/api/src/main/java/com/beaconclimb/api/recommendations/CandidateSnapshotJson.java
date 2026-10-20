@@ -4,6 +4,7 @@ import com.beaconclimb.api.identity.preferences.Goal;
 import com.beaconclimb.api.platform.web.Timestamps;
 import com.beaconclimb.api.ranking.Candidate;
 import com.beaconclimb.api.ranking.FilterOutcome;
+import com.beaconclimb.api.ranking.ModelSignals;
 import com.beaconclimb.api.ranking.Policy;
 import com.beaconclimb.api.ranking.RankResult;
 import com.beaconclimb.api.ranking.ScoreInputs;
@@ -48,7 +49,8 @@ final class CandidateSnapshotJson {
       Map<String, Integer> holdCounts,
       UserContext context,
       Policy policy,
-      RankResult result) {}
+      RankResult result,
+      ModelSignals signals) {}
 
   private CandidateSnapshotJson() {}
 
@@ -90,7 +92,7 @@ final class CandidateSnapshotJson {
         board && angle && active && notExcluded,
         cooldownPassed,
         in.result().lowInventoryWidened());
-    ScoreInputs inputs = Scoring.inputs(candidate, context, policy);
+    ScoreInputs inputs = Scoring.inputs(candidate, context, policy, in.signals());
 
     ObjectNode node = JsonNodeFactory.instance.objectNode();
     node.put("route_variant_id", candidate.routeVariantId());
@@ -109,10 +111,29 @@ final class CandidateSnapshotJson {
     features.put("preference_match", inputs.preferenceMatch());
     features.put("grade_observation_count", candidate.gradeObservationCount());
     ObjectNode outputs = node.putObject("model_outputs");
-    outputs.putNull("predicted_grade");
-    outputs.putNull("embedding_distance");
-    outputs.putNull("predicted_send_probability");
+    if (policy.usesModel()) {
+      // decision-record v1.1: the frozen model inputs of heuristic-v2 (BC-0210). A replay
+      // re-derives challenge fit from grade_used and reads novelty from features.novelty.
+      String id = candidate.routeVariantId();
+      putNullable(outputs, "predicted_grade", in.signals().predictedGrade().get(id));
+      putNullable(outputs, "embedding_distance", Scoring.embeddingDistance(id, in.signals()));
+      outputs.putNull("predicted_send_probability");
+      putNullable(
+          outputs, "grade_used", Scoring.gradeUsed(candidate, in.signals(), policy.model()));
+    } else {
+      outputs.putNull("predicted_grade");
+      outputs.putNull("embedding_distance");
+      outputs.putNull("predicted_send_probability");
+    }
     return node;
+  }
+
+  private static void putNullable(ObjectNode node, String key, Double value) {
+    if (value == null) {
+      node.putNull(key);
+    } else {
+      node.put(key, value.doubleValue());
+    }
   }
 
   /** Mirrors {@code CandidateFilter.inCooldown}: last attempt strictly after now - cooldown. */

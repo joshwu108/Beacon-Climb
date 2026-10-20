@@ -120,6 +120,7 @@ class RecommendationValidatorTest {
         node.get("goal"),
         node.get("max_routes"),
         node.get("session_id"),
-        node.get("exclude_route_variant_ids"));
+        node.get("exclude_route_variant_ids"),
+        node.get("policy_version"));
   }
 }

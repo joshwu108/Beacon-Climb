@@ -44,6 +44,7 @@ final class RankingFixtures {
         offsets,
         Map.of(),
         3,
+        null,
         "f".repeat(64));
   }
 

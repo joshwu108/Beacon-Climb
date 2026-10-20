@@ -19,17 +19,26 @@ class PolicyRegistryIT extends AbstractPostgresIT {
 
   @Test
   void startupUpsertsTheBundledPolicyAsActiveAndActiveRoundTrips() {
+    // BC-0210: both bundled policies are registered; heuristic-v2 is the active default and
+    // heuristic-v1 stays stored (inactive) and selectable.
     Policy active = registry.active();
-    PolicyRegistry.StoredPolicy stored = registry.find("heuristic-v1").orElseThrow();
+    PolicyLoader v2 = new PolicyLoader(PolicyLoader.V2_RESOURCE);
+    PolicyRegistry.StoredPolicy storedV2 = registry.find("heuristic-v2").orElseThrow();
+    PolicyRegistry.StoredPolicy storedV1 = registry.find("heuristic-v1").orElseThrow();
 
-    assertThat(active).isEqualTo(loader.load());
+    assertThat(active).isEqualTo(v2.load());
+    assertThat(active.usesModel()).isTrue();
     assertThat(active.codeDigest()).isEqualTo(loader.codeDigest());
-    assertThat(stored.active()).isTrue();
-    assertThat(stored.codeDigest()).isEqualTo(loader.codeDigest());
-    assertThat(Jcs.canonicalize(stored.serializedConfig()))
+    assertThat(storedV2.active()).isTrue();
+    assertThat(storedV1.active()).isFalse();
+    assertThat(storedV2.codeDigest()).isEqualTo(loader.codeDigest());
+    assertThat(Jcs.canonicalize(storedV2.serializedConfig()))
+        .isEqualTo(Jcs.canonicalize(v2.rawJson()));
+    assertThat(Jcs.canonicalize(storedV1.serializedConfig()))
         .isEqualTo(Jcs.canonicalize(loader.rawJson()));
-    assertThat(Policy.fromJson(stored.serializedConfig()).withCodeDigest(stored.codeDigest()))
+    assertThat(Policy.fromJson(storedV2.serializedConfig()).withCodeDigest(storedV2.codeDigest()))
         .isEqualTo(active);
+    assertThat(registry.policy("heuristic-v1")).contains(loader.load());
   }
 
   @Test

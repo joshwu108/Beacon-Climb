@@ -30,6 +30,7 @@ public record Policy(
     Map<Goal, Double> goalOffsets,
     Map<Goal, List<String>> preferredTags,
     int lowInventoryMin,
+    ModelSettings model,
     String codeDigest) {
 
   /** The five PRD 7.4 weights; {@code skillGap} multiplies a constant 0 in v1. */
@@ -67,6 +68,7 @@ public record Policy(
         goalOffsets,
         preferredTags,
         lowInventoryMin,
+        model,
         digest);
   }
 
@@ -115,7 +117,30 @@ public record Policy(
         offsets,
         tags,
         required(node, "low_inventory_min").asInt(),
+        modelSettings(node.get("model")),
         null);
+  }
+
+  /** The optional {@code model} block (heuristic-v2); null when absent. */
+  private static ModelSettings modelSettings(JsonNode model) {
+    if (model == null || model.isNull()) {
+      return null;
+    }
+    return new ModelSettings(
+        nullableText(model, "grade_model_version"),
+        nullableText(model, "embedding_model_version"),
+        required(model, "blend_k").doubleValue(),
+        required(model, "novelty_distance_scale").doubleValue());
+  }
+
+  private static String nullableText(JsonNode node, String key) {
+    JsonNode value = node.get(key);
+    return value == null || value.isNull() ? null : value.asString();
+  }
+
+  /** True for a model-aware policy (heuristic-v2). */
+  public boolean usesModel() {
+    return model != null;
   }
 
   private static JsonNode required(JsonNode node, String key) {

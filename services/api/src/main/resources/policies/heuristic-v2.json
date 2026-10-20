@@ -1,0 +1,59 @@
+{
+  "policy_version": "heuristic-v2",
+  "notes": [
+    "BC-0210 model-aware heuristic policy (owner decisions 2026-10-19). Same weights, window, cooldown, band targets, goal offsets and tags as heuristic-v1; only the challenge-fit grade and the novelty input differ.",
+    "grade_used = (n * grade_numeric + blend_k * predicted_grade) / (n + blend_k), n = grade_observation_count, blend_k = min_obs; challenge_fit is scored on grade_used. Without a predicted grade, grade_used = grade_numeric.",
+    "novelty = 0 for a route in recent_variant_ids (as v1), else min(1, d / novelty_distance_scale) with d the smallest cosine distance between the route's embedding and the embeddings of the recent routes; 1 when either embedding is missing.",
+    "Model outputs are precomputed (route_model_outputs) for the model versions named below and frozen into the candidate snapshot; the request path never calls a model. On a board without outputs (the synthetic demo board) v2 scores exactly like v1; only the tie-break salt (policy_version) differs.",
+    "blend_k and novelty_distance_scale are untuned defaults: there are no real climber outcomes to tune them against (Gate D1 NO-GO).",
+    "score = challenge*challenge_fit + skill_gap*0 + novelty*novelty + preference*preference_match + confidence*confidence_bonus, summed strictly left to right (Scoring.score)."
+  ],
+  "weights": {
+    "challenge": 0.4,
+    "skill_gap": 0.25,
+    "novelty": 0.15,
+    "preference": 0.1,
+    "confidence": 0.1
+  },
+  "grade_window": 10,
+  "min_obs": 10,
+  "cooldown_hours": 48,
+  "band_targets": {
+    "NOVICE": 12,
+    "BEGINNER": 15,
+    "INTERMEDIATE": 19,
+    "ADVANCED": 23,
+    "EXPERT": 27
+  },
+  "goal_offsets": {
+    "TECHNIQUE": -1,
+    "STRENGTH": 1,
+    "ENDURANCE": -2,
+    "PROJECT": 3
+  },
+  "preferred_tags": {
+    "TECHNIQUE": [
+      "technical",
+      "slopers"
+    ],
+    "STRENGTH": [
+      "crimpy",
+      "dynamic"
+    ],
+    "ENDURANCE": [
+      "technical"
+    ],
+    "PROJECT": [
+      "dynamic",
+      "crimpy"
+    ]
+  },
+  "low_inventory_min": 3,
+  "model": {
+    "grade_model_version": "model-a-gbm-20261019",
+    "embedding_model_version": "model-a-deepsets-20261019",
+    "blend_k": 10,
+    "novelty_distance_scale": 0.5
+  },
+  "code_digest": null
+}

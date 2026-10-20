@@ -147,6 +147,13 @@
               ],
               "minimum": 0,
               "maximum": 1
+            },
+            "grade_used": {
+              "description": "v1.1, optional (BC-0210): the grade the policy scored challenge fit with. For heuristic-v2 it is (grade_observation_count * grade_numeric + blend_k * predicted_grade) / (grade_observation_count + blend_k), or grade_numeric when predicted_grade is null. Absent for heuristic-v1, which scores grade_numeric.",
+              "type": [
+                "number",
+                "null"
+              ]
             }
           },
           "additionalProperties": false
@@ -306,6 +313,21 @@
               "type": "null"
             }
           ]
+        },
+        "model_artifacts": {
+          "description": "v1.1, optional (BC-0210): every registered model whose precomputed outputs this decision read, by role. model_version / model_artifact_digest above name the grade model (or 'none' / null). A replay needs only the snapshot's frozen model_outputs; these identify where they came from.",
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["role", "model_version", "artifact_digest"],
+            "properties": {
+              "role": { "enum": ["grade", "embedding"] },
+              "model_version": { "type": "string" },
+              "artifact_digest": { "$ref": "#/$defs/hex64" }
+            }
+          }
         },
         "feature_snapshot_id": {
           "type": "string",

@@ -20,15 +20,32 @@ public record ValidatedRequest(
     Goal goal,
     int maxRoutes,
     UUID sessionId,
-    List<String> excludeRouteVariantIds) {
+    List<String> excludeRouteVariantIds,
+    String policyVersion) {
 
   public ValidatedRequest {
     excludeRouteVariantIds = List.copyOf(excludeRouteVariantIds);
   }
 
+  /** As before 1.3.0: no explicit policy, the server default applies. */
+  public ValidatedRequest(
+      String boardId,
+      int angleDeg,
+      Goal goal,
+      int maxRoutes,
+      UUID sessionId,
+      List<String> excludeRouteVariantIds) {
+    this(boardId, angleDeg, goal, maxRoutes, sessionId, excludeRouteVariantIds, null);
+  }
+
   public JsonNode toJsonNode() {
     ObjectNode node = toConstraints();
     node.put("session_id", sessionId.toString());
+    if (policyVersion != null) {
+      // 1.3.0: echoed only when the client named a policy, so pre-1.3 request_json is unchanged.
+      // Not part of request_constraints: the record carries policy_version at top level.
+      node.put("policy_version", policyVersion);
+    }
     return node;
   }
 

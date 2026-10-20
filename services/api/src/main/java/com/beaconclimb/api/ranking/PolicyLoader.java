@@ -9,6 +9,7 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HexFormat;
+import java.util.List;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,13 @@ import org.springframework.stereotype.Component;
 public class PolicyLoader {
 
   public static final String DEFAULT_RESOURCE = "policies/heuristic-v1.json";
+
+  /** The model-aware policy (BC-0210). */
+  public static final String V2_RESOURCE = "policies/heuristic-v2.json";
+
+  /** Every bundled policy the registry registers, in a fixed order. */
+  public static final List<String> BUNDLED = List.of(DEFAULT_RESOURCE, V2_RESOURCE);
+
   static final String CLASS_PATTERN = "classpath*:com/beaconclimb/api/ranking/*.class";
 
   private final String resource;

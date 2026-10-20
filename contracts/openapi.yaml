@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Beacon Climb API
-  version: 1.2.0
+  version: 1.3.0
   description: 'CONTRACT-v1.2. Changelog: 1.2.0 — features_source and features_cutoff_w
     on recommendations (BC-0310 stream read path). 1.1.0 — board geometry, embedded route summaries,
     closed enums, consent scopes and document, error-code enum with 401/413/429 everywhere,
@@ -302,6 +302,54 @@ paths:
           pattern: '^[^:\s]{1,64}:-?[0-9]{1,3}$'
           description: Public route variant id `<provider_route_uuid>:<angle_deg>`;
             split at the final colon (ADR-0002).
+  /v1/routes/{route_variant_id}/similar:
+    get:
+      operationId: listSimilarRoutes
+      summary: Routes most similar to this one ("more like this")
+      description: 'Nearest route variants at the same board and angle by cosine distance
+        between precomputed Model A route embeddings (BC-0210; route_model_outputs, the
+        embedding model named by the default ranking policy). Model estimates of hold-layout
+        similarity, not advice. 200 with model_version null and no items when no embedding
+        exists for this route or model.'
+      tags:
+      - API
+      parameters:
+      - name: route_variant_id
+        in: path
+        required: true
+        schema: *id007
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            X-Request-Id:
+              schema: *id001
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimilarRoutes'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: 'Codes: VALIDATION_FAILED (limit outside 1..50).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerAuth: []
   /v1/me:
     get:
       operationId: getMe
@@ -1130,6 +1178,36 @@ components:
           - 'null'
         grade_observation_count: *id003
       additionalProperties: false
+    SimilarRoutes:
+      type: object
+      required:
+      - route_variant_id
+      - model_version
+      - items
+      properties:
+        route_variant_id: *id007
+        model_version:
+          type:
+          - string
+          - 'null'
+        items:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            required:
+            - route
+            - distance
+            properties:
+              route:
+                $ref: '#/components/schemas/RouteVariantSummary'
+              distance:
+                type: number
+                minimum: 0
+                maximum: 2
+                description: Cosine distance (0 = same direction, 2 = opposite).
+            additionalProperties: false
+      additionalProperties: false
     Placement:
       type: object
       required:
@@ -1453,6 +1531,14 @@ components:
           type: array
           maxItems: 100
           items: *id007
+        policy_version:
+          type: string
+          enum:
+          - heuristic-v1
+          - heuristic-v2
+          description: 'Optional (1.3.0, BC-0210). Ranking policy to use; omitted means
+            the server default (heuristic-v2). heuristic-v1 stays selectable so earlier
+            decisions can be compared and replayed under the policy that made them.'
       additionalProperties: false
     Recommendation:
       type: object

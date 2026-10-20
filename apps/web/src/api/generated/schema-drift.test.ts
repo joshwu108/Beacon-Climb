@@ -30,7 +30,7 @@ describe('generated API schema', () => {
     expect(readFileSync(out, 'utf8')).toBe(readFileSync(committed, 'utf8'));
   });
 
-  it('is generated from contract version 1.2.0', () => {
-    expect(readFileSync(spec, 'utf8')).toMatch(/^\s*version: 1\.2\.0$/m);
+  it('is generated from contract version 1.3.0', () => {
+    expect(readFileSync(spec, 'utf8')).toMatch(/^\s*version: 1\.3\.0$/m);
   });
 });

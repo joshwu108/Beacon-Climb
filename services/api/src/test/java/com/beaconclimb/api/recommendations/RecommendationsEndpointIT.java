@@ -46,7 +46,9 @@ class RecommendationsEndpointIT extends RecommendationsTestSupport {
         recommendOk(
             account.token(), recommendationBody("TECHNIQUE", 5, UUID.randomUUID(), List.of()));
 
-    assertThat(response.get("policy_version").asString()).isEqualTo("heuristic-v1");
+    // BC-0210: heuristic-v2 is the default; the synthetic board has no model outputs, so the
+    // decision names no model.
+    assertThat(response.get("policy_version").asString()).isEqualTo("heuristic-v2");
     assertThat(response.get("model_version").asString()).isEqualTo("none");
     assertThat(response.get("fallback_used").asBoolean()).isFalse();
     assertThat(response.get("cold_start").asBoolean()).isTrue();
@@ -148,9 +150,9 @@ class RecommendationsEndpointIT extends RecommendationsTestSupport {
       UUID userId, UUID sessionId, List<String> ids, List<Long> bits) {
     for (int i = 1; i < ids.size(); i++) {
       if (bits.get(i).equals(bits.get(i - 1))) {
-        assertThat(TieBreak.key("heuristic-v1", userId, sessionId, ids.get(i - 1)))
+        assertThat(TieBreak.key("heuristic-v2", userId, sessionId, ids.get(i - 1)))
             .as("session %s positions %d and %d", sessionId, i, i + 1)
-            .isLessThan(TieBreak.key("heuristic-v1", userId, sessionId, ids.get(i)));
+            .isLessThan(TieBreak.key("heuristic-v2", userId, sessionId, ids.get(i)));
       }
     }
   }

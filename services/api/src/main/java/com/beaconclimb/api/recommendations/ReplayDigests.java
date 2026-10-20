@@ -17,6 +17,9 @@ public final class ReplayDigests {
 
   public static final String RANKING_IMPLEMENTATION = "java-heuristic-v1";
 
+  /** The model-aware scoring path (BC-0210, heuristic-v2). */
+  public static final String RANKING_IMPLEMENTATION_V2 = "java-heuristic-v2";
+
   private ReplayDigests() {}
 
   public static String rngSeed(String policyVersion, UUID userId, UUID sessionId) {
@@ -25,17 +28,26 @@ public final class ReplayDigests {
   }
 
   public static String environmentDigest(String policyCodeDigest) {
+    return environmentDigest(policyCodeDigest, RANKING_IMPLEMENTATION);
+  }
+
+  public static String environmentDigest(String policyCodeDigest, String implementation) {
     return Jcs.sha256Hex(
-        Jcs.canonicalize(environment(policyCodeDigest)).getBytes(StandardCharsets.UTF_8));
+        Jcs.canonicalize(environment(policyCodeDigest, implementation))
+            .getBytes(StandardCharsets.UTF_8));
   }
 
   /** The environment document the digest covers; exposed so audits can reproduce it. */
   public static ObjectNode environment(String policyCodeDigest) {
+    return environment(policyCodeDigest, RANKING_IMPLEMENTATION);
+  }
+
+  public static ObjectNode environment(String policyCodeDigest, String implementation) {
     ObjectNode node = JsonNodeFactory.instance.objectNode();
     node.put("java_version", System.getProperty("java.version"));
     node.put("spring_boot_version", String.valueOf(SpringBootVersion.getVersion()));
     node.put("policy_code_digest", policyCodeDigest);
-    node.put("ranking_implementation", RANKING_IMPLEMENTATION);
+    node.put("ranking_implementation", implementation);
     return node;
   }
 }

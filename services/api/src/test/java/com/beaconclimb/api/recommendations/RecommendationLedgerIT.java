@@ -111,16 +111,18 @@ class RecommendationLedgerIT extends RecommendationsTestSupport {
     String seed = (String) first.get("rng_seed");
     assertThat(seed)
         .matches(HEX64)
-        .isEqualTo(ReplayDigests.rngSeed("heuristic-v1", account.userId(), session))
+        .isEqualTo(ReplayDigests.rngSeed("heuristic-v2", account.userId(), session))
         .isEqualTo(
             Jcs.sha256Hex(
-                ("heuristic-v1|" + account.userId() + "|" + session)
+                ("heuristic-v2|" + account.userId() + "|" + session)
                     .getBytes(StandardCharsets.UTF_8)))
         .isEqualTo(second.get("rng_seed"));
     String environment = (String) first.get("environment_digest");
     assertThat(environment)
         .matches(HEX64)
-        .isEqualTo(ReplayDigests.environmentDigest((String) first.get("policy_code_digest")))
+        .isEqualTo(
+            ReplayDigests.environmentDigest(
+                (String) first.get("policy_code_digest"), ReplayDigests.RANKING_IMPLEMENTATION_V2))
         .isEqualTo(second.get("environment_digest"));
     assertThat((String) first.get("policy_code_digest")).matches(HEX64);
     assertThat(first.get("candidate_set_digest")).isEqualTo(second.get("candidate_set_digest"));

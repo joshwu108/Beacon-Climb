@@ -13,6 +13,7 @@ import com.beaconclimb.api.identity.ConsentGuard;
 import com.beaconclimb.api.identity.Uuid7;
 import com.beaconclimb.api.identity.preferences.PreferencesService;
 import com.beaconclimb.api.identity.preferences.PreferencesView;
+import com.beaconclimb.api.modeloutputs.ModelOutputRepository;
 import com.beaconclimb.api.platform.json.Jcs;
 import com.beaconclimb.api.platform.web.ApiException;
 import com.beaconclimb.api.platform.web.ErrorCode;
@@ -106,6 +107,7 @@ public class RecommendationService {
   private final TransactionTemplate tx;
   private final Clock clock;
   private final boolean streamEnabled;
+  private final ModelOutputRepository modelOutputs;
 
   public RecommendationService(
       ConsentGuard consent,
@@ -120,7 +122,8 @@ public class RecommendationService {
       DecisionLedgerRepository ledger,
       TransactionTemplate tx,
       Clock clock,
-      @Value("${beacon.stream.enabled:false}") boolean streamEnabled) {
+      @Value("${beacon.stream.enabled:false}") boolean streamEnabled,
+      ModelOutputRepository modelOutputs) {
     this.consent = consent;
     this.quota = quota;
     this.preferences = preferences;
@@ -134,6 +137,7 @@ public class RecommendationService {
     this.tx = tx;
     this.clock = clock;
     this.streamEnabled = streamEnabled;
+    this.modelOutputs = modelOutputs;
   }
 
   public RecommendationResponse recommend(UUID userId, RecommendationRequest body) {
@@ -146,7 +150,7 @@ public class RecommendationService {
       throw unsupportedAngle(board.availableAngles());
     }
     PreferencesView prefs = preferences.find(userId).orElseThrow(this::missingPreferences);
-    Policy policy = activePolicy();
+    Policy policy = policyFor(request);
     StoredPolicy storedPolicy =
         policies.find(policy.policyVersion()).orElseThrow(this::policyUnavailable);
     FeatureSelection selection =
@@ -182,7 +186,14 @@ public class RecommendationService {
             Set.copyOf(request.excludeRouteVariantIds()),
             aggregates.maxSentGradeNumeric90d(),
             now);
-    RankResult result = Ranker.rank(pool, context, policy, request.maxRoutes());
+    ModelUse model =
+        ModelUse.load(
+            policy,
+            board.boardId(),
+            request.angleDeg(),
+            aggregates.recentVariantIds(),
+            modelOutputs);
+    RankResult result = Ranker.rank(pool, context, policy, request.maxRoutes(), model.signals());
     Instant featureAsOf =
         snapshot.featureAsOf() != null ? snapshot.featureAsOf() : snapshot.cutoffW();
 
@@ -197,7 +208,8 @@ public class RecommendationService {
                 holdCounts,
                 context,
                 policy,
-                result));
+                result,
+                model.signals()));
     schema.requireValidSnapshot(snapshotJson);
     byte[] snapshotBytes = Jcs.canonicalize(snapshotJson).getBytes(StandardCharsets.UTF_8);
     String digest = Jcs.sha256Hex(snapshotBytes);
@@ -217,8 +229,11 @@ public class RecommendationService {
                 digest,
                 ReplayDigests.rngSeed(policy.policyVersion(), userId, request.sessionId()),
                 result.ranked(),
-                ReplayDigests.environmentDigest(policy.codeDigest()),
-                board.catalogVersion()));
+                environmentDigest(policy),
+                board.catalogVersion(),
+                model.modelVersion(),
+                model.modelArtifactDigest(),
+                model.artifacts()));
     schema.requireValidRecord(record);
     LedgerEntry entry =
         new LedgerEntry(
@@ -228,7 +243,7 @@ public class RecommendationService {
             now,
             policy.policyVersion(),
             policy.codeDigest(),
-            DecisionRecordJson.MODEL_VERSION_NONE,
+            model.modelVersion(),
             snapshot.userId(),
             snapshot.featureSchemaVersion(),
             snapshot.featureAsOf(),
@@ -334,6 +349,21 @@ public class RecommendationService {
         entry.coldStart(),
         views,
         entry.fallbackUsed());
+  }
+
+  /** The request's {@code policy_version} (1.3.0), else the registry default (heuristic-v2). */
+  private Policy policyFor(ValidatedRequest request) {
+    if (request.policyVersion() == null) {
+      return activePolicy();
+    }
+    return policies.policy(request.policyVersion()).orElseThrow(this::policyUnavailable);
+  }
+
+  private static String environmentDigest(Policy policy) {
+    return policy.usesModel()
+        ? ReplayDigests.environmentDigest(
+            policy.codeDigest(), ReplayDigests.RANKING_IMPLEMENTATION_V2)
+        : ReplayDigests.environmentDigest(policy.codeDigest());
   }
 
   private Policy activePolicy() {
