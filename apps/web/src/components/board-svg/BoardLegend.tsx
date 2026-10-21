@@ -1,70 +1,41 @@
-import { HOLD_ROLES, ROLE_WORD, type HoldRole } from './geometry';
+import {
+  HOLD_ROLES,
+  HOLD_SHAPE_PATHS,
+  ROLE_WORD,
+  type HoldRole,
+} from './geometry';
+import { RoleCue } from './RoleCue';
 
-const SHAPE_WORD: Readonly<Record<HoldRole, string>> = {
-  START: 'double ring',
-  HAND: 'filled circle',
-  FOOT: 'small triangle',
-  FINISH: 'ring with a bar',
+/** LED colour and cue shape per role, in words (README.md: never colour alone). */
+const CUE_WORDS: Readonly<Record<HoldRole, string>> = {
+  START: 'green, double ring, S',
+  HAND: 'cyan, solid ring, H',
+  FOOT: 'orange, dashed ring, f',
+  FINISH: 'magenta, ring and bar, F',
 };
 
-const Glyph = ({ role }: { role: HoldRole }) => {
-  switch (role) {
-    case 'START':
-      return (
-        <svg
-          viewBox="0 0 40 40"
-          aria-hidden="true"
-          className={`legend__glyph marker--${role.toLowerCase()}`}
-        >
-          <circle cx="20" cy="20" r="9" className="marker__fill" />
-          <circle cx="20" cy="20" r="15" className="marker__ring" />
-        </svg>
-      );
-    case 'HAND':
-      return (
-        <svg
-          viewBox="0 0 40 40"
-          aria-hidden="true"
-          className={`legend__glyph marker--${role.toLowerCase()}`}
-        >
-          <circle cx="20" cy="20" r="11" className="marker__fill" />
-        </svg>
-      );
-    case 'FOOT':
-      return (
-        <svg
-          viewBox="0 0 40 40"
-          aria-hidden="true"
-          className={`legend__glyph marker--${role.toLowerCase()}`}
-        >
-          <polygon points="20,8 32,30 8,30" className="marker__fill" />
-        </svg>
-      );
-    case 'FINISH':
-      return (
-        <svg
-          viewBox="0 0 40 40"
-          aria-hidden="true"
-          className={`legend__glyph marker--${role.toLowerCase()}`}
-        >
-          <circle cx="20" cy="24" r="10" className="marker__ring" />
-          <line x1="6" x2="34" y1="7" y2="7" className="marker__bar" />
-        </svg>
-      );
-  }
-};
-
-/** Shape key for the board: each role in words next to its glyph (never colour alone). */
+/** Key for the board: each role's LED and cue as drawn on the board, plus words. */
 export const BoardLegend = () => (
   <div className="legend" role="group" aria-label="Hold roles">
     <dl className="legend__list">
       {HOLD_ROLES.map((role) => (
         <div className="legend__row" key={role}>
           <dt>
-            <Glyph role={role} />
+            <svg
+              viewBox="0 0 40 40"
+              aria-hidden="true"
+              className={`legend__glyph role--${role.toLowerCase()}`}
+            >
+              <path
+                className="legend__hold"
+                d={HOLD_SHAPE_PATHS[4][0]}
+                transform="translate(20 21) scale(6)"
+              />
+              <RoleCue role={role} x={20} y={21} r={11} />
+            </svg>
             <span>{ROLE_WORD[role]}</span>
           </dt>
-          <dd>{SHAPE_WORD[role]}</dd>
+          <dd>{CUE_WORDS[role]}</dd>
         </div>
       ))}
     </dl>

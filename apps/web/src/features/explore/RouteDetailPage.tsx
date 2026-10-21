@@ -132,7 +132,7 @@ export const RouteDetailPage = () => {
             </div>
           )}
           <BoardLegend />
-          <p className="field__hint">Holds shown are this route only.</p>
+          <p className="field__hint">Lit holds are this route.</p>
           <p>
             <Link
               className="button button--secondary"

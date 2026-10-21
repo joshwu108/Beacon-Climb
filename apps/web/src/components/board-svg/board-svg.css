@@ -1,7 +1,48 @@
-/* Board SVG (design-tokens.md section 6). Shape + text carry the role; colour is the
-   redundant fourth channel. Nothing animates. */
+/* Board SVG: a photo-ish training board with a route lit (README.md in this folder).
+   The board stays dark in both themes, like a real gym wall; only the legend text and
+   the print border follow the page theme. Every board colour lives in these tokens. */
+
+.board,
+.legend {
+  /* Gym wall and panel */
+  --board-wall-lit: oklch(0.27 0.01 70);
+  --board-wall: oklch(0.15 0.008 60);
+  --board-frame: oklch(0.31 0.02 65);
+  --board-face: oklch(0.215 0.011 60);
+  --board-edge: oklch(0.52 0.035 75);
+  --board-seam: oklch(0.13 0.008 60);
+  --board-tnut: oklch(0.11 0.006 60);
+  --board-tnut-rim: oklch(0.5 0.01 80);
+  --board-kick: oklch(0.32 0.014 65);
+  --board-grain-opacity: 0.12;
+  --board-vignette: oklch(0.08 0.006 60);
+  --board-vignette-strength: 0.55;
+
+  /* Holds: muted resin, lit from the top left */
+  --board-resin-0: oklch(0.88 0.012 85);
+  --board-resin-1: oklch(0.64 0.008 250);
+  --board-resin-2: oklch(0.6 0.05 245);
+  --board-resin-3: oklch(0.72 0.05 75);
+  --board-resin-4: oklch(0.46 0.01 60);
+  --board-resin-5: oklch(0.79 0.035 70);
+  --board-bolt: oklch(0.16 0.006 60);
+  --board-light: oklch(0.99 0.01 85);
+  --board-hold-shadow: oklch(0.06 0.005 60 / 0.6);
+  --board-hold-unlit-opacity: 0.68;
+
+  /* LEDs (Kilter convention) and the dark-gym scrim when a route is lit */
+  --board-led-start: oklch(0.82 0.21 145);
+  --board-led-hand: oklch(0.84 0.13 205);
+  --board-led-finish: oklch(0.72 0.25 340);
+  --board-led-foot: oklch(0.8 0.16 60);
+  --board-glow-strength: 0.85;
+  --board-lit-dim: 0.42;
+  --board-badge-ink: oklch(0.16 0.01 60);
+  --board-dim-opacity: 0.28;
+}
 
 .board {
+  position: relative;
   margin: 0;
   display: grid;
   gap: var(--space-2);
@@ -12,94 +53,195 @@
   inline-size: 100%;
   block-size: auto;
   min-block-size: var(--board-min-height);
+  /* A photo print tipped into the guide: paper border, hard paper shadow. */
+  border: 6px solid var(--color-surface-raised);
   border-radius: var(--radius-sheet);
-  background: var(--color-surface-sunken);
+  background: radial-gradient(
+    120% 80% at 50% 0%,
+    var(--board-wall-lit),
+    var(--board-wall) 70%
+  );
   box-shadow: var(--elevation-board);
   font-family: var(--font-ui);
 }
 
+.board__frame {
+  fill: var(--board-frame);
+}
+
 .board__face {
-  fill: var(--color-board-face);
-  stroke: var(--color-border);
+  fill: var(--board-face);
+}
+
+.board__kick {
+  fill: var(--board-kick);
+}
+
+/* Film grain over the whole photo: CSS, so it costs no JS. */
+.board::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: var(--radius-sheet);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: var(--board-grain-opacity);
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.board__tnut {
+  fill: var(--board-tnut);
+  stroke: var(--board-tnut-rim);
+  stroke-width: 0.6;
+  stroke-opacity: 0.5;
+}
+
+.board__seam {
+  fill: none;
+  stroke: var(--board-seam);
   stroke-width: 2;
-  vector-effect: non-scaling-stroke;
 }
 
-.hold {
-  fill: var(--color-hold-neutral);
-  opacity: 0.45;
-}
-
-.hold--placed {
-  opacity: 0;
-}
-
-.marker__fill {
-  stroke: var(--color-surface-raised);
+.board__edge {
+  fill: none;
+  stroke: var(--board-edge);
   stroke-width: 2.5;
-  vector-effect: non-scaling-stroke;
+  stroke-opacity: 0.6;
 }
 
-.marker__ring {
+.board__vignette {
+  pointer-events: none;
+}
+
+.board__vignette-in {
+  stop-color: var(--board-vignette);
+  stop-opacity: 0;
+}
+
+.board__vignette-out {
+  stop-color: var(--board-vignette);
+  stop-opacity: var(--board-vignette-strength);
+}
+
+.board--lit .board__vignette-in {
+  stop-opacity: var(--board-lit-dim);
+}
+
+.board--lit .board__vignette-out {
+  stop-opacity: calc(var(--board-vignette-strength) + 0.25);
+}
+
+/* Hold silhouettes (shared <defs>, placed with <use>) */
+.board__shade-hi {
+  stop-color: var(--board-light);
+  stop-opacity: 0.55;
+}
+
+.board__shade-mid {
+  stop-color: var(--board-light);
+  stop-opacity: 0;
+}
+
+.board__shade-lo {
+  stop-color: var(--board-vignette);
+  stop-opacity: 0.6;
+}
+
+.board__holds {
+  opacity: var(--board-hold-unlit-opacity);
+}
+
+.hold--r0 {
+  color: var(--board-resin-0);
+}
+
+.hold--r1 {
+  color: var(--board-resin-1);
+}
+
+.hold--r2 {
+  color: var(--board-resin-2);
+}
+
+.hold--r3 {
+  color: var(--board-resin-3);
+}
+
+.hold--r4 {
+  color: var(--board-resin-4);
+}
+
+.hold--r5 {
+  color: var(--board-resin-5);
+}
+
+/* LEDs and role cues */
+.role--start {
+  --led: var(--board-led-start);
+}
+
+.role--hand {
+  --led: var(--board-led-hand);
+}
+
+.role--foot {
+  --led: var(--board-led-foot);
+}
+
+.role--finish {
+  --led: var(--board-led-finish);
+}
+
+.led {
+  fill: var(--led);
+  opacity: var(--board-glow-strength);
+}
+
+.cue__ring,
+.cue__bar {
   fill: none;
-  stroke-width: 3;
-  vector-effect: non-scaling-stroke;
-}
-
-.marker__bar {
-  stroke-width: 4;
+  stroke: var(--led);
   stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
 }
 
-.marker__label {
-  font-size: 30px;
+.cue__badge {
+  fill: var(--led);
+  stroke: var(--board-badge-ink);
+  stroke-width: 1.5;
+}
+
+.cue__letter {
+  fill: var(--board-badge-ink);
   font-weight: 700;
-  letter-spacing: 0.08em;
   text-anchor: middle;
-  fill: var(--color-text);
-  paint-order: stroke fill;
-  stroke: var(--color-board-face);
-  stroke-width: 6px;
-  stroke-linejoin: round;
+  dominant-baseline: central;
 }
 
-.marker--start .marker__fill,
-.marker--start .marker__ring {
-  fill: var(--color-hold-start);
+.is-dim {
+  opacity: var(--board-dim-opacity);
 }
 
-.marker--start .marker__ring {
-  fill: none;
-  stroke: var(--color-hold-start);
+.led.is-dim {
+  opacity: calc(var(--board-glow-strength) * var(--board-dim-opacity));
 }
 
-.marker--hand .marker__fill {
-  fill: var(--color-hold-hand);
+@media (prefers-reduced-motion: no-preference) {
+  .board__bloom {
+    animation: board-breathe 3.6s var(--ease-in-out) infinite alternate;
+  }
 }
 
-.marker--foot .marker__fill {
-  fill: var(--color-hold-foot);
+@keyframes board-breathe {
+  to {
+    opacity: 0.78;
+  }
 }
 
-.marker--finish .marker__ring,
-.marker--finish .marker__bar {
-  stroke: var(--color-hold-finish);
-}
-
-.marker--finish .marker__ring {
-  fill: var(--color-surface-raised);
-}
-
-.marker--dim {
-  opacity: 0.3;
-}
-
-/* Legend */
+/* Legend: each role in words next to its LED and cue */
 .legend__list {
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
   gap: var(--space-2) var(--space-4);
   font-size: var(--text-sm);
 }
@@ -124,30 +266,59 @@
 }
 
 .legend__glyph {
-  inline-size: 1.75rem;
-  block-size: 1.75rem;
-  background: var(--color-board-face);
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
   border-radius: var(--radius-stamp);
+  font-family: var(--font-ui);
+}
+
+.legend__glyph {
+  background:
+    radial-gradient(
+      circle at 50% 52%,
+      color-mix(in oklch, var(--led) 40%, transparent),
+      transparent 70%
+    ),
+    var(--board-face);
+}
+
+.legend__hold {
+  fill: var(--board-resin-0);
 }
 
 @media (forced-colors: active) {
-  .board__face {
+  .board__svg {
+    background: Canvas;
+  }
+
+  .board__face,
+  .board__frame,
+  .board__kick,
+  .legend__glyph {
     fill: Canvas;
+    background: Canvas;
+  }
+
+  .board::after,
+  .board__holds,
+  .board__bloom,
+  .board__vignette {
+    display: none;
+  }
+
+  .cue__ring,
+  .cue__bar,
+  .cue__badge {
     stroke: CanvasText;
   }
 
-  .hold,
-  .marker__fill {
-    fill: CanvasText;
+  .cue__badge {
+    fill: Canvas;
   }
 
-  .marker__ring,
-  .marker__bar {
-    stroke: CanvasText;
-  }
-
-  .marker__label {
+  .cue__letter,
+  .lit-hold {
     fill: CanvasText;
-    stroke: Canvas;
+    color: CanvasText;
   }
 }
