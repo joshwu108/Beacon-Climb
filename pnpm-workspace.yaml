@@ -43,3 +43,15 @@ overrides:
   'expo-server': 58.0.3
   'react-native-drawer-layout': 4.2.11
   'react-native-gesture-handler': 3.2.1
+
+# pnpm audit: these two advisories have no patched release (patched range <0.0.0) and reach us
+# only through apps/mobile dev tooling, never through app or web runtime code:
+# - GHSA-86w9-cpqp-85rv node-forge <=1.4.0 via @expo/cli (local dev server and certificate
+#   tooling; it does not verify untrusted RSA signatures for us).
+# - GHSA-vfj7-8cjw-p6xm braces <=3.0.3 via @react-native/jest-preset > micromatch (globs come
+#   from our own Jest config, not from untrusted input).
+# Remove each entry as soon as a fixed version exists. Every other high advisory still fails CI.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-86w9-cpqp-85rv
+    - GHSA-vfj7-8cjw-p6xm
