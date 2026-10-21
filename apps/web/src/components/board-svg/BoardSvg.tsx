@@ -45,22 +45,15 @@ const layoutFor = (board: BoardShape) => {
   const points = holds.map((hold) => toSvgPoint(geometry, view, hold));
   const xs = points.map((p) => p.x);
   const ys = points.map((p) => p.y);
-  const m = pitch * 0.75;
-  const left = Math.min(0, Math.min(...xs) - m);
-  const top = Math.min(0, Math.min(...ys) - m);
-  const panel = {
-    x: left,
-    y: top,
-    w: Math.max(w, Math.max(...xs) + m) - left,
-    h: Math.max(h, Math.max(...ys) + m) - top,
-  };
+  // Margin around the holds; with the kickboard and frame it stays inside VIEWBOX_PAD.
+  const m = Math.min(36, pitch * 0.75);
   return {
     view,
     pitch,
-    panel,
-    kick: Math.min(70, Math.max(30, pitch * 1.3)),
+    panel: { x: -m, y: -m, w: w + 2 * m, h: h + 2 * m },
+    kick: Math.min(60, Math.max(30, pitch * 1.3)),
     step: { x: gridStep(xs, pitch), y: gridStep(ys, pitch) },
-    origin: { x: Math.min(...xs), y: Math.min(...ys) },
+    origin: points[0] ?? { x: 0, y: 0 },
     points,
   };
 };
@@ -192,13 +185,7 @@ export const BoardSvg = ({
             <stop offset="0.45" className="board__vignette-in" />
             <stop offset="1" className="board__vignette-out" />
           </radialGradient>
-          <linearGradient
-            id={`${ref}shade`}
-            x1="0.15"
-            y1="0.05"
-            x2="0.85"
-            y2="0.95"
-          >
+          <linearGradient id={`${ref}shade`} x2="1" y2="1">
             <stop offset="0" className="board__shade-hi" />
             <stop offset="0.45" className="board__shade-mid" />
             <stop offset="1" className="board__shade-lo" />
@@ -214,42 +201,36 @@ export const BoardSvg = ({
           </filter>
         </defs>
 
-        <g className="board__panel" aria-hidden="true">
-          <rect
-            className="board__frame"
-            x={panel.x - 10}
-            y={panel.y - 10}
-            width={panel.w + 20}
-            height={panel.h + kick + 20}
-            rx={8}
-          />
-          <rect
-            className="board__face"
-            x={panel.x}
-            y={panel.y}
-            width={panel.w}
-            height={panel.h}
-          />
-          <path
-            className="board__kick"
-            d={`M${panel.x} ${bottom}h${panel.w}l${flare} ${kick}h${-panel.w - 2 * flare}z`}
-          />
-          <rect
-            fill={url('tnut')}
-            x={panel.x}
-            y={panel.y}
-            width={panel.w}
-            height={panel.h}
-          />
-          <path
-            className="board__seam"
-            d={`M${panel.x + panel.w / 3} ${panel.y}v${panel.h}M${panel.x + (2 * panel.w) / 3} ${panel.y}v${panel.h}M${panel.x} ${panel.y + panel.h / 3}h${panel.w}`}
-          />
-          <path
-            className="board__edge"
-            d={`M${panel.x} ${bottom}V${panel.y}H${panel.x + panel.w}M${panel.x} ${bottom}h${panel.w}`}
-          />
-        </g>
+        <rect
+          className="board__frame"
+          x={panel.x - 10}
+          y={panel.y - 10}
+          width={panel.w + 20}
+          height={panel.h + kick + 20}
+          rx={8}
+        />
+        <rect
+          className="board__face"
+          x={panel.x}
+          y={panel.y}
+          width={panel.w}
+          height={panel.h}
+        />
+        <path
+          className="board__kick"
+          d={`M${panel.x} ${bottom}h${panel.w}l${flare} ${kick}h${-panel.w - 2 * flare}z`}
+        />
+        <rect
+          fill={url('tnut')}
+          x={panel.x}
+          y={panel.y}
+          width={panel.w}
+          height={panel.h}
+        />
+        <path
+          className="board__seam"
+          d={`M${panel.x + panel.w / 3} ${panel.y}v${panel.h}M${panel.x + (2 * panel.w) / 3} ${panel.y}v${panel.h}M${panel.x} ${panel.y + panel.h / 3}h${panel.w}`}
+        />
 
         <g className="board__holds">
           {board.holds.map((hold, i) =>
@@ -264,7 +245,6 @@ export const BoardSvg = ({
           y={panel.y}
           width={panel.w}
           height={panel.h + kick}
-          aria-hidden="true"
         />
 
         {lit ? (

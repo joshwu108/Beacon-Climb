@@ -1,9 +1,4 @@
-import {
-  HOLD_ROLES,
-  HOLD_SHAPE_PATHS,
-  ROLE_WORD,
-  type HoldRole,
-} from './geometry';
+import { HOLD_ROLES, ROLE_WORD, type HoldRole } from './geometry';
 import { RoleCue } from './RoleCue';
 
 /** LED colour and cue shape per role, in words (README.md: never colour alone). */
@@ -26,11 +21,6 @@ export const BoardLegend = () => (
               aria-hidden="true"
               className={`legend__glyph role--${role.toLowerCase()}`}
             >
-              <path
-                className="legend__hold"
-                d={HOLD_SHAPE_PATHS[4][0]}
-                transform="translate(20 21) scale(6)"
-              />
               <RoleCue role={role} x={20} y={21} r={11} />
             </svg>
             <span>{ROLE_WORD[role]}</span>

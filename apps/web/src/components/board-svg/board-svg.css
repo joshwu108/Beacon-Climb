@@ -71,6 +71,9 @@
 
 .board__face {
   fill: var(--board-face);
+  stroke: var(--board-edge);
+  stroke-width: 2.5;
+  stroke-opacity: 0.6;
 }
 
 .board__kick {
@@ -100,13 +103,6 @@
   fill: none;
   stroke: var(--board-seam);
   stroke-width: 2;
-}
-
-.board__edge {
-  fill: none;
-  stroke: var(--board-edge);
-  stroke-width: 2.5;
-  stroke-opacity: 0.6;
 }
 
 .board__vignette {
@@ -280,10 +276,6 @@
       transparent 70%
     ),
     var(--board-face);
-}
-
-.legend__hold {
-  fill: var(--board-resin-0);
 }
 
 @media (forced-colors: active) {
